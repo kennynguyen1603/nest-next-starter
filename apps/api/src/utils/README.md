@@ -1,10 +1,10 @@
 # Utils
 
-Thư mục `src/utils/` chứa các helper, interceptor, type và pagination dùng chung toàn bộ ứng dụng.
+Shared helpers, interceptors, types, and pagination utilities used across the entire application.
 
 ---
 
-## Mục lục
+## Table of Contents
 
 1. [Entity Helpers](#1-entity-helpers)
 2. [Pagination](#2-pagination)
@@ -19,12 +19,12 @@ Thư mục `src/utils/` chứa các helper, interceptor, type và pagination dù
 
 ### `EntityRelationalHelper` — `relational-entity-helper.ts`
 
-Base class cho tất cả **TypeORM entity**. Cung cấp hai tính năng:
+Base class for all **TypeORM entities**. Provides two features:
 
-- `__entity` – tự động gán tên class sau khi load từ DB (dùng để phân biệt entity ở runtime).
-- `toJSON()` – serialize entity qua `instanceToPlain` của `class-transformer` (tôn trọng `@Exclude`, `@Expose`).
+- `__entity` — automatically set to the class name after loading from the database (useful for runtime entity identification).
+- `toJSON()` — serializes the entity via `class-transformer`'s `instanceToPlain`, respecting `@Exclude` and `@Expose` decorators.
 
-**Cách dùng:**
+**Usage:**
 
 ```typescript
 @Entity({ name: 'role' })
@@ -38,11 +38,11 @@ export class RoleEntity extends EntityRelationalHelper {
 
 ### `EntityDocumentHelper` — `document-entity-helper.ts`
 
-Base class cho tất cả **Mongoose schema document**. Giải quyết vấn đề serialize `_id` của MongoDB khi dùng `class-transformer`.
+Base class for all **Mongoose schema documents**. Handles correct serialization of MongoDB's `_id` field when using `class-transformer`.
 
-- `_id` được transform sang `string` khi serializing (workaround cho [class-transformer#879](https://github.com/typestack/class-transformer/issues/879)).
+- `_id` is transformed to a `string` during serialization (workaround for [class-transformer#879](https://github.com/typestack/class-transformer/issues/879)).
 
-**Cách dùng:**
+**Usage:**
 
 ```typescript
 @Schema({ timestamps: true })
@@ -56,15 +56,13 @@ export class RoleSchema extends EntityDocumentHelper {
 
 ## 2. Pagination
 
-### Infinity Pagination (phân trang đơn giản theo trang/limit)
+### Infinity Pagination
 
-**Khi dùng:** API trả về danh sách đơn giản với cờ `hasNextPage`, không cần đếm tổng số bản ghi.
+**When to use:** APIs returning a list with a simple `hasNextPage` flag, where counting total records is unnecessary.
 
 #### `InfinityPaginationResponseDto` — `dto/infinity-pagination-response.dto.ts`
 
-DTO response chứa `data[]` và `hasNextPage`.
-
-Dùng `InfinityPaginationResponse(ClassRef)` để tạo Swagger-aware subclass:
+Response DTO containing `data[]` and `hasNextPage`. Use `InfinityPaginationResponse(ClassRef)` to generate a Swagger-aware subclass:
 
 ```typescript
 @ApiExtraModels(InfinityPaginationResponse(UserDto))
@@ -74,21 +72,21 @@ async list(): Promise<InfinityPaginationResponse(UserDto)> { ... }
 
 #### `infinityPagination()` — `infinity-pagination.ts`
 
-Helper tính `hasNextPage` từ kết quả query:
+Helper that computes `hasNextPage` from the query result.
+
+The convention is to fetch `limit + 1` records, then pass the sliced result to this helper:
 
 ```typescript
-// Lấy limit+1 bản ghi, nếu đủ limit+1 thì còn trang sau
 const data = await repo.find({ take: limit + 1 });
 return infinityPagination(data.slice(0, limit), { page, limit });
+// hasNextPage = true when the raw result contained limit+1 items
 ```
-
-`hasNextPage = data.length === limit` (phải truyền vào `data` đã slice đúng `limit`).
 
 ---
 
 ### Offset Pagination — `pagination/offset-pagination.ts`
 
-**Khi dùng:** Phân trang truyền thống (page/limit) với TypeORM `SelectQueryBuilder`. Trả về cả danh sách và metadata (`OffsetPaginationDto`).
+**When to use:** Traditional page/limit pagination with TypeORM's `SelectQueryBuilder`. Returns both the result list and metadata (`OffsetPaginationDto`).
 
 ```typescript
 import { paginate } from '@/utils/pagination/offset-pagination';
@@ -99,13 +97,13 @@ const [items, meta] = await paginate(qb, pageOptionsDto);
 
 **Options:**
 
-| Option | Mô tả |
+| Option | Description |
 |---|---|
-| `skipCount` | Bỏ qua `getCount()` khi không cần tổng số (tối ưu hiệu năng) |
-| `takeAll` | Bỏ qua `skip/take`, lấy toàn bộ kết quả |
+| `skipCount` | Skip the `getCount()` query when total count is not needed (improves performance) |
+| `takeAll` | Ignore `skip/take` and return all results |
 
 ```typescript
-// Không đếm tổng (nhanh hơn):
+// Without total count (faster):
 const [items] = await paginate(qb, pageOptionsDto, { skipCount: true });
 ```
 
@@ -113,57 +111,57 @@ const [items] = await paginate(qb, pageOptionsDto, { skipCount: true });
 
 ### Cursor Pagination — `pagination/cursor-pagination.ts`
 
-**Khi dùng:** Phân trang hiệu quả cho dataset lớn, không cần đếm tổng số, hỗ trợ scroll vô hạn theo cursor (base64-encoded).
+**When to use:** Efficient pagination for large datasets, supporting infinite scroll via a base64-encoded cursor. No total count required.
 
-#### Cấu hình
+#### Configuration
 
 ```typescript
 const paginator = buildPaginator({
   entity: UserEntity,
-  alias: 'user',              // alias trong QueryBuilder (mặc định: tên entity lowercase)
-  paginationKeys: ['createdAt', 'id'],  // các cột dùng làm cursor (mặc định: ['id'])
+  alias: 'user',                        // QueryBuilder alias (defaults to entity name in lowercase)
+  paginationKeys: ['createdAt', 'id'],  // columns used to build the cursor (defaults to ['id'])
   query: {
     limit: 20,
-    order: 'DESC',            // 'ASC' | 'DESC'
-    afterCursor: req.query.afterCursor,   // cursor trang tiếp theo
-    beforeCursor: req.query.beforeCursor, // cursor trang trước
+    order: 'DESC',                      // 'ASC' | 'DESC'
+    afterCursor: req.query.afterCursor,   // cursor for the next page
+    beforeCursor: req.query.beforeCursor, // cursor for the previous page
   },
 });
 
 const { data, cursor } = await paginator.paginate(qb);
-// cursor.afterCursor  → truyền vào request tiếp theo để lấy trang sau
-// cursor.beforeCursor → truyền vào request tiếp theo để lấy trang trước
+// cursor.afterCursor  → pass in the next request to fetch the next page
+// cursor.beforeCursor → pass in the next request to fetch the previous page
 ```
 
-#### Lưu ý quan trọng
+#### Important notes
 
-- `paginationKeys` phải bao gồm một trường **unique** (thường là `id`) ở cuối để đảm bảo thứ tự ổn định.
-- Cursor được encode base64, không nên tự parse — chỉ truyền lại từ response về request.
-- Hỗ trợ các kiểu: `string`, `number`, `date`, branded types (UUID...).
-- Khi dùng `beforeCursor`, thứ tự kết quả sẽ tự động đảo và reverse lại về đúng chiều.
+- `paginationKeys` must end with a **unique** column (typically `id`) to guarantee stable ordering.
+- Cursors are base64-encoded — do not parse them manually; simply relay them from the response back to the next request.
+- Supported column types: `string`, `number`, `date`, branded types (UUID, etc.).
+- When `beforeCursor` is provided, ordering is automatically reversed and the result is flipped back to the correct direction.
 
 ---
 
 ## 3. Types
 
-Các type utility nhỏ, dùng thay cho `any` hoặc union phổ biến:
+Small utility types that replace `any` or common unions:
 
-| File | Type | Mô tả |
+| File | Type | Description |
 |---|---|---|
-| `types/maybe.type.ts` | `MaybeType<T>` | `T \| undefined` — giá trị có thể không tồn tại |
-| `types/nullable.type.ts` | `NullableType<T>` | `T \| null` — giá trị có thể null |
-| `types/or-never.type.ts` | `OrNeverType<T>` | `T` — alias tường minh, dùng khi muốn type T hoặc không bao giờ xảy ra |
-| `types/deep-partial.type.ts` | `DeepPartial<T>` | Tất cả property (kể cả nested) đều optional |
-| `types/pagination-options.ts` | `IPaginationOptions` | Interface `{ page, limit }` cho infinity pagination |
+| `types/maybe.type.ts` | `MaybeType<T>` | `T \| undefined` — value that may not exist |
+| `types/nullable.type.ts` | `NullableType<T>` | `T \| null` — value that may be null |
+| `types/or-never.type.ts` | `OrNeverType<T>` | `T` — explicit alias used when the value is always T |
+| `types/deep-partial.type.ts` | `DeepPartial<T>` | All properties (including nested) made optional |
+| `types/pagination-options.ts` | `IPaginationOptions` | `{ page, limit }` interface for infinity pagination |
 
-**Ví dụ:**
+**Examples:**
 
 ```typescript
 function findUser(id: string): NullableType<User> { ... }
 function getEmail(): MaybeType<string> { ... }
 
 function updateUser(data: DeepPartial<User>): void { ... }
-// data.address?.city là hợp lệ dù address là optional
+// data.address?.city is valid even if address is optional
 ```
 
 ---
@@ -172,9 +170,9 @@ function updateUser(data: DeepPartial<User>): void { ... }
 
 ### `lowerCaseTransformer` — `transformers/lower-case.transformer.ts`
 
-Dùng với decorator `@Transform` của `class-transformer` để tự động lowercase + trim chuỗi khi binding DTO.
+Used with `class-transformer`'s `@Transform` decorator to automatically lowercase and trim a string value when binding a DTO.
 
-**Cách dùng:**
+**Usage:**
 
 ```typescript
 import { Transform } from 'class-transformer';
@@ -186,7 +184,7 @@ export class CreateUserDto {
 }
 ```
 
-Nếu `value` không phải string, transformer trả về nguyên giá trị gốc (không ném lỗi).
+If the value is not a string, the transformer returns it unchanged without throwing.
 
 ---
 
@@ -194,7 +192,7 @@ Nếu `value` không phải string, transformer trả về nguyên giá trị g�
 
 ### `validateConfig()` — `validate-config.ts`
 
-**Khi dùng:** Validate biến môi trường trong `*.config.ts` khi app khởi động. Ném lỗi rõ ràng nếu thiếu hoặc sai kiểu biến môi trường — thay vì để app crash ở runtime.
+**When to use:** Validate environment variables inside `*.config.ts` files at application startup. Throws a descriptive error when a variable is missing or has the wrong type — instead of letting the app crash at runtime.
 
 ```typescript
 // src/config/database.config.ts
@@ -215,7 +213,7 @@ export default registerAs('database', () =>
 );
 ```
 
-Khi có lỗi, sẽ throw với message rõ từng property:
+On failure, throws with a clear per-property message:
 
 ```
 Error in DATABASE_PORT:
@@ -226,15 +224,15 @@ Error in DATABASE_PORT:
 
 ### `validationOptions` — `validation-options.ts`
 
-Cấu hình mặc định cho `ValidationPipe` toàn app:
+Default configuration for the global `ValidationPipe`:
 
-| Option | Giá trị | Ý nghĩa |
+| Option | Value | Description |
 |---|---|---|
-| `transform` | `true` | Tự động transform type (string → number, v.v.) |
-| `whitelist` | `true` | Loại bỏ các field không có trong DTO |
-| `errorHttpStatusCode` | `422` | Lỗi validation trả về `422 Unprocessable Entity` |
+| `transform` | `true` | Automatically transform types (string → number, etc.) |
+| `whitelist` | `true` | Strip properties not declared in the DTO |
+| `errorHttpStatusCode` | `422` | Validation errors return `422 Unprocessable Entity` |
 
-**Cấu hình trong `main.ts`:**
+**Setup in `main.ts`:**
 
 ```typescript
 import validationOptions from '@/utils/validation-options';
@@ -242,7 +240,7 @@ import validationOptions from '@/utils/validation-options';
 app.useGlobalPipes(new ValidationPipe(validationOptions));
 ```
 
-Lỗi validation trả về format:
+Validation error response format:
 
 ```json
 {
@@ -260,9 +258,9 @@ Lỗi validation trả về format:
 
 ### `ResolvePromisesInterceptor` — `serializer.interceptor.ts`
 
-**Khi dùng:** Khi response chứa các nested object có getter/virtual field trả về `Promise`. Interceptor tự động resolve tất cả Promise trong object response trước khi gửi về client.
+**When to use:** When a response object contains nested getters or virtual fields that return a `Promise`. This interceptor recursively resolves all Promises in the response before it is sent to the client.
 
-**Cấu hình globally:**
+**Global setup:**
 
 ```typescript
 // main.ts
@@ -271,7 +269,7 @@ import { ResolvePromisesInterceptor } from '@/utils/serializer.interceptor';
 app.useGlobalInterceptors(new ResolvePromisesInterceptor());
 ```
 
-**Hoặc trên controller/route:**
+**Per-controller or per-route:**
 
 ```typescript
 @UseInterceptors(ResolvePromisesInterceptor)
@@ -279,4 +277,4 @@ app.useGlobalInterceptors(new ResolvePromisesInterceptor());
 async findOne(@Param('id') id: string) { ... }
 ```
 
-Interceptor này dùng `deepResolvePromises()` (`deep-resolver.ts`) để traverse toàn bộ cây object và resolve từng Promise tìm thấy.
+Internally uses `deepResolvePromises()` from `deep-resolver.ts` to traverse the entire object tree and resolve each Promise found.
