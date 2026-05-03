@@ -37,7 +37,7 @@ export function ToBoolean(): PropertyDecorator {
         }
 
         default: {
-          return params.value;
+          return params.value as boolean;
         }
       }
     },
@@ -48,7 +48,7 @@ export function ToBoolean(): PropertyDecorator {
 export function ToLowerCase(): PropertyDecorator {
   return Transform(
     (params) => {
-      const value = params.value;
+      const value = params.value as string[] | string;
 
       if (!value) {
         return;
@@ -69,7 +69,7 @@ export function ToLowerCase(): PropertyDecorator {
 export function ToUpperCase(): PropertyDecorator {
   return Transform(
     (params) => {
-      const value = params.value;
+      const value = params.value as string[] | string;
 
       if (!value) {
         return;
