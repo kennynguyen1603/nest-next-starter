@@ -5,5 +5,5 @@ import { RoleEnum } from '../roles.enum';
 export class RoleDto {
   @ApiProperty({ enum: RoleEnum })
   @IsEnum(RoleEnum)
-  id!: RoleEnum;
+  name!: RoleEnum;
 }

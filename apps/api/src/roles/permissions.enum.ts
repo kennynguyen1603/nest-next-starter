@@ -1,21 +1,23 @@
-/**
- * Defines all granular permissions in the system.
- *
- * Convention: `<action>:<resource>` (e.g. `read:users`, `delete:user`).
- *
- * To add a new permission:
- * 1. Add an entry here.
- * 2. Assign it to the appropriate role(s) in `role-permissions.map.ts`.
- */
 export enum PermissionEnum {
-  // User management – admin only
-  READ_USERS = 'read:users',
-  CREATE_USER = 'create:user',
-  UPDATE_USER = 'update:user',
-  DELETE_USER = 'delete:user',
-
-  // Own profile – all authenticated users
-  READ_OWN_PROFILE = 'read:own-profile',
-  UPDATE_OWN_PROFILE = 'update:own-profile',
-  DELETE_OWN_PROFILE = 'delete:own-profile',
+  TASK_CREATE = 1,
+  TASK_READ = 2,
+  TASK_UPDATE = 3,
+  TASK_DELETE = 4,
+  TASK_ASSIGN = 5,
+  CHAT_SEND = 6,
+  CHAT_READ = 7,
+  PROJECT_CREATE = 8,
+  PROJECT_INVITE = 9,
 }
+
+export const PERMISSION_NAMES: Record<PermissionEnum, string> = {
+  [PermissionEnum.TASK_CREATE]: 'task.create',
+  [PermissionEnum.TASK_READ]: 'task.read',
+  [PermissionEnum.TASK_UPDATE]: 'task.update',
+  [PermissionEnum.TASK_DELETE]: 'task.delete',
+  [PermissionEnum.TASK_ASSIGN]: 'task.assign',
+  [PermissionEnum.CHAT_SEND]: 'chat.send',
+  [PermissionEnum.CHAT_READ]: 'chat.read',
+  [PermissionEnum.PROJECT_CREATE]: 'project.create',
+  [PermissionEnum.PROJECT_INVITE]: 'project.invite',
+};

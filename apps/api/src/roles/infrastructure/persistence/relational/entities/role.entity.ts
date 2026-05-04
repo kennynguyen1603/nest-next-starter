@@ -1,12 +1,17 @@
-import { Column, Entity, PrimaryColumn } from 'typeorm';
+import { BeforeInsert, Column, Entity, PrimaryColumn } from 'typeorm';
+import { uuidv7 } from 'uuidv7';
 import { EntityRelationalHelper } from '@/utils/relational-entity-helper';
-import { RoleEnum } from '@/roles/roles.enum';
 
 @Entity({ name: 'role' })
 export class RoleEntity extends EntityRelationalHelper {
-  @PrimaryColumn({ type: String })
-  id!: RoleEnum;
+  @PrimaryColumn({ type: 'uuid' })
+  id!: string;
 
-  @Column()
-  name?: string;
+  @Column({ type: String, unique: true })
+  name!: string;
+
+  @BeforeInsert()
+  generateId() {
+    if (!this.id) this.id = uuidv7();
+  }
 }

@@ -1,0 +1,21 @@
+import { Module } from '@nestjs/common';
+import databaseConfig from '@/config/database/database.config';
+import { DatabaseConfig } from '@/config/database/database-config.type';
+
+import { RolesController } from './roles.controller';
+import { RolesService } from './roles.service';
+import { RelationalRolesPersistenceModule } from './infrastructure/persistence/relational/relational-persistence.module';
+import { DocumentRolesPersistenceModule } from './infrastructure/persistence/document/document-persistence.module';
+
+const infrastructurePersistenceModule = (databaseConfig() as DatabaseConfig)
+  .isDocumentDatabase
+  ? DocumentRolesPersistenceModule
+  : RelationalRolesPersistenceModule;
+
+@Module({
+  imports: [infrastructurePersistenceModule],
+  controllers: [RolesController],
+  providers: [RolesService],
+  exports: [RolesService],
+})
+export class RolesModule {}

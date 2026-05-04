@@ -12,34 +12,11 @@ export class RoleSeedService {
   ) {}
 
   async run() {
-    const countUser = await this.repository.count({
-      where: {
-        id: RoleEnum.USER,
-      },
-    });
-
-    if (!countUser) {
-      await this.repository.save(
-        this.repository.create({
-          id: RoleEnum.USER,
-          name: 'User',
-        }),
-      );
-    }
-
-    const countAdmin = await this.repository.count({
-      where: {
-        id: RoleEnum.ADMIN,
-      },
-    });
-
-    if (!countAdmin) {
-      await this.repository.save(
-        this.repository.create({
-          id: RoleEnum.ADMIN,
-          name: 'Admin',
-        }),
-      );
+    for (const name of Object.values(RoleEnum)) {
+      const exists = await this.repository.count({ where: { name } });
+      if (!exists) {
+        await this.repository.save(this.repository.create({ name }));
+      }
     }
   }
 }

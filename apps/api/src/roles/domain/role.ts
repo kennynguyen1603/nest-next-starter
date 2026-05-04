@@ -4,10 +4,10 @@ import { RoleEnum } from '../roles.enum';
 
 export class Role {
   @Allow()
-  @ApiProperty({ enum: RoleEnum })
-  id!: RoleEnum;
+  @ApiProperty({ type: String })
+  id?: string;
 
   @Allow()
-  @ApiProperty({ type: String, example: 'admin' })
-  name?: string;
+  @ApiProperty({ enum: RoleEnum, example: RoleEnum.USER })
+  name!: RoleEnum;
 }
