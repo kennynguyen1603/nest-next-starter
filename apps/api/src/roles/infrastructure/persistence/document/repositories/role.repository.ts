@@ -25,7 +25,9 @@ export class RolesDocumentRepository implements RolesRepository {
 
   async findAll(): Promise<Role[]> {
     const roleDocs = await this.roleModel.find().lean();
-    return roleDocs.map((doc) => RoleMapper.toDomain(doc as RoleSchemaClass));
+    return roleDocs.map((roleDoc) =>
+      RoleMapper.toDomain(roleDoc as RoleSchemaClass),
+    );
   }
 
   async findById(id: string): Promise<NullableType<Role>> {
@@ -41,13 +43,15 @@ export class RolesDocumentRepository implements RolesRepository {
       .find({ name: { $in: roleNames } }, { _id: 1 })
       .lean();
     if (!roles.length) return [];
-    const roleIds = roles.map((r) => r._id.toString());
-    const permissionDocs = await this.rolePermissionModel
-      .find({ roleId: { $in: roleIds } }, { permissionId: 1 })
+    const roleIds = roles.map((role) => role._id.toString());
+    const rolePermissions = await this.rolePermissionModel
+      .find({ roleId: { $in: roleIds } }, { permissionName: 1 })
       .lean();
     return [
       ...new Set(
-        permissionDocs.map((doc) => doc.permissionId as PermissionEnum),
+        rolePermissions.map(
+          (rolePermission) => rolePermission.permissionName as PermissionEnum,
+        ),
       ),
     ];
   }
@@ -57,7 +61,7 @@ export class RolesDocumentRepository implements RolesRepository {
       .find({ userId: userId.toString() }, { roleId: 1 })
       .lean();
     if (!userRoleDocs.length) return [];
-    const roleIds = userRoleDocs.map((doc) => doc.roleId);
+    const roleIds = userRoleDocs.map((userRoleDoc) => userRoleDoc.roleId);
     const roles = await this.roleModel
       .find({ _id: { $in: roleIds } }, { name: 1 })
       .lean<{ name: RoleEnum }[]>();

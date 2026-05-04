@@ -26,10 +26,10 @@ export class RolePermissionSeedService {
       if (!roleId) continue;
 
       const permissions = ROLE_PERMISSIONS[roleName] ?? [];
-      for (const permissionId of permissions) {
-        const exists = await this.model.exists({ roleId, permissionId });
+      for (const permissionName of permissions) {
+        const exists = await this.model.exists({ roleId, permissionName });
         if (!exists) {
-          await this.model.create({ roleId, permissionId });
+          await this.model.create({ roleId, permissionName });
         }
       }
     }

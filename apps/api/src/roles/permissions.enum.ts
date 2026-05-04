@@ -1,23 +1,37 @@
-export enum PermissionEnum {
-  TASK_CREATE = 1,
-  TASK_READ = 2,
-  TASK_UPDATE = 3,
-  TASK_DELETE = 4,
-  TASK_ASSIGN = 5,
-  CHAT_SEND = 6,
-  CHAT_READ = 7,
-  PROJECT_CREATE = 8,
-  PROJECT_INVITE = 9,
-}
+export type PermissionAction =
+  | 'create'
+  | 'read'
+  | 'update'
+  | 'delete'
+  | 'assign'
+  | 'send'
+  | 'invite';
 
-export const PERMISSION_NAMES: Record<PermissionEnum, string> = {
-  [PermissionEnum.TASK_CREATE]: 'task.create',
-  [PermissionEnum.TASK_READ]: 'task.read',
-  [PermissionEnum.TASK_UPDATE]: 'task.update',
-  [PermissionEnum.TASK_DELETE]: 'task.delete',
-  [PermissionEnum.TASK_ASSIGN]: 'task.assign',
-  [PermissionEnum.CHAT_SEND]: 'chat.send',
-  [PermissionEnum.CHAT_READ]: 'chat.read',
-  [PermissionEnum.PROJECT_CREATE]: 'project.create',
-  [PermissionEnum.PROJECT_INVITE]: 'project.invite',
-};
+export type PermissionEntity = 'task' | 'chat' | 'project';
+
+export type PermissionEnum = `${PermissionAction}:${PermissionEntity}`;
+
+export const Permission = {
+  TASK_CREATE: 'create:task',
+  TASK_READ: 'read:task',
+  TASK_UPDATE: 'update:task',
+  TASK_DELETE: 'delete:task',
+  TASK_ASSIGN: 'assign:task',
+  CHAT_SEND: 'send:chat',
+  CHAT_READ: 'read:chat',
+  PROJECT_CREATE: 'create:project',
+  PROJECT_INVITE: 'invite:project',
+} as const satisfies Record<string, PermissionEnum>;
+
+// Numeric IDs for relational DB storage — order must stay stable
+export const PERMISSION_IDS: Record<string, number> = {
+  [Permission.TASK_CREATE]: 1,
+  [Permission.TASK_READ]: 2,
+  [Permission.TASK_UPDATE]: 3,
+  [Permission.TASK_DELETE]: 4,
+  [Permission.TASK_ASSIGN]: 5,
+  [Permission.CHAT_SEND]: 6,
+  [Permission.CHAT_READ]: 7,
+  [Permission.PROJECT_CREATE]: 8,
+  [Permission.PROJECT_INVITE]: 9,
+} as const;

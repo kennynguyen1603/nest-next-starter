@@ -1,9 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum } from 'class-validator';
-import { PermissionEnum } from '../permissions.enum';
+import { IsIn } from 'class-validator';
+import { Permission } from '../permissions.enum';
+import type { PermissionEnum } from '../permissions.enum';
 
 export class PermissionDto {
-  @ApiProperty({ enum: PermissionEnum })
-  @IsEnum(PermissionEnum)
-  id!: PermissionEnum;
+  @ApiProperty({ enum: Object.values(Permission) })
+  @IsIn(Object.values(Permission))
+  name!: PermissionEnum;
 }

@@ -1,12 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Allow } from 'class-validator';
+import type { PermissionEnum } from '../permissions.enum';
 
 export class Permission {
   @Allow()
-  @ApiProperty({ type: Number })
-  id!: number;
-
-  @Allow()
-  @ApiProperty({ type: String, example: 'task.create' })
-  name!: string;
+  @ApiProperty({ type: String, example: 'create:task' })
+  name!: PermissionEnum;
 }

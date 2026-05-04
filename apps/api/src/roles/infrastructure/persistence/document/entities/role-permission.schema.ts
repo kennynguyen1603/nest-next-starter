@@ -9,12 +9,12 @@ export class RolePermissionSchemaClass {
   @Prop({ type: String, required: true })
   roleId!: string;
 
-  @Prop({ type: Number, required: true })
-  permissionId!: number;
+  @Prop({ type: String, required: true })
+  permissionName!: string;
 }
 
 export const RolePermissionSchema = SchemaFactory.createForClass(
   RolePermissionSchemaClass,
 );
-RolePermissionSchema.index({ roleId: 1, permissionId: 1 }, { unique: true });
+RolePermissionSchema.index({ roleId: 1, permissionName: 1 }, { unique: true });
 RolePermissionSchema.index({ roleId: 1 });

@@ -34,13 +34,13 @@ export class RbacGuard implements CanActivate {
     const userRoles = (user.roles ?? []) as RoleEnum[];
     const userPermissions = (user.permissions ?? []) as PermissionEnum[];
 
-    if (roles?.length && !roles.some((r) => userRoles.includes(r))) {
+    if (roles?.length && !roles.some((role) => userRoles.includes(role))) {
       return false;
     }
 
     if (
       permissions?.length &&
-      !permissions.every((p) => userPermissions.includes(p))
+      !permissions.every((permission) => userPermissions.includes(permission))
     ) {
       return false;
     }

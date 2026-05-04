@@ -1,26 +1,27 @@
-import { PermissionEnum } from './permissions.enum';
+import { Permission } from './permissions.enum';
+import type { PermissionEnum } from './permissions.enum';
 import { RoleEnum } from './roles.enum';
 
 export const ROLE_PERMISSIONS: Record<RoleEnum, PermissionEnum[]> = {
   [RoleEnum.ADMIN]: [
-    PermissionEnum.TASK_CREATE,
-    PermissionEnum.TASK_READ,
-    PermissionEnum.TASK_UPDATE,
-    PermissionEnum.TASK_DELETE,
-    PermissionEnum.TASK_ASSIGN,
-    PermissionEnum.CHAT_SEND,
-    PermissionEnum.CHAT_READ,
-    PermissionEnum.PROJECT_CREATE,
-    PermissionEnum.PROJECT_INVITE,
+    Permission.TASK_CREATE,
+    Permission.TASK_READ,
+    Permission.TASK_UPDATE,
+    Permission.TASK_DELETE,
+    Permission.TASK_ASSIGN,
+    Permission.CHAT_SEND,
+    Permission.CHAT_READ,
+    Permission.PROJECT_CREATE,
+    Permission.PROJECT_INVITE,
   ],
   [RoleEnum.MANAGER]: [
-    PermissionEnum.TASK_CREATE,
-    PermissionEnum.TASK_READ,
-    PermissionEnum.TASK_UPDATE,
-    PermissionEnum.TASK_DELETE,
-    PermissionEnum.TASK_ASSIGN,
-    PermissionEnum.CHAT_SEND,
-    PermissionEnum.CHAT_READ,
+    Permission.TASK_CREATE,
+    Permission.TASK_READ,
+    Permission.TASK_UPDATE,
+    Permission.TASK_DELETE,
+    Permission.TASK_ASSIGN,
+    Permission.CHAT_SEND,
+    Permission.CHAT_READ,
   ],
-  [RoleEnum.USER]: [PermissionEnum.TASK_CREATE, PermissionEnum.CHAT_SEND],
+  [RoleEnum.USER]: [Permission.TASK_CREATE, Permission.CHAT_SEND],
 };

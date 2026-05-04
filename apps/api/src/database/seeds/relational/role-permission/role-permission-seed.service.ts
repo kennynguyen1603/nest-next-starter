@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { RolePermissionEntity } from '@/roles/infrastructure/persistence/relational/entities/role-permission.entity';
 import { RoleEntity } from '@/roles/infrastructure/persistence/relational/entities/role.entity';
 import { ROLE_PERMISSIONS } from '@/roles/role-permissions.map';
+import { PERMISSION_IDS } from '@/roles/permissions.enum';
 import { RoleEnum } from '@/roles/roles.enum';
 
 @Injectable()
@@ -24,7 +25,10 @@ export class RolePermissionSeedService {
       if (!roleId) continue;
 
       const permissions = ROLE_PERMISSIONS[roleName] ?? [];
-      for (const permissionId of permissions) {
+      for (const permissionName of permissions) {
+        const permissionId = PERMISSION_IDS[permissionName];
+        if (!permissionId) continue;
+
         const exists = await this.repository.count({
           where: { roleId, permissionId },
         });

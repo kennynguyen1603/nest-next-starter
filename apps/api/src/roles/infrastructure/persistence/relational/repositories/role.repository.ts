@@ -9,7 +9,7 @@ import { PermissionEnum } from '@/roles/permissions.enum';
 import { RolesRepository } from '../../roles.repository';
 import { RoleMapper } from '../mappers/role.mapper';
 import { RoleEntity } from '../entities/role.entity';
-import { RolePermissionEntity } from '../entities/role-permission.entity';
+import { PermissionEntity } from '../entities/permission.entity';
 import { UserRoleEntity } from '../entities/user-role.entity';
 
 @Injectable()
@@ -17,15 +17,15 @@ export class RolesRelationalRepository implements RolesRepository {
   constructor(
     @InjectRepository(RoleEntity)
     private readonly roleRepo: Repository<RoleEntity>,
-    @InjectRepository(RolePermissionEntity)
-    private readonly rolePermissionRepo: Repository<RolePermissionEntity>,
+    @InjectRepository(PermissionEntity)
+    private readonly permissionRepo: Repository<PermissionEntity>,
     @InjectRepository(UserRoleEntity)
     private readonly userRoleRepo: Repository<UserRoleEntity>,
   ) {}
 
   async findAll(): Promise<Role[]> {
     const entities = await this.roleRepo.find();
-    return entities.map((e) => RoleMapper.toDomain(e));
+    return entities.map((entity) => RoleMapper.toDomain(entity));
   }
 
   async findById(id: string): Promise<NullableType<Role>> {
@@ -37,18 +37,15 @@ export class RolesRelationalRepository implements RolesRepository {
     roleNames: RoleEnum[],
   ): Promise<PermissionEnum[]> {
     if (!roleNames.length) return [];
-    const roles = await this.roleRepo.find({
-      where: { name: In(roleNames) },
-      select: ['id'],
-    });
-    if (!roles.length) return [];
-    const permissionRows = await this.rolePermissionRepo.find({
-      where: { roleId: In(roles.map((r) => r.id)) },
-      select: ['permissionId'],
-    });
-    return [
-      ...new Set(permissionRows.map((r) => r.permissionId as PermissionEnum)),
-    ];
+    const rows = await this.permissionRepo
+      .createQueryBuilder('p')
+      .innerJoin('role_permission', 'rp', 'rp.permission_id = p.id')
+      .innerJoin('role', 'r', 'r.id = rp.role_id')
+      .where('r.name IN (:...roleNames)', { roleNames })
+      .select('p.name', 'name')
+      .distinct(true)
+      .getRawMany<{ name: string }>();
+    return rows.map((row) => row.name as PermissionEnum);
   }
 
   async getRoleNamesForUser(userId: string | number): Promise<RoleEnum[]> {
@@ -58,10 +55,10 @@ export class RolesRelationalRepository implements RolesRepository {
     });
     if (!userRoles.length) return [];
     const roles = await this.roleRepo.find({
-      where: { id: In(userRoles.map((r) => r.roleId)) },
+      where: { id: In(userRoles.map((userRole) => userRole.roleId)) },
       select: ['name'],
     });
-    return roles.map((r) => r.name as RoleEnum);
+    return roles.map((role) => role.name as RoleEnum);
   }
 
   async assignRolesToUser(
