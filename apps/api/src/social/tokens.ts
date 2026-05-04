@@ -4,7 +4,7 @@ import { Allow, IsNotEmpty } from 'class-validator';
 export class Tokens {
   @ApiProperty()
   @IsNotEmpty()
-  token1: string;
+  token1!: string;
 
   @Allow()
   @ApiProperty()
