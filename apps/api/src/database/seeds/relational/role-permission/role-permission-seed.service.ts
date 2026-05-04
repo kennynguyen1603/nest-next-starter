@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { RolePermissionEntity } from '../../../../roles/infrastructure/persistence/relational/entities/role-permission.entity';
-import { RoleEntity } from '../../../../roles/infrastructure/persistence/relational/entities/role.entity';
-import { ROLE_PERMISSIONS } from '../../../../roles/role-permissions.map';
-import { RoleEnum } from '../../../../roles/roles.enum';
+import { RolePermissionEntity } from '@/roles/infrastructure/persistence/relational/entities/role-permission.entity';
+import { RoleEntity } from '@/roles/infrastructure/persistence/relational/entities/role.entity';
+import { ROLE_PERMISSIONS } from '@/roles/role-permissions.map';
+import { RoleEnum } from '@/roles/roles.enum';
 
 @Injectable()
 export class RolePermissionSeedService {
