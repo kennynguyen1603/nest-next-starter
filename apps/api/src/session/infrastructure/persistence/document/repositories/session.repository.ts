@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { NullableType } from '../../../../../utils/types/nullable.type';
-import { SessionRepository } from '../../session.repository';
-import { Session } from '../../../../domain/session';
-import { SessionSchemaClass } from '../entities/session.schema';
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
+import { SessionSchemaClass } from '../entities/session.schema';
 import { SessionMapper } from '../mappers/session.mapper';
-import { User } from '../../../../../users/domain/user';
+import { NullableType } from '@/utils/types/nullable.type';
+import { SessionRepository } from '@/session/infrastructure/persistence/session.repository';
+import { Session } from '@/session/domain/session';
+import { User } from '@/users/domain/user';
 
 @Injectable()
 export class SessionDocumentRepository implements SessionRepository {

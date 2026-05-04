@@ -1,6 +1,6 @@
-import { UserEntity } from '../../../../../users/infrastructure/persistence/relational/entities/user.entity';
-import { UserMapper } from '../../../../../users/infrastructure/persistence/relational/mappers/user.mapper';
-import { Session } from '../../../../domain/session';
+import { UserEntity } from '@/users/infrastructure/persistence/relational/entities/user.entity';
+import { UserMapper } from '@/users/infrastructure/persistence/relational/mappers/user.mapper';
+import { Session } from '@/session/domain/session';
 import { SessionEntity } from '../entities/session.entity';
 
 export class SessionMapper {
@@ -13,7 +13,9 @@ export class SessionMapper {
     domainEntity.hash = raw.hash;
     domainEntity.createdAt = raw.createdAt;
     domainEntity.updatedAt = raw.updatedAt;
-    domainEntity.deletedAt = raw.deletedAt;
+    if (raw.deletedAt) {
+      domainEntity.deletedAt = raw.deletedAt;
+    }
     return domainEntity;
   }
 

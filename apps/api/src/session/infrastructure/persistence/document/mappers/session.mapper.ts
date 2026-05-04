@@ -1,5 +1,5 @@
-import { User } from '../../../../../users/domain/user';
-import { Session } from '../../../../domain/session';
+import { User } from '@/users/domain/user';
+import { Session } from '@/session/domain/session';
 import { SessionSchemaClass } from '../entities/session.schema';
 
 export class SessionMapper {
@@ -16,7 +16,9 @@ export class SessionMapper {
     domainEntity.hash = raw.hash;
     domainEntity.createdAt = raw.createdAt;
     domainEntity.updatedAt = raw.updatedAt;
-    domainEntity.deletedAt = raw.deletedAt;
+    if (raw.deletedAt) {
+      domainEntity.deletedAt = raw.deletedAt;
+    }
     return domainEntity;
   }
 
