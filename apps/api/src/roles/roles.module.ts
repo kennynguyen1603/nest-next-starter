@@ -7,15 +7,17 @@ import { RolesService } from './roles.service';
 import { RelationalRolesPersistenceModule } from './infrastructure/persistence/relational/relational-persistence.module';
 import { DocumentRolesPersistenceModule } from './infrastructure/persistence/document/document-persistence.module';
 
+// <database-block>
 const infrastructurePersistenceModule = (databaseConfig() as DatabaseConfig)
   .isDocumentDatabase
   ? DocumentRolesPersistenceModule
   : RelationalRolesPersistenceModule;
+// </database-block>
 
 @Module({
   imports: [infrastructurePersistenceModule],
   controllers: [RolesController],
   providers: [RolesService],
-  exports: [RolesService],
+  exports: [RolesService, infrastructurePersistenceModule],
 })
 export class RolesModule {}
