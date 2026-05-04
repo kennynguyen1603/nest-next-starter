@@ -3,12 +3,18 @@ import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 
 import { UserSeedModule } from './user/user-seed.module';
+import { RoleSeedModule } from './role/role-seed.module';
+import { PermissionSeedModule } from './permission/permission-seed.module';
+import { RolePermissionSeedModule } from './role-permission/role-permission-seed.module';
 import appConfig from '@/config/app/app.config';
 import databaseConfig from '@/config/database/database.config';
 import { MongooseConfigService } from '@/database/mongoose-config.service';
 
 @Module({
   imports: [
+    RoleSeedModule,
+    PermissionSeedModule,
+    RolePermissionSeedModule,
     UserSeedModule,
     ConfigModule.forRoot({
       isGlobal: true,

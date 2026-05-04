@@ -5,7 +5,7 @@ import { RoleEnum } from '../roles.enum';
 export class Role {
   @Allow()
   @ApiProperty({ type: String })
-  id?: string;
+  id!: string;
 
   @Allow()
   @ApiProperty({ enum: RoleEnum, example: RoleEnum.USER })

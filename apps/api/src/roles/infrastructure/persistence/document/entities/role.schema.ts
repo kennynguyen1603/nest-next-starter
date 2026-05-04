@@ -4,7 +4,12 @@ import { RoleEnum } from '@/roles/roles.enum';
 
 @Schema({ collection: 'roles', timestamps: false })
 export class RoleSchemaClass extends EntityDocumentHelper {
-  @Prop({ type: String, required: true, unique: true, enum: Object.values(RoleEnum) })
+  @Prop({
+    type: String,
+    required: true,
+    unique: true,
+    enum: Object.values(RoleEnum),
+  })
   name!: string;
 }
 
