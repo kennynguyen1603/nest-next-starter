@@ -1,39 +1,42 @@
 import {
+  BeforeInsert,
   Column,
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
   Index,
-  ManyToOne,
-  PrimaryGeneratedColumn,
+  ManyToMany,
+  JoinTable,
+  PrimaryColumn,
   UpdateDateColumn,
   JoinColumn,
   OneToOne,
 } from 'typeorm';
-import { RoleEntity } from '../../../../../roles/infrastructure/persistence/relational/entities/role.entity';
-import { StatusEntity } from '../../../../../statuses/infrastructure/persistence/relational/entities/status.entity';
-import { FileEntity } from '../../../../../files/infrastructure/persistence/relational/entities/file.entity';
+import { uuidv7 } from 'uuidv7';
+import { RoleEntity } from '@/roles/infrastructure/persistence/relational/entities/role.entity';
+import { UserStatus } from '@/users/user-status.enum';
+import { FileEntity } from '@/files/infrastructure/persistence/relational/entities/file.entity';
+import { AuthProvidersEnum } from '@/auth/auth-providers.enum';
+import { EntityRelationalHelper } from '@/utils/relational-entity-helper';
 
-import { AuthProvidersEnum } from '../../../../../auth/auth-providers.enum';
-import { EntityRelationalHelper } from '../../../../../utils/relational-entity-helper';
-
-@Entity({
-  name: 'user',
-})
+@Entity({ name: 'user' })
 export class UserEntity extends EntityRelationalHelper {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryColumn({ type: 'uuid' })
+  id!: string;
 
-  // For "string | null" we need to use String type.
-  // More info: https://github.com/typeorm/typeorm/issues/2567
+  @BeforeInsert()
+  generateId() {
+    if (!this.id) this.id = uuidv7();
+  }
+
   @Column({ type: String, unique: true, nullable: true })
-  email: string | null;
+  email!: string | null;
 
   @Column({ nullable: true })
   password?: string;
 
-  @Column({ default: AuthProvidersEnum.email })
-  provider: string;
+  @Column({ default: AuthProvidersEnum.EMAIL })
+  provider!: string;
 
   @Index()
   @Column({ type: String, nullable: true })
@@ -41,34 +44,33 @@ export class UserEntity extends EntityRelationalHelper {
 
   @Index()
   @Column({ type: String, nullable: true })
-  firstName: string | null;
+  firstName!: string | null;
 
   @Index()
   @Column({ type: String, nullable: true })
-  lastName: string | null;
+  lastName!: string | null;
 
-  @OneToOne(() => FileEntity, {
-    eager: true,
-  })
+  @OneToOne(() => FileEntity, { eager: true })
   @JoinColumn()
   photo?: FileEntity | null;
 
-  @ManyToOne(() => RoleEntity, {
-    eager: true,
+  @ManyToMany(() => RoleEntity, { eager: true })
+  @JoinTable({
+    name: 'user_role',
+    joinColumn: { name: 'user_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'role_id', referencedColumnName: 'id' },
   })
-  role?: RoleEntity | null;
+  roles?: RoleEntity[];
 
-  @ManyToOne(() => StatusEntity, {
-    eager: true,
-  })
-  status?: StatusEntity;
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  status?: UserStatus;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt!: Date;
 
   @DeleteDateColumn()
-  deletedAt: Date;
+  deletedAt!: Date;
 }

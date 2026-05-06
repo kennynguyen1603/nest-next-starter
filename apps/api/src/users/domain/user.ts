@@ -3,29 +3,20 @@ import { ApiProperty } from '@nestjs/swagger';
 
 import { FileType } from '@/files/domain/file';
 import { Role } from '@/roles/domain/role';
-import { Status } from '@/statuses/domain/status';
-
-import databaseConfig from '@/config/database/database.config';
-import { DatabaseConfig } from '@/config/database/database-config.type';
-
-// <database-block>
-const idType = (databaseConfig() as DatabaseConfig).isDocumentDatabase
-  ? String
-  : Number;
-// </database-block>
+import { UserStatus } from '@/users/user-status.enum';
 
 export class User {
   @ApiProperty({
-    type: idType,
+    type: String,
   })
-  id: number | string;
+  id!: string;
 
   @ApiProperty({
     type: String,
     example: 'john.doe@example.com',
   })
   @Expose({ groups: ['me', 'admin'] })
-  email: string | null;
+  email!: string | null;
 
   @Exclude({ toPlainOnly: true })
   password?: string;
@@ -35,7 +26,7 @@ export class User {
     example: 'email',
   })
   @Expose({ groups: ['me', 'admin'] })
-  provider: string;
+  provider!: string;
 
   @ApiProperty({
     type: String,
@@ -48,13 +39,13 @@ export class User {
     type: String,
     example: 'John',
   })
-  firstName: string | null;
+  firstName!: string | null;
 
   @ApiProperty({
     type: String,
     example: 'Doe',
   })
-  lastName: string | null;
+  lastName!: string | null;
 
   @ApiProperty({
     type: () => FileType,
@@ -63,20 +54,19 @@ export class User {
 
   @ApiProperty({
     type: () => Role,
+    isArray: true,
   })
-  role?: Role | null;
+  roles?: Role[];
 
-  @ApiProperty({
-    type: () => Status,
-  })
-  status?: Status;
+  @ApiProperty({ enum: UserStatus })
+  status?: UserStatus;
 
   @ApiProperty()
-  createdAt: Date;
+  createdAt!: Date;
 
   @ApiProperty()
-  updatedAt: Date;
+  updatedAt!: Date;
 
   @ApiProperty()
-  deletedAt: Date;
+  deletedAt!: Date;
 }

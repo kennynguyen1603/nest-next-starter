@@ -1,54 +1,37 @@
 import {
-  // decorators here
-  Type,
-} from 'class-transformer';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  // decorators here
-  IsEmail,
-  IsNotEmpty,
-  IsOptional,
-  MinLength,
-} from 'class-validator';
-import { FileDto } from '../../files/dto/file.dto';
-import { RoleDto } from '../../roles/dto/role.dto';
-import { StatusDto } from '../../statuses/dto/status.dto';
-import { ToLowerCase } from '@/decorators/transform.decorators';
+  ClassFieldOptional,
+  EmailField,
+  EnumFieldOptional,
+  PasswordFieldOptional,
+  StringField,
+} from '@/decorators/field.decorators';
+import { FileDto } from '@/files/dto/file.dto';
+import { RoleDto } from '@/roles/dto/role.dto';
+import { UserStatus } from '@/users/user-status.enum';
 
 export class CreateUserDto {
-  @ApiProperty({ example: 'test1@example.com', type: String })
-  @ToLowerCase()
-  @IsNotEmpty()
-  @IsEmail()
-  email: string | null;
+  @EmailField({ example: 'test1@example.com' })
+  email!: string | null;
 
-  @ApiProperty()
-  @MinLength(6)
+  @PasswordFieldOptional()
   password?: string;
 
   provider?: string;
 
   socialId?: string | null;
 
-  @ApiProperty({ example: 'John', type: String })
-  @IsNotEmpty()
-  firstName: string | null;
+  @StringField({ example: 'John' })
+  firstName!: string | null;
 
-  @ApiProperty({ example: 'Doe', type: String })
-  @IsNotEmpty()
-  lastName: string | null;
+  @StringField({ example: 'Doe' })
+  lastName!: string | null;
 
-  @ApiPropertyOptional({ type: () => FileDto })
-  @IsOptional()
+  @ClassFieldOptional(() => FileDto, { nullable: true })
   photo?: FileDto | null;
 
-  @ApiPropertyOptional({ type: RoleDto })
-  @IsOptional()
-  @Type(() => RoleDto)
-  role?: RoleDto | null;
+  @ClassFieldOptional(() => RoleDto, { each: true })
+  roles?: RoleDto[];
 
-  @ApiPropertyOptional({ type: StatusDto })
-  @IsOptional()
-  @Type(() => StatusDto)
-  status?: StatusDto;
+  @EnumFieldOptional(() => UserStatus)
+  status?: UserStatus;
 }

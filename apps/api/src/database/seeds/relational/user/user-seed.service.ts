@@ -3,27 +3,33 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { Repository } from 'typeorm';
 import bcrypt from 'bcryptjs';
-import { RoleEnum } from '../../../../roles/roles.enum';
-import { StatusEnum } from '../../../../statuses/statuses.enum';
-import { UserEntity } from '../../../../users/infrastructure/persistence/relational/entities/user.entity';
+import { RoleEnum } from '@/roles/roles.enum';
+import { UserStatus } from '@/users/user-status.enum';
+import { UserEntity } from '@/users/infrastructure/persistence/relational/entities/user.entity';
+import { RoleEntity } from '@/roles/infrastructure/persistence/relational/entities/role.entity';
 
 @Injectable()
 export class UserSeedService {
   constructor(
     @InjectRepository(UserEntity)
     private readonly repository: Repository<UserEntity>,
+    @InjectRepository(RoleEntity)
+    private readonly roleRepository: Repository<RoleEntity>,
   ) {}
 
   async run() {
-    const countAdmin = await this.repository.count({
-      where: {
-        role: {
-          id: RoleEnum.ADMIN,
-        },
-      },
+    const adminRole = await this.roleRepository.findOne({
+      where: { name: RoleEnum.ADMIN },
+    });
+    const userRole = await this.roleRepository.findOne({
+      where: { name: RoleEnum.USER },
     });
 
-    if (!countAdmin) {
+    const countAdmin = await this.repository.count({
+      where: { email: 'admin@example.com' },
+    });
+
+    if (!countAdmin && adminRole) {
       const salt = await bcrypt.genSalt();
       const password = await bcrypt.hash('secret', salt);
 
@@ -33,27 +39,17 @@ export class UserSeedService {
           lastName: 'Admin',
           email: 'admin@example.com',
           password,
-          role: {
-            id: RoleEnum.ADMIN,
-            name: 'Admin',
-          },
-          status: {
-            id: StatusEnum.active,
-            name: 'Active',
-          },
+          roles: [adminRole],
+          status: UserStatus.ACTIVE,
         }),
       );
     }
 
     const countUser = await this.repository.count({
-      where: {
-        role: {
-          id: RoleEnum.USER,
-        },
-      },
+      where: { email: 'john.doe@example.com' },
     });
 
-    if (!countUser) {
+    if (!countUser && userRole) {
       const salt = await bcrypt.genSalt();
       const password = await bcrypt.hash('secret', salt);
 
@@ -63,14 +59,8 @@ export class UserSeedService {
           lastName: 'Doe',
           email: 'john.doe@example.com',
           password,
-          role: {
-            id: RoleEnum.USER,
-            name: 'User',
-          },
-          status: {
-            id: StatusEnum.active,
-            name: 'Active',
-          },
+          roles: [userRole],
+          status: UserStatus.ACTIVE,
         }),
       );
     }

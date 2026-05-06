@@ -7,7 +7,7 @@ import {
 } from 'class-validator';
 import { Transform, Type, plainToInstance } from 'class-transformer';
 import { User } from '../domain/user';
-import { RoleDto } from '../../roles/dto/role.dto';
+import { RoleDto } from '@/roles/dto/role.dto';
 
 export class FilterUserDto {
   @ApiPropertyOptional({ type: RoleDto })
@@ -21,11 +21,11 @@ export class SortUserDto {
   @ApiProperty()
   @Type(() => String)
   @IsString()
-  orderBy: keyof User;
+  orderBy!: keyof User;
 
   @ApiProperty()
   @IsString()
-  order: string;
+  order!: string;
 }
 
 export class QueryUserDto {
@@ -44,7 +44,9 @@ export class QueryUserDto {
   @ApiPropertyOptional({ type: String })
   @IsOptional()
   @Transform(({ value }) =>
-    value ? plainToInstance(FilterUserDto, JSON.parse(value)) : undefined,
+    value
+      ? plainToInstance(FilterUserDto, JSON.parse(value as string))
+      : undefined,
   )
   @ValidateNested()
   @Type(() => FilterUserDto)
@@ -53,7 +55,9 @@ export class QueryUserDto {
   @ApiPropertyOptional({ type: String })
   @IsOptional()
   @Transform(({ value }) => {
-    return value ? plainToInstance(SortUserDto, JSON.parse(value)) : undefined;
+    return value
+      ? plainToInstance(SortUserDto, JSON.parse(value as string))
+      : undefined;
   })
   @ValidateNested({ each: true })
   @Type(() => SortUserDto)

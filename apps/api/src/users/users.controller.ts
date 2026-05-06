@@ -21,20 +21,22 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { Roles } from '../roles/roles.decorator';
-import { RoleEnum } from '../roles/roles.enum';
+import { Roles } from '@/roles/roles.decorator';
+import { RoleEnum } from '@/roles/roles.enum';
 import { AuthGuard } from '@nestjs/passport';
+
+import { User } from './domain/user';
+import { UsersService } from './users.service';
+import { RbacGuard } from '@/roles/rbac.guard';
+import { QueryUserDto } from './dto/query-user.dto';
+
+import { NullableType } from '@/utils/types/nullable.type';
 
 import {
   InfinityPaginationResponse,
   InfinityPaginationResponseDto,
-} from '../common/dto/infinity-pagination/paginated.dto';
-import { NullableType } from '../utils/types/nullable.type';
-import { QueryUserDto } from './dto/query-user.dto';
-import { User } from './domain/user';
-import { UsersService } from './users.service';
-import { RbacGuard } from '../roles/rbac.guard';
-import { infinityPagination } from '../utils/pagination/infinity-pagination';
+} from '@/common/dto/infinity-pagination/paginated.dto';
+import { infinityPagination } from '@/utils/pagination/infinity-pagination';
 
 @ApiBearerAuth()
 @Roles(RoleEnum.ADMIN)
@@ -55,8 +57,8 @@ export class UsersController {
   })
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() createProfileDto: CreateUserDto): Promise<User> {
-    return this.usersService.create(createProfileDto);
+  create(@Body() createUserDto: CreateUserDto): Promise<User> {
+    return this.usersService.create(createUserDto);
   }
 
   @ApiOkResponse({
@@ -121,9 +123,9 @@ export class UsersController {
   })
   update(
     @Param('id') id: User['id'],
-    @Body() updateProfileDto: UpdateUserDto,
+    @Body() updateUserDto: UpdateUserDto,
   ): Promise<User | null> {
-    return this.usersService.update(id, updateProfileDto);
+    return this.usersService.update(id, updateUserDto);
   }
 
   @Delete(':id')

@@ -2,11 +2,9 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { now, HydratedDocument } from 'mongoose';
 
 import { EntityDocumentHelper } from '@/utils/document-entity-helper';
-
 import { AuthProvidersEnum } from '@/auth/auth-providers.enum';
-import { RoleSchema } from '@/roles/infrastructure/persistence/document/entities/role.schema';
 import { FileSchemaClass } from '@/files/infrastructure/persistence/document/entities/file.schema';
-import { StatusSchema } from '@/statuses/infrastructure/persistence/document/entities/status.schema';
+import { UserStatus } from '@/users/user-status.enum';
 
 export type UserSchemaDocument = HydratedDocument<UserSchemaClass>;
 
@@ -18,61 +16,38 @@ export type UserSchemaDocument = HydratedDocument<UserSchemaClass>;
   },
 })
 export class UserSchemaClass extends EntityDocumentHelper {
-  @Prop({
-    type: String,
-    unique: true,
-  })
-  email: string | null;
+  @Prop({ type: String, unique: true })
+  email!: string | null;
 
   @Prop()
   password?: string;
 
-  @Prop({
-    default: AuthProvidersEnum.email,
-  })
-  provider: string;
+  @Prop({ default: AuthProvidersEnum.EMAIL })
+  provider!: string;
 
-  @Prop({
-    type: String,
-    default: null,
-  })
+  @Prop({ type: String, default: null })
   socialId?: string | null;
 
-  @Prop({
-    type: String,
-  })
-  firstName: string | null;
+  @Prop({ type: String })
+  firstName!: string | null;
 
-  @Prop({
-    type: String,
-  })
-  lastName: string | null;
+  @Prop({ type: String })
+  lastName!: string | null;
 
-  @Prop({
-    type: FileSchemaClass,
-  })
+  @Prop({ type: FileSchemaClass })
   photo?: FileSchemaClass | null;
 
-  @Prop({
-    type: RoleSchema,
-  })
-  role?: RoleSchema | null;
-
-  @Prop({
-    type: StatusSchema,
-  })
-  status?: StatusSchema;
+  @Prop({ type: String })
+  status?: UserStatus;
 
   @Prop({ default: now })
-  createdAt: Date;
+  createdAt!: Date;
 
   @Prop({ default: now })
-  updatedAt: Date;
+  updatedAt!: Date;
 
   @Prop()
-  deletedAt: Date;
+  deletedAt?: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(UserSchemaClass);
-
-UserSchema.index({ 'role._id': 1 });

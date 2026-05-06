@@ -7,6 +7,7 @@ import { User } from '@/users/domain/user';
 import { UserRepository } from '../../user.repository';
 import { UserMapper } from '../mappers/user.mapper';
 import { UserEntity } from '../entities/user.entity';
+import { RoleEntity } from '@/roles/infrastructure/persistence/relational/entities/role.entity';
 import { NullableType } from '@/utils/types/nullable.type';
 import { IPaginationOptions } from '@/utils/types/pagination-options';
 import { FilterUserDto, SortUserDto } from '@/users/dto/query-user.dto';
@@ -16,10 +17,18 @@ export class UsersRelationalRepository implements UserRepository {
   constructor(
     @InjectRepository(UserEntity)
     private readonly usersRepository: Repository<UserEntity>,
+    @InjectRepository(RoleEntity)
+    private readonly roleRepository: Repository<RoleEntity>,
   ) {}
 
   async create(data: User): Promise<User> {
     const persistenceModel = UserMapper.toPersistence(data);
+    if (data.roles?.length) {
+      const names = data.roles.map((r) => r.name).filter(Boolean) as string[];
+      persistenceModel.roles = names.length
+        ? await this.roleRepository.find({ where: { name: In(names) } })
+        : [];
+    }
     const newEntity = await this.usersRepository.save(
       this.usersRepository.create(persistenceModel),
     );
@@ -37,9 +46,7 @@ export class UsersRelationalRepository implements UserRepository {
   }): Promise<User[]> {
     const where: FindOptionsWhere<UserEntity> = {};
     if (filterOptions?.roles?.length) {
-      where.role = filterOptions.roles.map((role) => ({
-        id: role.id,
-      }));
+      where.roles = filterOptions.roles.map((role) => ({ name: role.name }));
     }
 
     const entities = await this.usersRepository.find({
@@ -60,7 +67,7 @@ export class UsersRelationalRepository implements UserRepository {
 
   async findById(id: User['id']): Promise<NullableType<User>> {
     const entity = await this.usersRepository.findOne({
-      where: { id: Number(id) },
+      where: { id },
     });
 
     return entity ? UserMapper.toDomain(entity) : null;
@@ -102,20 +109,26 @@ export class UsersRelationalRepository implements UserRepository {
 
   async update(id: User['id'], payload: Partial<User>): Promise<User> {
     const entity = await this.usersRepository.findOne({
-      where: { id: Number(id) },
+      where: { id },
     });
 
     if (!entity) {
       throw new Error('User not found');
     }
 
+    const mergedDomain = { ...UserMapper.toDomain(entity), ...payload };
+    const persistenceModel = UserMapper.toPersistence(mergedDomain);
+    if (payload.roles !== undefined) {
+      const names = (payload.roles ?? [])
+        .map((r) => r.name)
+        .filter(Boolean) as string[];
+      persistenceModel.roles = names.length
+        ? await this.roleRepository.find({ where: { name: In(names) } })
+        : [];
+    }
+
     const updatedEntity = await this.usersRepository.save(
-      this.usersRepository.create(
-        UserMapper.toPersistence({
-          ...UserMapper.toDomain(entity),
-          ...payload,
-        }),
-      ),
+      this.usersRepository.create(persistenceModel),
     );
 
     return UserMapper.toDomain(updatedEntity);

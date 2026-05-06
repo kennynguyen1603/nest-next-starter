@@ -50,7 +50,7 @@ export class RolesRelationalRepository implements RolesRepository {
 
   async getRoleNamesForUser(userId: string | number): Promise<RoleEnum[]> {
     const userRoles = await this.userRoleRepo.find({
-      where: { userId: Number(userId) },
+      where: { userId: String(userId) },
       select: ['roleId'],
     });
     if (!userRoles.length) return [];
@@ -65,7 +65,7 @@ export class RolesRelationalRepository implements RolesRepository {
     userId: string | number,
     roleNames: RoleEnum[],
   ): Promise<void> {
-    await this.userRoleRepo.delete({ userId: Number(userId) });
+    await this.userRoleRepo.delete({ userId: String(userId) });
     if (!roleNames.length) return;
     const roles = await this.roleRepo.find({
       where: { name: In(roleNames) },
@@ -74,7 +74,7 @@ export class RolesRelationalRepository implements RolesRepository {
     await this.userRoleRepo.save(
       roles.map((role) =>
         this.userRoleRepo.create({
-          userId: Number(userId),
+          userId: String(userId),
           roleId: role.id,
         }),
       ),

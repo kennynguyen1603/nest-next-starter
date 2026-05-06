@@ -1,8 +1,9 @@
-import { FileEntity } from '../../../../../files/infrastructure/persistence/relational/entities/file.entity';
-import { FileMapper } from '../../../../../files/infrastructure/persistence/relational/mappers/file.mapper';
-import { RoleEntity } from '../../../../../roles/infrastructure/persistence/relational/entities/role.entity';
-import { StatusEntity } from '../../../../../statuses/infrastructure/persistence/relational/entities/status.entity';
-import { User } from '../../../../domain/user';
+import { FileEntity } from '@/files/infrastructure/persistence/relational/entities/file.entity';
+import { FileMapper } from '@/files/infrastructure/persistence/relational/mappers/file.mapper';
+import { RoleEntity } from '@/roles/infrastructure/persistence/relational/entities/role.entity';
+import { RoleEnum } from '@/roles/roles.enum';
+import { Role } from '@/roles/domain/role';
+import { User } from '@/users/domain/user';
 import { UserEntity } from '../entities/user.entity';
 
 export class UserMapper {
@@ -18,8 +19,13 @@ export class UserMapper {
     if (raw.photo) {
       domainEntity.photo = FileMapper.toDomain(raw.photo);
     }
-    domainEntity.role = raw.role;
-    domainEntity.status = raw.status;
+    domainEntity.roles = raw.roles?.map((rawRole) => {
+      const role = new Role();
+      role.id = rawRole.id;
+      role.name = rawRole.name as RoleEnum;
+      return role;
+    });
+    domainEntity.status = raw.status ?? undefined;
     domainEntity.createdAt = raw.createdAt;
     domainEntity.updatedAt = raw.updatedAt;
     domainEntity.deletedAt = raw.deletedAt;
@@ -27,15 +33,17 @@ export class UserMapper {
   }
 
   static toPersistence(domainEntity: User): UserEntity {
-    let role: RoleEntity | undefined = undefined;
-
-    if (domainEntity.role) {
-      role = new RoleEntity();
-      role.id = domainEntity.role.id;
+    let roles: RoleEntity[] | undefined = undefined;
+    if (domainEntity.roles) {
+      roles = domainEntity.roles.map((role) => {
+        const roleEntity = new RoleEntity();
+        if (role.id) roleEntity.id = role.id;
+        if (role.name) roleEntity.name = role.name;
+        return roleEntity;
+      });
     }
 
     let photo: FileEntity | undefined | null = undefined;
-
     if (domainEntity.photo) {
       photo = new FileEntity();
       photo.id = domainEntity.photo.id;
@@ -44,15 +52,8 @@ export class UserMapper {
       photo = null;
     }
 
-    let status: StatusEntity | undefined = undefined;
-
-    if (domainEntity.status) {
-      status = new StatusEntity();
-      status.id = Number(domainEntity.status.id);
-    }
-
     const persistenceEntity = new UserEntity();
-    if (domainEntity.id && typeof domainEntity.id === 'number') {
+    if (domainEntity.id) {
       persistenceEntity.id = domainEntity.id;
     }
     persistenceEntity.email = domainEntity.email;
@@ -62,8 +63,8 @@ export class UserMapper {
     persistenceEntity.firstName = domainEntity.firstName;
     persistenceEntity.lastName = domainEntity.lastName;
     persistenceEntity.photo = photo;
-    persistenceEntity.role = role;
-    persistenceEntity.status = status;
+    persistenceEntity.roles = roles;
+    persistenceEntity.status = domainEntity.status;
     persistenceEntity.createdAt = domainEntity.createdAt;
     persistenceEntity.updatedAt = domainEntity.updatedAt;
     persistenceEntity.deletedAt = domainEntity.deletedAt;

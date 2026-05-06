@@ -1,48 +1,37 @@
-import { PartialType, ApiPropertyOptional } from '@nestjs/swagger';
-import { CreateUserDto } from './create-user.dto';
+import {
+  ClassFieldOptional,
+  EmailFieldOptional,
+  EnumFieldOptional,
+  PasswordFieldOptional,
+  StringFieldOptional,
+} from '@/decorators/field.decorators';
+import { FileDto } from '@/files/dto/file.dto';
+import { RoleDto } from '@/roles/dto/role.dto';
+import { UserStatus } from '@/users/user-status.enum';
 
-import { Type } from 'class-transformer';
-import { IsEmail, IsOptional, MinLength } from 'class-validator';
-import { FileDto } from '../../files/dto/file.dto';
-import { RoleDto } from '../../roles/dto/role.dto';
-import { StatusDto } from '../../statuses/dto/status.dto';
-import { ToLowerCase } from '@/decorators/transform.decorators';
-
-export class UpdateUserDto extends PartialType(CreateUserDto) {
-  @ApiPropertyOptional({ example: 'test1@example.com', type: String })
-  @ToLowerCase()
-  @IsOptional()
-  @IsEmail()
+export class UpdateUserDto {
+  @EmailFieldOptional({ example: 'test1@example.com', nullable: true })
   email?: string | null;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @MinLength(6)
+  @PasswordFieldOptional()
   password?: string;
 
   provider?: string;
 
   socialId?: string | null;
 
-  @ApiPropertyOptional({ example: 'John', type: String })
-  @IsOptional()
+  @StringFieldOptional({ example: 'John', nullable: true })
   firstName?: string | null;
 
-  @ApiPropertyOptional({ example: 'Doe', type: String })
-  @IsOptional()
+  @StringFieldOptional({ example: 'Doe', nullable: true })
   lastName?: string | null;
 
-  @ApiPropertyOptional({ type: () => FileDto })
-  @IsOptional()
+  @ClassFieldOptional(() => FileDto, { nullable: true })
   photo?: FileDto | null;
 
-  @ApiPropertyOptional({ type: () => RoleDto })
-  @IsOptional()
-  @Type(() => RoleDto)
-  role?: RoleDto | null;
+  @ClassFieldOptional(() => RoleDto, { each: true })
+  roles?: RoleDto[];
 
-  @ApiPropertyOptional({ type: () => StatusDto })
-  @IsOptional()
-  @Type(() => StatusDto)
-  status?: StatusDto;
+  @EnumFieldOptional(() => UserStatus)
+  status?: UserStatus;
 }
