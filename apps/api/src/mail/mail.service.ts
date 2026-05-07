@@ -23,12 +23,10 @@ export class MailService {
     let text3: MaybeType<string>;
 
     if (i18n) {
-      [emailConfirmTitle, text1, text2, text3] = await Promise.all([
-        i18n.t('common.confirmEmail'),
-        i18n.t('confirm-email.text1'),
-        i18n.t('confirm-email.text2'),
-        i18n.t('confirm-email.text3'),
-      ]);
+      emailConfirmTitle = i18n.t('common.confirmEmail');
+      text1 = i18n.t('confirm-email.text1');
+      text2 = i18n.t('confirm-email.text2');
+      text3 = i18n.t('confirm-email.text3');
     }
 
     const url = new URL(
@@ -74,13 +72,11 @@ export class MailService {
     let text4: MaybeType<string>;
 
     if (i18n) {
-      [resetPasswordTitle, text1, text2, text3, text4] = await Promise.all([
-        i18n.t('common.resetPassword'),
-        i18n.t('reset-password.text1'),
-        i18n.t('reset-password.text2'),
-        i18n.t('reset-password.text3'),
-        i18n.t('reset-password.text4'),
-      ]);
+      resetPasswordTitle = i18n.t('common.resetPassword');
+      text1 = i18n.t('reset-password.text1');
+      text2 = i18n.t('reset-password.text2');
+      text3 = i18n.t('reset-password.text3');
+      text4 = i18n.t('reset-password.text4');
     }
 
     const url = new URL(
@@ -127,12 +123,10 @@ export class MailService {
     let text3: MaybeType<string>;
 
     if (i18n) {
-      [emailConfirmTitle, text1, text2, text3] = await Promise.all([
-        i18n.t('common.confirmEmail'),
-        i18n.t('confirm-new-email.text1'),
-        i18n.t('confirm-new-email.text2'),
-        i18n.t('confirm-new-email.text3'),
-      ]);
+      emailConfirmTitle = i18n.t('common.confirmEmail');
+      text1 = i18n.t('confirm-new-email.text1');
+      text2 = i18n.t('confirm-new-email.text2');
+      text3 = i18n.t('confirm-new-email.text3');
     }
 
     const url = new URL(
