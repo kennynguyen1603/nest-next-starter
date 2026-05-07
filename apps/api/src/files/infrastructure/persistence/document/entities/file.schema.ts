@@ -10,7 +10,7 @@ export type FileSchemaDocument = HydratedDocument<FileSchemaClass>;
 })
 export class FileSchemaClass extends EntityDocumentHelper {
   @Prop()
-  path: string;
+  path!: string;
 }
 
 export const FileSchema = SchemaFactory.createForClass(FileSchemaClass);

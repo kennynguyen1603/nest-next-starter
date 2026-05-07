@@ -4,5 +4,5 @@ import { IsString } from 'class-validator';
 export class FileDto {
   @ApiProperty()
   @IsString()
-  id: string;
+  id!: string;
 }

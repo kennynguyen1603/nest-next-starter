@@ -22,6 +22,8 @@
   "dependencies": {
     "@apollo/server": "^5.5.0",
     "@as-integrations/express5": "^1.1.2",
+    "@aws-sdk/client-s3": "^3.1043.0",
+    "@aws-sdk/s3-request-presigner": "^3.1043.0",
     "@nestjs/apollo": "^13.4.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.4",
@@ -34,6 +36,8 @@
     "@nestjs/swagger": "^11.4.2",
     "@nestjs/typeorm": "^11.0.1",
     "@types/ms": "^2.1.0",
+    "@types/multer": "^2.1.0",
+    "@types/multer-s3": "^3.0.3",
     "bcryptjs": "^3.0.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
@@ -44,6 +48,8 @@
     "mongoose": "^9.6.1",
     "mongoose-autopopulate": "^1.2.1",
     "ms": "^2.1.3",
+    "multer": "^2.1.1",
+    "multer-s3": "^3.0.1",
     "nestjs-i18n": "^10.8.3",
     "nodemailer": "^8.0.7",
     "passport": "^0.7.0",
@@ -52,7 +58,8 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "swagger-ui-express": "^5.0.1",
-    "typeorm": "^0.3.28"
+    "typeorm": "^0.3.28",
+    "uuidv7": "^1.2.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

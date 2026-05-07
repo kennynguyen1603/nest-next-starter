@@ -4,9 +4,9 @@ import { Allow } from 'class-validator';
 export class FileType {
   @Allow()
   @ApiProperty({ type: String })
-  id: string;
+  id!: string;
 
   @Allow()
   @ApiProperty({ type: String })
-  path: string;
+  path!: string;
 }
