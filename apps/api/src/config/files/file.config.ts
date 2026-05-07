@@ -31,6 +31,27 @@ class EnvironmentVariablesValidator {
   )
   @IsString()
   AWS_S3_REGION!: string;
+
+  @ValidateIf(
+    (envValues: EnvironmentVariablesValidator) =>
+      envValues.FILE_DRIVER === FileDriver.CLOUDINARY,
+  )
+  @IsString()
+  CLOUDINARY_CLOUD_NAME!: string;
+
+  @ValidateIf(
+    (envValues: EnvironmentVariablesValidator) =>
+      envValues.FILE_DRIVER === FileDriver.CLOUDINARY,
+  )
+  @IsString()
+  CLOUDINARY_API_KEY!: string;
+
+  @ValidateIf(
+    (envValues: EnvironmentVariablesValidator) =>
+      envValues.FILE_DRIVER === FileDriver.CLOUDINARY,
+  )
+  @IsString()
+  CLOUDINARY_API_SECRET!: string;
 }
 
 export default registerAs<FileConfig>('file', () => {
@@ -44,5 +65,8 @@ export default registerAs<FileConfig>('file', () => {
     awsDefaultS3Bucket: process.env.AWS_DEFAULT_S3_BUCKET,
     awsS3Region: process.env.AWS_S3_REGION,
     maxFileSize: 5242880,
+    cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME,
+    cloudinaryApiKey: process.env.CLOUDINARY_API_KEY,
+    cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET,
   };
 });
