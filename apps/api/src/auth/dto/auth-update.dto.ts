@@ -1,38 +1,27 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsOptional, MinLength } from 'class-validator';
-import { FileDto } from '../../files/dto/file.dto';
-import { ToLowerCase } from '@/decorators/transform.decorators';
+import {
+  ClassFieldOptional,
+  EmailFieldOptional,
+  PasswordFieldOptional,
+  StringFieldOptional,
+} from '@/decorators/field.decorators';
+import { FileDto } from '@/files/dto/file.dto';
 
 export class AuthUpdateDto {
-  @ApiPropertyOptional({ type: () => FileDto })
-  @IsOptional()
+  @ClassFieldOptional(() => FileDto, { nullable: true })
   photo?: FileDto | null;
 
-  @ApiPropertyOptional({ example: 'John' })
-  @IsOptional()
-  @IsNotEmpty({ message: 'mustBeNotEmpty' })
+  @StringFieldOptional({ example: 'John' })
   firstName?: string;
 
-  @ApiPropertyOptional({ example: 'Doe' })
-  @IsOptional()
-  @IsNotEmpty({ message: 'mustBeNotEmpty' })
+  @StringFieldOptional({ example: 'Doe' })
   lastName?: string;
 
-  @ApiPropertyOptional({ example: 'new.email@example.com' })
-  @IsOptional()
-  @IsNotEmpty()
-  @IsEmail()
-  @ToLowerCase()
+  @EmailFieldOptional({ example: 'new.email@example.com' })
   email?: string;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsNotEmpty()
-  @MinLength(6)
+  @PasswordFieldOptional()
   password?: string;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsNotEmpty({ message: 'mustBeNotEmpty' })
+  @StringFieldOptional()
   oldPassword?: string;
 }

@@ -1,12 +1,9 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty } from 'class-validator';
+import { PasswordField, TokenField } from '@/decorators/field.decorators';
 
 export class AuthResetPasswordDto {
-  @ApiProperty()
-  @IsNotEmpty()
-  password: string;
+  @PasswordField()
+  password!: string;
 
-  @ApiProperty()
-  @IsNotEmpty()
-  hash: string;
+  @TokenField()
+  hash!: string;
 }

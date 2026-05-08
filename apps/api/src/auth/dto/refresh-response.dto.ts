@@ -1,12 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Expose } from 'class-transformer';
 
 export class RefreshResponseDto {
   @ApiProperty()
-  token: string;
+  @Expose()
+  token!: string;
 
   @ApiProperty()
-  refreshToken: string;
-
-  @ApiProperty()
-  tokenExpires: number;
+  @Expose()
+  tokenExpires!: number;
 }

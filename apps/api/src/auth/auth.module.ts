@@ -10,11 +10,13 @@ import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { MailModule } from '@/mail/mail.module';
 import { SessionModule } from '@/session/session.module';
 import { UsersModule } from '@/users/users.module';
+import { RolesModule } from '@/roles/roles.module';
 
 @Module({
   imports: [
     UsersModule,
     SessionModule,
+    RolesModule,
     PassportModule,
     MailModule,
     JwtModule.register({}),

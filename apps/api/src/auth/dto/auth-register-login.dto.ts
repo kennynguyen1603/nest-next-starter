@@ -1,22 +1,19 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, MinLength } from 'class-validator';
-import { ToLowerCase } from '@/decorators/transform.decorators';
+import {
+  EmailField,
+  PasswordField,
+  StringField,
+} from '@/decorators/field.decorators';
 
 export class AuthRegisterLoginDto {
-  @ApiProperty({ example: 'test1@example.com', type: String })
-  @ToLowerCase()
-  @IsEmail()
-  email: string;
+  @EmailField({ example: 'test1@example.com' })
+  email!: string;
 
-  @ApiProperty()
-  @MinLength(6)
-  password: string;
+  @PasswordField()
+  password!: string;
 
-  @ApiProperty({ example: 'John' })
-  @IsNotEmpty()
-  firstName: string;
+  @StringField({ example: 'John' })
+  firstName!: string;
 
-  @ApiProperty({ example: 'Doe' })
-  @IsNotEmpty()
-  lastName: string;
+  @StringField({ example: 'Doe' })
+  lastName!: string;
 }

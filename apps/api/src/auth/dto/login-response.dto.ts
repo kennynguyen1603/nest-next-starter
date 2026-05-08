@@ -1,18 +1,17 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { User } from '../../users/domain/user';
+import { Expose } from 'class-transformer';
+import { User } from '@/users/domain/user';
 
 export class LoginResponseDto {
   @ApiProperty()
-  token: string;
+  @Expose()
+  token!: string;
 
   @ApiProperty()
-  refreshToken: string;
+  @Expose()
+  tokenExpires!: number;
 
-  @ApiProperty()
-  tokenExpires: number;
-
-  @ApiProperty({
-    type: () => User,
-  })
-  user: User;
+  @ApiProperty({ type: () => User })
+  @Expose()
+  user!: User;
 }

@@ -15,10 +15,14 @@ import ms from 'ms';
 import { AllConfigType } from '@/config/config.type';
 import { MailService } from '@/mail/mail.service';
 import { RoleEnum } from '@/roles/roles.enum';
+import { PermissionEnum } from '@/roles/permissions.enum';
+import { RolesService } from '@/roles/roles.service';
+
 import { Session } from '@/session/domain/session';
 import { SessionService } from '@/session/session.service';
 import { SocialInterface } from '@/social/interfaces/social.interface';
-import { StatusEnum } from '@/statuses/statuses.enum';
+
+import { UserStatus } from '@/users/user-status.enum';
 import { User } from '@/users/domain/user';
 import { UsersService } from '@/users/users.service';
 import { NullableType } from '@/utils/types/nullable.type';
@@ -39,35 +43,32 @@ export class AuthService {
     private readonly sessionService: SessionService,
     private readonly mailService: MailService,
     private readonly configService: ConfigService<AllConfigType>,
+    private readonly rolesService: RolesService,
   ) {}
 
-  async validateLogin(loginDto: AuthEmailLoginDto): Promise<LoginResponseDto> {
+  async validateLogin(
+    loginDto: AuthEmailLoginDto,
+  ): Promise<LoginResponseDto & { refreshToken: string }> {
     const user = await this.usersService.findByEmail(loginDto.email);
 
     if (!user) {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: {
-          email: 'notFound',
-        },
+        errors: { email: 'notFound' },
       });
     }
 
-    if (user.provider !== AuthProvidersEnum.email) {
+    if ((user.provider as AuthProvidersEnum) !== AuthProvidersEnum.EMAIL) {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: {
-          email: `needLoginViaProvider:${user.provider}`,
-        },
+        errors: { email: `needLoginViaProvider:${user.provider}` },
       });
     }
 
     if (!user.password) {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: {
-          password: 'incorrectPassword',
-        },
+        errors: { password: 'incorrectPassword' },
       });
     }
 
@@ -79,9 +80,7 @@ export class AuthService {
     if (!isValidPassword) {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: {
-          password: 'incorrectPassword',
-        },
+        errors: { password: 'incorrectPassword' },
       });
     }
 
@@ -90,30 +89,27 @@ export class AuthService {
       .update(randomStringGenerator())
       .digest('hex');
 
-    const session = await this.sessionService.create({
-      user,
-      hash,
-    });
+    const session = await this.sessionService.create({ user, hash });
+
+    const roleNames = (user.roles ?? []).map((r) => r.name);
+    const permissions =
+      await this.rolesService.getPermissionsForRoles(roleNames);
 
     const { token, refreshToken, tokenExpires } = await this.getTokensData({
       id: user.id,
-      role: user.role,
+      roles: roleNames,
+      permissions,
       sessionId: session.id,
       hash,
     });
 
-    return {
-      refreshToken,
-      token,
-      tokenExpires,
-      user,
-    };
+    return { refreshToken, token, tokenExpires, user };
   }
 
   async validateSocialLogin(
     authProvider: string,
     socialData: SocialInterface,
-  ): Promise<LoginResponseDto> {
+  ): Promise<LoginResponseDto & { refreshToken: string }> {
     let user: NullableType<User> = null;
     const socialEmail = socialData.email?.toLowerCase();
     let userByEmail: NullableType<User> = null;
@@ -137,21 +133,14 @@ export class AuthService {
     } else if (userByEmail) {
       user = userByEmail;
     } else if (socialData.id) {
-      const role = {
-        id: RoleEnum.USER,
-      };
-      const status = {
-        id: StatusEnum.active,
-      };
-
       user = await this.usersService.create({
         email: socialEmail ?? null,
         firstName: socialData.firstName ?? null,
         lastName: socialData.lastName ?? null,
         socialId: socialData.id,
         provider: authProvider,
-        role,
-        status,
+        roles: [{ name: RoleEnum.USER }],
+        status: UserStatus.ACTIVE,
       });
 
       user = await this.usersService.findById(user.id);
@@ -160,9 +149,7 @@ export class AuthService {
     if (!user) {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: {
-          user: 'userNotFound',
-        },
+        errors: { user: 'userNotFound' },
       });
     }
 
@@ -171,10 +158,11 @@ export class AuthService {
       .update(randomStringGenerator())
       .digest('hex');
 
-    const session = await this.sessionService.create({
-      user,
-      hash,
-    });
+    const session = await this.sessionService.create({ user, hash });
+
+    const roleNames = (user.roles ?? []).map((r) => r.name);
+    const permissions =
+      await this.rolesService.getPermissionsForRoles(roleNames);
 
     const {
       token: jwtToken,
@@ -182,35 +170,25 @@ export class AuthService {
       tokenExpires,
     } = await this.getTokensData({
       id: user.id,
-      role: user.role,
+      roles: roleNames,
+      permissions,
       sessionId: session.id,
       hash,
     });
 
-    return {
-      refreshToken,
-      token: jwtToken,
-      tokenExpires,
-      user,
-    };
+    return { refreshToken, token: jwtToken, tokenExpires, user };
   }
 
   async register(dto: AuthRegisterLoginDto): Promise<void> {
     const user = await this.usersService.create({
       ...dto,
       email: dto.email,
-      role: {
-        id: RoleEnum.USER,
-      },
-      status: {
-        id: StatusEnum.inactive,
-      },
+      roles: [{ name: RoleEnum.USER }],
+      status: UserStatus.INACTIVE,
     });
 
     const hash = await this.jwtService.signAsync(
-      {
-        confirmEmailUserId: user.id,
-      },
+      { confirmEmailUserId: user.id },
       {
         secret: this.configService.getOrThrow('auth.confirmEmailSecret', {
           infer: true,
@@ -221,12 +199,7 @@ export class AuthService {
       },
     );
 
-    await this.mailService.userSignUp({
-      to: dto.email,
-      data: {
-        hash,
-      },
-    });
+    await this.mailService.userSignUp({ to: dto.email, data: { hash } });
   }
 
   async confirmEmail(hash: string): Promise<void> {
@@ -240,33 +213,24 @@ export class AuthService {
           infer: true,
         }),
       });
-
       userId = jwtData.confirmEmailUserId;
     } catch {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: {
-          hash: `invalidHash`,
-        },
+        errors: { hash: `invalidHash` },
       });
     }
 
     const user = await this.usersService.findById(userId);
 
-    if (
-      !user ||
-      user?.status?.id?.toString() !== StatusEnum.inactive.toString()
-    ) {
+    if (!user || user?.status !== UserStatus.INACTIVE) {
       throw new NotFoundException({
         status: HttpStatus.NOT_FOUND,
         error: `notFound`,
       });
     }
 
-    user.status = {
-      id: StatusEnum.active,
-    };
-
+    user.status = UserStatus.ACTIVE;
     await this.usersService.update(user.id, user);
   }
 
@@ -283,15 +247,12 @@ export class AuthService {
           infer: true,
         }),
       });
-
       userId = jwtData.confirmEmailUserId;
       newEmail = jwtData.newEmail;
     } catch {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: {
-          hash: `invalidHash`,
-        },
+        errors: { hash: `invalidHash` },
       });
     }
 
@@ -305,10 +266,7 @@ export class AuthService {
     }
 
     user.email = newEmail;
-    user.status = {
-      id: StatusEnum.active,
-    };
-
+    user.status = UserStatus.ACTIVE;
     await this.usersService.update(user.id, user);
   }
 
@@ -318,22 +276,17 @@ export class AuthService {
     if (!user) {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: {
-          email: 'emailNotExists',
-        },
+        errors: { email: 'emailNotExists' },
       });
     }
 
     const tokenExpiresIn = this.configService.getOrThrow('auth.forgotExpires', {
       infer: true,
     });
-
     const tokenExpires = Date.now() + ms(tokenExpiresIn);
 
     const hash = await this.jwtService.signAsync(
-      {
-        forgotUserId: user.id,
-      },
+      { forgotUserId: user.id },
       {
         secret: this.configService.getOrThrow('auth.forgotSecret', {
           infer: true,
@@ -344,10 +297,7 @@ export class AuthService {
 
     await this.mailService.forgotPassword({
       to: email,
-      data: {
-        hash,
-        tokenExpires,
-      },
+      data: { hash, tokenExpires },
     });
   }
 
@@ -362,14 +312,11 @@ export class AuthService {
           infer: true,
         }),
       });
-
       userId = jwtData.forgotUserId;
     } catch {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: {
-          hash: `invalidHash`,
-        },
+        errors: { hash: `invalidHash` },
       });
     }
 
@@ -378,18 +325,12 @@ export class AuthService {
     if (!user) {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: {
-          hash: `notFound`,
-        },
+        errors: { hash: `notFound` },
       });
     }
 
     user.password = password;
-
-    await this.sessionService.deleteByUserId({
-      userId: user.id,
-    });
-
+    await this.sessionService.deleteByUserId({ userId: user.id });
     await this.usersService.update(user.id, user);
   }
 
@@ -406,9 +347,7 @@ export class AuthService {
     if (!currentUser) {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: {
-          user: 'userNotFound',
-        },
+        errors: { user: 'userNotFound' },
       });
     }
 
@@ -416,18 +355,14 @@ export class AuthService {
       if (!userDto.oldPassword) {
         throw new UnprocessableEntityException({
           status: HttpStatus.UNPROCESSABLE_ENTITY,
-          errors: {
-            oldPassword: 'missingOldPassword',
-          },
+          errors: { oldPassword: 'missingOldPassword' },
         });
       }
 
       if (!currentUser.password) {
         throw new UnprocessableEntityException({
           status: HttpStatus.UNPROCESSABLE_ENTITY,
-          errors: {
-            oldPassword: 'incorrectOldPassword',
-          },
+          errors: { oldPassword: 'incorrectOldPassword' },
         });
       }
 
@@ -439,9 +374,7 @@ export class AuthService {
       if (!isValidOldPassword) {
         throw new UnprocessableEntityException({
           status: HttpStatus.UNPROCESSABLE_ENTITY,
-          errors: {
-            oldPassword: 'incorrectOldPassword',
-          },
+          errors: { oldPassword: 'incorrectOldPassword' },
         });
       } else {
         await this.sessionService.deleteByUserIdWithExclude({
@@ -457,17 +390,12 @@ export class AuthService {
       if (userByEmail && userByEmail.id !== currentUser.id) {
         throw new UnprocessableEntityException({
           status: HttpStatus.UNPROCESSABLE_ENTITY,
-          errors: {
-            email: 'emailExists',
-          },
+          errors: { email: 'emailExists' },
         });
       }
 
       const hash = await this.jwtService.signAsync(
-        {
-          confirmEmailUserId: currentUser.id,
-          newEmail: userDto.email,
-        },
+        { confirmEmailUserId: currentUser.id, newEmail: userDto.email },
         {
           secret: this.configService.getOrThrow('auth.confirmEmailSecret', {
             infer: true,
@@ -480,9 +408,7 @@ export class AuthService {
 
       await this.mailService.confirmNewEmail({
         to: userDto.email,
-        data: {
-          hash,
-        },
+        data: { hash },
       });
     }
 
@@ -490,13 +416,12 @@ export class AuthService {
     delete userDto.oldPassword;
 
     await this.usersService.update(userJwtPayload.id, userDto);
-
     return this.usersService.findById(userJwtPayload.id);
   }
 
   async refreshToken(
     data: Pick<JwtRefreshPayloadType, 'sessionId' | 'hash'>,
-  ): Promise<Omit<LoginResponseDto, 'user'>> {
+  ): Promise<{ token: string; refreshToken: string; tokenExpires: number }> {
     const hash = crypto
       .createHash('sha256')
       .update(randomStringGenerator())
@@ -513,28 +438,27 @@ export class AuthService {
 
     const user = await this.usersService.findById(session.user.id);
 
-    if (!user?.role) {
+    if (!user?.roles?.length) {
       throw new UnauthorizedException();
     }
 
+    const roleNames = user.roles.map((r) => r.name);
+    const permissions =
+      await this.rolesService.getPermissionsForRoles(roleNames);
+
     const { token, refreshToken, tokenExpires } = await this.getTokensData({
       id: session.user.id,
-      role: {
-        id: user.role.id,
-      },
+      roles: roleNames,
+      permissions,
       sessionId: session.id,
       hash,
     });
 
-    return {
-      token,
-      refreshToken,
-      tokenExpires,
-    };
+    return { token, refreshToken, tokenExpires };
   }
 
-  async softDelete(user: User): Promise<void> {
-    await this.usersService.remove(user.id);
+  async softDelete(userId: User['id']): Promise<void> {
+    await this.usersService.remove(userId);
   }
 
   async logout(data: Pick<JwtRefreshPayloadType, 'sessionId'>) {
@@ -543,21 +467,22 @@ export class AuthService {
 
   private async getTokensData(data: {
     id: User['id'];
-    role: User['role'];
+    roles: RoleEnum[];
+    permissions: PermissionEnum[];
     sessionId: Session['id'];
     hash: Session['hash'];
   }) {
     const tokenExpiresIn = this.configService.getOrThrow('auth.expires', {
       infer: true,
     });
-
     const tokenExpires = Date.now() + ms(tokenExpiresIn);
 
     const [token, refreshToken] = await Promise.all([
-      await this.jwtService.signAsync(
+      this.jwtService.signAsync(
         {
           id: data.id,
-          role: data.role,
+          roles: data.roles,
+          permissions: data.permissions,
           sessionId: data.sessionId,
         },
         {
@@ -565,11 +490,8 @@ export class AuthService {
           expiresIn: tokenExpiresIn,
         },
       ),
-      await this.jwtService.signAsync(
-        {
-          sessionId: data.sessionId,
-          hash: data.hash,
-        },
+      this.jwtService.signAsync(
+        { sessionId: data.sessionId, hash: data.hash },
         {
           secret: this.configService.getOrThrow('auth.refreshSecret', {
             infer: true,
@@ -581,10 +503,6 @@ export class AuthService {
       ),
     ]);
 
-    return {
-      token,
-      refreshToken,
-      tokenExpires,
-    };
+    return { token, refreshToken, tokenExpires };
   }
 }

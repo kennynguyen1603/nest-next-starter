@@ -1,8 +1,6 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty } from 'class-validator';
+import { TokenField } from '@/decorators/field.decorators';
 
 export class AuthConfirmEmailDto {
-  @ApiProperty()
-  @IsNotEmpty()
-  hash: string;
+  @TokenField()
+  hash!: string;
 }
