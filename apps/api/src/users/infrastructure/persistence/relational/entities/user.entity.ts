@@ -12,7 +12,7 @@ import {
   JoinColumn,
   OneToOne,
 } from 'typeorm';
-import { uuidv7 } from 'uuidv7';
+import { v7 as uuidv7 } from 'uuid';
 import { RoleEntity } from '@/roles/infrastructure/persistence/relational/entities/role.entity';
 import { UserStatus } from '@/users/user-status.enum';
 import { FileEntity } from '@/files/infrastructure/persistence/relational/entities/file.entity';
@@ -72,5 +72,5 @@ export class UserEntity extends EntityRelationalHelper {
   updatedAt!: Date;
 
   @DeleteDateColumn()
-  deletedAt!: Date;
+  deletedAt?: Date | null;
 }

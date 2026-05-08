@@ -16,8 +16,10 @@ export class UpdateUserDto {
   @PasswordFieldOptional()
   password?: string;
 
+  @StringFieldOptional()
   provider?: string;
 
+  @StringFieldOptional({ nullable: true })
   socialId?: string | null;
 
   @StringFieldOptional({ example: 'John', nullable: true })

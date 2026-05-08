@@ -67,6 +67,6 @@ export class User {
   @ApiProperty()
   updatedAt!: Date;
 
-  @ApiProperty()
-  deletedAt!: Date;
+  @ApiProperty({ nullable: true })
+  deletedAt?: Date;
 }

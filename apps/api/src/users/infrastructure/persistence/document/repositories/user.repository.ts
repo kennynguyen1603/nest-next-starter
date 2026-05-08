@@ -65,7 +65,7 @@ export class UsersDocumentRepository implements UserRepository {
     filterOptions?: FilterUserDto | null;
     sortOptions?: SortUserDto[] | null;
     paginationOptions: IPaginationOptions;
-  }): Promise<User[]> {
+  }): Promise<[User[], number]> {
     const where: QueryFilter<UserSchemaClass> = {};
 
     if (filterOptions?.roles?.length) {
@@ -83,27 +83,32 @@ export class UsersDocumentRepository implements UserRepository {
       where['_id'] = { $in: userIds };
     }
 
-    const userDocuments = await this.usersModel
-      .find(where)
-      .sort(
-        sortOptions?.reduce(
-          (accumulator, sort) => ({
-            ...accumulator,
-            [sort.orderBy === 'id' ? '_id' : sort.orderBy]:
-              sort.order.toUpperCase() === 'ASC' ? 1 : -1,
-          }),
-          {},
-        ),
-      )
-      .skip((paginationOptions.page - 1) * paginationOptions.limit)
-      .limit(paginationOptions.limit);
+    const sortQuery = sortOptions?.reduce(
+      (accumulator, sort) => ({
+        ...accumulator,
+        [sort.orderBy === 'id' ? '_id' : sort.orderBy]:
+          sort.order.toUpperCase() === 'ASC' ? 1 : -1,
+      }),
+      {},
+    );
 
-    return Promise.all(
+    const [userDocuments, total] = await Promise.all([
+      this.usersModel
+        .find(where)
+        .sort(sortQuery)
+        .skip((paginationOptions.page - 1) * paginationOptions.limit)
+        .limit(paginationOptions.limit),
+      this.usersModel.countDocuments(where),
+    ]);
+
+    const data = await Promise.all(
       userDocuments.map(async (userDocument) => {
         const roles = await this.populateRoles(userDocument._id.toString());
         return UserMapper.toDomain(userDocument, roles);
       }),
     );
+
+    return [data, total];
   }
 
   async findById(id: User['id']): Promise<NullableType<User>> {
@@ -161,7 +166,7 @@ export class UsersDocumentRepository implements UserRepository {
         ...UserMapper.toDomain(existingUser),
         ...clonedPayload,
       }),
-      { new: true },
+      { returnDocument: 'after' },
     );
     if (!updatedUser) return null;
 

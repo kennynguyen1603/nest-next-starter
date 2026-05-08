@@ -4,6 +4,7 @@ import {
   EnumFieldOptional,
   PasswordFieldOptional,
   StringField,
+  StringFieldOptional,
 } from '@/decorators/field.decorators';
 import { FileDto } from '@/files/dto/file.dto';
 import { RoleDto } from '@/roles/dto/role.dto';
@@ -16,8 +17,10 @@ export class CreateUserDto {
   @PasswordFieldOptional()
   password?: string;
 
+  @StringFieldOptional()
   provider?: string;
 
+  @StringFieldOptional({ nullable: true })
   socialId?: string | null;
 
   @StringField({ example: 'John' })

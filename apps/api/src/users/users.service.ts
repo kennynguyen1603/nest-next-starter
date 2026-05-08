@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { NullableType } from '../utils/types/nullable.type';
-import { FilterUserDto, SortUserDto } from './dto/query-user.dto';
+import { FilterUserDto, SortUserDto, QueryUserDto } from './dto/query-user.dto';
 import { UserRepository } from './infrastructure/persistence/user.repository';
 import { User } from './domain/user';
 import bcrypt from 'bcryptjs';
@@ -13,10 +13,11 @@ import { AuthProvidersEnum } from '@/auth/auth-providers.enum';
 import { FilesService } from '@/files/files.service';
 import { RoleEnum } from '@/roles/roles.enum';
 import { RoleDto } from '@/roles/dto/role.dto';
-import { IPaginationOptions } from '@/utils/types/pagination-options';
 import { FileType } from '@/files/domain/file';
 import { Role } from '@/roles/domain/role';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { OffsetPaginatedDto } from '@/common/dto/offset-pagination/paginated.dto';
+import { OffsetPaginationDto } from '@/common/dto/offset-pagination/offset-pagination.dto';
 
 @Injectable()
 export class UsersService {
@@ -87,20 +88,27 @@ export class UsersService {
     });
   }
 
-  findManyWithPagination({
+  async findManyWithPagination({
     filterOptions,
     sortOptions,
-    paginationOptions,
+    pageOptionsDto,
   }: {
     filterOptions?: FilterUserDto | null;
     sortOptions?: SortUserDto[] | null;
-    paginationOptions: IPaginationOptions;
-  }): Promise<User[]> {
-    return this.usersRepository.findManyWithPagination({
+    pageOptionsDto: QueryUserDto;
+  }): Promise<OffsetPaginatedDto<User>> {
+    const [data, total] = await this.usersRepository.findManyWithPagination({
       filterOptions,
       sortOptions,
-      paginationOptions,
+      paginationOptions: {
+        page: pageOptionsDto.page ?? 1,
+        limit: pageOptionsDto.limit ?? 10,
+      },
     });
+    return new OffsetPaginatedDto<User>(
+      data,
+      new OffsetPaginationDto(total, pageOptionsDto),
+    );
   }
 
   findById(id: User['id']): Promise<NullableType<User>> {

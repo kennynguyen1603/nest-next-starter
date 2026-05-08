@@ -9,36 +9,32 @@ import {
   UseGuards,
   Query,
   HttpStatus,
-  HttpCode,
   SerializeOptions,
 } from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
 import {
-  ApiBearerAuth,
   ApiCreatedResponse,
   ApiOkResponse,
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { Roles } from '@/roles/roles.decorator';
-import { RoleEnum } from '@/roles/roles.enum';
 import { AuthGuard } from '@nestjs/passport';
+
+import { ApiAuth } from '@/decorators/http.decorators';
+import { Roles } from '@/decorators/roles.decorator';
+import { RoleEnum } from '@/roles/roles.enum';
+import { RbacGuard } from '@/roles/rbac.guard';
+import { NullableType } from '@/utils/types/nullable.type';
+import {
+  OffsetPaginatedDto,
+  OffsetPaginationResponse,
+} from '@/common/dto/offset-pagination/paginated.dto';
 
 import { User } from './domain/user';
 import { UsersService } from './users.service';
-import { RbacGuard } from '@/roles/rbac.guard';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { QueryUserDto } from './dto/query-user.dto';
 
-import { NullableType } from '@/utils/types/nullable.type';
-
-import {
-  InfinityPaginationResponse,
-  InfinityPaginationResponseDto,
-} from '@/common/dto/infinity-pagination/paginated.dto';
-import { infinityPagination } from '@/utils/pagination/infinity-pagination';
-
-@ApiBearerAuth()
 @Roles(RoleEnum.ADMIN)
 @UseGuards(AuthGuard('jwt'), RbacGuard)
 @ApiTags('Users')
@@ -49,78 +45,40 @@ import { infinityPagination } from '@/utils/pagination/infinity-pagination';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @ApiCreatedResponse({
-    type: User,
-  })
-  @SerializeOptions({
-    groups: ['admin'],
-  })
+  @ApiCreatedResponse({ type: User })
+  @ApiAuth({ statusCode: HttpStatus.CREATED, summary: 'Create user' })
+  @SerializeOptions({ groups: ['admin'] })
   @Post()
-  @HttpCode(HttpStatus.CREATED)
   create(@Body() createUserDto: CreateUserDto): Promise<User> {
     return this.usersService.create(createUserDto);
   }
 
-  @ApiOkResponse({
-    type: InfinityPaginationResponse(User),
-  })
-  @SerializeOptions({
-    groups: ['admin'],
-  })
+  @ApiOkResponse({ type: OffsetPaginationResponse(User) })
+  @ApiAuth({ summary: 'List users with pagination' })
+  @SerializeOptions({ groups: ['admin'] })
   @Get()
-  @HttpCode(HttpStatus.OK)
-  async findAll(
-    @Query() query: QueryUserDto,
-  ): Promise<InfinityPaginationResponseDto<User>> {
-    const page = query?.page ?? 1;
-    let limit = query?.limit ?? 10;
-    if (limit > 50) {
-      limit = 50;
-    }
-
-    return infinityPagination(
-      await this.usersService.findManyWithPagination({
-        filterOptions: query?.filters,
-        sortOptions: query?.sort,
-        paginationOptions: {
-          page,
-          limit,
-        },
-      }),
-      { page, limit },
-    );
+  findAll(@Query() query: QueryUserDto): Promise<OffsetPaginatedDto<User>> {
+    return this.usersService.findManyWithPagination({
+      filterOptions: query.filters,
+      sortOptions: query.sort,
+      pageOptionsDto: query,
+    });
   }
 
-  @ApiOkResponse({
-    type: User,
-  })
-  @SerializeOptions({
-    groups: ['admin'],
-  })
+  @ApiOkResponse({ type: User })
+  @ApiAuth({ summary: 'Get user by ID' })
+  @SerializeOptions({ groups: ['admin'] })
   @Get(':id')
-  @HttpCode(HttpStatus.OK)
-  @ApiParam({
-    name: 'id',
-    type: String,
-    required: true,
-  })
+  @ApiParam({ name: 'id', type: String, required: true })
   findOne(@Param('id') id: User['id']): Promise<NullableType<User>> {
     return this.usersService.findById(id);
   }
 
-  @ApiOkResponse({
-    type: User,
-  })
-  @SerializeOptions({
-    groups: ['admin'],
-  })
+  @ApiOkResponse({ type: User })
+  @ApiAuth({ summary: 'Update user' })
+  @SerializeOptions({ groups: ['admin'] })
   @Patch(':id')
-  @HttpCode(HttpStatus.OK)
-  @ApiParam({
-    name: 'id',
-    type: String,
-    required: true,
-  })
+  @ApiParam({ name: 'id', type: String, required: true })
   update(
     @Param('id') id: User['id'],
     @Body() updateUserDto: UpdateUserDto,
@@ -128,13 +86,9 @@ export class UsersController {
     return this.usersService.update(id, updateUserDto);
   }
 
+  @ApiAuth({ statusCode: HttpStatus.NO_CONTENT, summary: 'Delete user' })
   @Delete(':id')
-  @ApiParam({
-    name: 'id',
-    type: String,
-    required: true,
-  })
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiParam({ name: 'id', type: String, required: true })
   remove(@Param('id') id: User['id']): Promise<void> {
     return this.usersService.remove(id);
   }
