@@ -1,4 +1,5 @@
 import { AppConfig } from '@/config/app/app-config.type';
+import { GoogleConfig } from '@/config/auth-google/google-config.type';
 import { DatabaseConfig } from '@/config/database/database-config.type';
 // import { RedisConfig } from '@/config/redis/redis-config.type';
 import { AuthConfig } from '@/config/auth/auth-config.type';
@@ -17,6 +18,7 @@ export type AllConfigType = {
   auth: AuthConfig;
   mail: MailConfig;
   file: FileConfig;
+  google: GoogleConfig;
   // queue: BullConfig;
   // aws: AwsConfig;
   //   sentry: SentryConfig;

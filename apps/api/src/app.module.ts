@@ -15,8 +15,10 @@ import { TypeOrmConfigService } from './database/typeorm-config.service';
 import authConfig from './config/auth/auth.config';
 import appConfig from './config/app/app.config';
 import mailConfig from './config/mail/mail.config';
+import googleConfig from './config/auth-google/google.config';
 
 import { UsersModule } from './users/users.module';
+import { AuthGoogleModule } from './auth-google/auth-google.module';
 import { FilesModule } from './files/files.module';
 import { AuthModule } from './auth/auth.module';
 import { SessionModule } from './session/session.module';
@@ -45,7 +47,7 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [databaseConfig, authConfig, appConfig, mailConfig],
+      load: [databaseConfig, authConfig, appConfig, mailConfig, googleConfig],
       envFilePath: ['.env'],
     }),
     infrastructureDatabaseModule,
@@ -81,6 +83,7 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
     MailModule,
     MailerModule,
     HealthModule,
+    AuthGoogleModule,
   ],
 })
 export class AppModule {}
