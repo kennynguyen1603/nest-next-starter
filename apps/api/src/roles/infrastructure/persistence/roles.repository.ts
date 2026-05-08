@@ -9,9 +9,9 @@ export abstract class RolesRepository {
   abstract getPermissionsForRoles(
     roleNames: RoleEnum[],
   ): Promise<PermissionEnum[]>;
-  abstract getRoleNamesForUser(userId: string | number): Promise<RoleEnum[]>;
+  abstract getRoleNamesForUser(userId: string): Promise<RoleEnum[]>;
   abstract assignRolesToUser(
-    userId: string | number,
+    userId: string,
     roleNames: RoleEnum[],
   ): Promise<void>;
 }

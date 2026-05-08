@@ -2,7 +2,7 @@ import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PERMISSIONS_KEY } from './permissions.decorator';
 import { PermissionEnum } from './permissions.enum';
-import { ROLES_KEY } from './roles.decorator';
+import { ROLES_KEY } from '../decorators/roles.decorator';
 import { RoleEnum } from './roles.enum';
 import { JwtPayloadType } from '../auth/strategies/types/jwt-payload.type';
 
@@ -31,8 +31,8 @@ export class RbacGuard implements CanActivate {
 
     if (!user) return false;
 
-    const userRoles = (user.roles ?? []) as RoleEnum[];
-    const userPermissions = (user.permissions ?? []) as PermissionEnum[];
+    const userRoles = user.roles ?? [];
+    const userPermissions = user.permissions ?? [];
 
     if (roles?.length && !roles.some((role) => userRoles.includes(role))) {
       return false;

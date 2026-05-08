@@ -1,9 +1,7 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum } from 'class-validator';
+import { EnumField } from '@/decorators/field.decorators';
 import { RoleEnum } from '../roles.enum';
 
 export class RoleDto {
-  @ApiProperty({ enum: RoleEnum })
-  @IsEnum(RoleEnum)
+  @EnumField(() => RoleEnum)
   name!: RoleEnum;
 }

@@ -13,4 +13,3 @@ export class PermissionSchemaClass extends EntityDocumentHelper {
 export const PermissionSchema = SchemaFactory.createForClass(
   PermissionSchemaClass,
 );
-PermissionSchema.index({ name: 1 }, { unique: true });

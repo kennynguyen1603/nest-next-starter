@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Get,
-  HttpCode,
   HttpStatus,
   NotFoundException,
   Param,
@@ -19,7 +18,7 @@ import { Role } from './domain/role';
 import { AssignRolesDto } from './dto/assign-roles.dto';
 import { RbacGuard } from './rbac.guard';
 import { RoleEnum } from './roles.enum';
-import { Roles } from './roles.decorator';
+import { Roles } from '../decorators/roles.decorator';
 import { RolesService } from './roles.service';
 
 @ApiTags('Roles')
@@ -37,7 +36,8 @@ export class RolesController {
   @Get(':id')
   @UseGuards(AuthGuard('jwt'), RbacGuard)
   @Roles(RoleEnum.ADMIN)
-  @ApiAuth({ type: Role, summary: 'Get role by id' })
+  @ApiOkResponse({ type: Role })
+  @ApiAuth({ summary: 'Get role by id' })
   @ApiParam({ name: 'id', type: String })
   async findOne(@Param('id') id: string): Promise<NullableType<Role>> {
     const role = await this.rolesService.findById(id);
@@ -48,7 +48,6 @@ export class RolesController {
   @Put('users/:userId')
   @UseGuards(AuthGuard('jwt'), RbacGuard)
   @Roles(RoleEnum.ADMIN)
-  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiAuth({
     summary: 'Assign roles to a user',
     statusCode: HttpStatus.NO_CONTENT,

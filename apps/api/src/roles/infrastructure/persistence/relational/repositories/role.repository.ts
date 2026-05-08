@@ -48,9 +48,9 @@ export class RolesRelationalRepository implements RolesRepository {
     return rows.map((row) => row.name as PermissionEnum);
   }
 
-  async getRoleNamesForUser(userId: string | number): Promise<RoleEnum[]> {
+  async getRoleNamesForUser(userId: string): Promise<RoleEnum[]> {
     const userRoles = await this.userRoleRepo.find({
-      where: { userId: String(userId) },
+      where: { userId },
       select: ['roleId'],
     });
     if (!userRoles.length) return [];
@@ -62,10 +62,10 @@ export class RolesRelationalRepository implements RolesRepository {
   }
 
   async assignRolesToUser(
-    userId: string | number,
+    userId: string,
     roleNames: RoleEnum[],
   ): Promise<void> {
-    await this.userRoleRepo.delete({ userId: String(userId) });
+    await this.userRoleRepo.delete({ userId });
     if (!roleNames.length) return;
     const roles = await this.roleRepo.find({
       where: { name: In(roleNames) },

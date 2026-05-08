@@ -1,5 +1,5 @@
 import { BeforeInsert, Column, Entity, PrimaryColumn } from 'typeorm';
-import { uuidv7 } from 'uuidv7';
+import { v7 as uuidv7 } from 'uuid';
 import { EntityRelationalHelper } from '@/utils/relational-entity-helper';
 
 @Entity({ name: 'role' })

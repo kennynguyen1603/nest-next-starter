@@ -56,9 +56,9 @@ export class RolesDocumentRepository implements RolesRepository {
     ];
   }
 
-  async getRoleNamesForUser(userId: string | number): Promise<RoleEnum[]> {
+  async getRoleNamesForUser(userId: string): Promise<RoleEnum[]> {
     const userRoleDocs = await this.userRoleModel
-      .find({ userId: userId.toString() }, { roleId: 1 })
+      .find({ userId }, { roleId: 1 })
       .lean();
     if (!userRoleDocs.length) return [];
     const roleIds = userRoleDocs.map((userRoleDoc) => userRoleDoc.roleId);
@@ -69,17 +69,17 @@ export class RolesDocumentRepository implements RolesRepository {
   }
 
   async assignRolesToUser(
-    userId: string | number,
+    userId: string,
     roleNames: RoleEnum[],
   ): Promise<void> {
-    await this.userRoleModel.deleteMany({ userId: userId.toString() });
+    await this.userRoleModel.deleteMany({ userId });
     if (!roleNames.length) return;
     const roles = await this.roleModel
       .find({ name: { $in: roleNames } }, { _id: 1 })
       .lean();
     await this.userRoleModel.insertMany(
       roles.map((role) => ({
-        userId: userId.toString(),
+        userId,
         roleId: role._id.toString(),
       })),
     );

@@ -22,14 +22,11 @@ export class RolesService {
     return this.rolesRepository.getPermissionsForRoles(roleNames);
   }
 
-  getRoleNamesForUser(userId: string | number): Promise<RoleEnum[]> {
+  getRoleNamesForUser(userId: string): Promise<RoleEnum[]> {
     return this.rolesRepository.getRoleNamesForUser(userId);
   }
 
-  assignRolesToUser(
-    userId: string | number,
-    roleNames: RoleEnum[],
-  ): Promise<void> {
+  assignRolesToUser(userId: string, roleNames: RoleEnum[]): Promise<void> {
     return this.rolesRepository.assignRolesToUser(userId, roleNames);
   }
 }
