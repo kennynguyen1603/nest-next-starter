@@ -3,13 +3,13 @@ import { ErrorDetailDto } from './error-detail.dto';
 
 export class ErrorDto {
   @ApiProperty()
-  statusCode: number;
+  statusCode!: number;
 
   @ApiProperty()
-  error: string;
+  error!: string;
 
   @ApiProperty()
-  message: string;
+  message!: string;
 
   @ApiPropertyOptional()
   errorCode?: string;
@@ -19,5 +19,5 @@ export class ErrorDto {
 
   stack?: string;
 
-  trace?: Error | unknown;
+  trace?: unknown;
 }

@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { ClassConstructor, plainToClass } from 'class-transformer';
 import { validateSync } from 'class-validator';
 
@@ -23,7 +24,7 @@ function validateConfig<T extends object>(
       )
       .join('\n');
 
-    console.error(`\n${errors.toString()}`);
+    Logger.error(errorMsg);
     throw new Error(errorMsg);
   }
   return validatedConfig;

@@ -2,11 +2,11 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class ErrorDetailDto {
   @ApiPropertyOptional()
-  property: string;
+  property!: string;
 
   @ApiProperty()
-  code: string;
+  code!: string;
 
   @ApiProperty()
-  message: string;
+  message!: string;
 }

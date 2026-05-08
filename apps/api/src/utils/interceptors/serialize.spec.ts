@@ -17,12 +17,12 @@ describe('SerializeInterceptor', () => {
       handle: () => of({ name: 'Alice', secret: 'hidden' }),
     };
 
-    const result: any = await lastValueFrom(
+    const result = (await lastValueFrom(
       interceptor.intercept(mockContext, mockNext),
-    );
+    )) as Record<string, unknown>;
 
     expect(result).toEqual({ name: 'Alice' });
-    expect(result.secret).toBeUndefined();
+    expect(result['secret']).toBeUndefined();
   });
 
   it('returns empty object when DTO has no @Expose() fields', async () => {
