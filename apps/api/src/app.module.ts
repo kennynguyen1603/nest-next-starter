@@ -22,6 +22,7 @@ import { AuthModule } from './auth/auth.module';
 import { SessionModule } from './session/session.module';
 import { MailModule } from './mail/mail.module';
 import { MailerModule } from './mailer/mailer.module';
+import { HealthModule } from './health/health.module';
 
 // <database-block>
 const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
@@ -79,6 +80,7 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
     SessionModule,
     MailModule,
     MailerModule,
+    HealthModule,
   ],
 })
 export class AppModule {}
