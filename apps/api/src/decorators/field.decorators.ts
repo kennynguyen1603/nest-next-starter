@@ -243,7 +243,7 @@ export function EmailField(
   const decorators = [
     IsEmail(),
     StringField({ toLowerCase: true, ...options }),
-    IsNotEmpty,
+    IsNotEmpty(),
   ];
 
   if (options.nullable) {
