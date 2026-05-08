@@ -50,7 +50,7 @@ export class SessionDocumentRepository implements SessionRepository {
         ...SessionMapper.toDomain(session),
         ...clonedPayload,
       }),
-      { new: true },
+      { returnDocument: 'after' },
     );
 
     return sessionObject ? SessionMapper.toDomain(sessionObject) : null;
@@ -65,7 +65,7 @@ export class SessionDocumentRepository implements SessionRepository {
     const sessionObject = await this.sessionModel.findOneAndUpdate(
       { _id: conditions.id.toString(), hash: conditions.hash },
       { hash: payload.hash },
-      { new: true },
+      { returnDocument: 'after' },
     );
 
     return sessionObject ? SessionMapper.toDomain(sessionObject) : null;

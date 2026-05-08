@@ -91,9 +91,7 @@ export class SessionRelationalRepository implements SessionRepository {
 
   async deleteByUserId(conditions: { userId: User['id'] }): Promise<void> {
     await this.sessionRepository.softDelete({
-      user: {
-        id: Number(conditions.userId),
-      },
+      user: { id: conditions.userId },
     });
   }
 
@@ -102,9 +100,7 @@ export class SessionRelationalRepository implements SessionRepository {
     excludeSessionId: Session['id'];
   }): Promise<void> {
     await this.sessionRepository.softDelete({
-      user: {
-        id: Number(conditions.userId),
-      },
+      user: { id: conditions.userId },
       id: Not(Number(conditions.excludeSessionId)),
     });
   }
