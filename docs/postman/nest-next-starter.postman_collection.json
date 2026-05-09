@@ -1,0 +1,1163 @@
+{
+  "info": {
+    "_postman_id": "col-nest-next-starter-v1",
+    "name": "nest-next-starter API v1",
+    "description": "Full API test collection for nest-next-starter.\n\n**Setup**\n1. Import `nest-next-starter.postman_environment.json` and select it as the active environment.\n2. Start the API: `pnpm --filter api dev`\n3. Run the seed: `pnpm --filter api seed:run:relational` (or the document variant) to get admin/user accounts.\n4. Run requests in the order shown, or use the Collection Runner.\n\n**Token management**\nAll login requests (Email, Google, Facebook, GitHub, X/Twitter) automatically save `accessToken` to the environment via their Tests script. All protected endpoints read it from `{{accessToken}}`.\n\n**Social OAuth tokens**\nBefore using the social login folders, set the corresponding token in the environment:\n- `googleIdToken` — Google ID token (JWT) từ OAuth2 consent screen\n- `facebookAccessToken` — từ [Graph API Explorer](https://developers.facebook.com/tools/explorer)\n- `githubAccessToken` — Personal Access Token từ [GitHub Settings](https://github.com/settings/tokens) (scope: `read:user user:email`)\n- `twitterAccessToken` — OAuth 2.0 user token từ [Twitter Developer Portal](https://developer.twitter.com)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base",
+      "value": "{{baseUrl}}/{{apiPrefix}}/{{apiVersion}}",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base}}/health",
+              "host": ["{{base}}"],
+              "path": ["health"]
+            },
+            "description": "Returns `{ status: 'ok' }` when the service is healthy. No authentication required."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Body has status ok', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.status).to.equal('ok');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auth — Email",
+      "description": "Email/password registration and login flow.",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"{{testPassword}}\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"User\"\n}"
+            },
+            "url": {
+              "raw": "{{base}}/auth/email/register",
+              "host": ["{{base}}"],
+              "path": ["auth", "email", "register"]
+            },
+            "description": "Creates a new account and sends a confirmation email to `testEmail`. Expected response: **204 No Content**.\n\nAfter calling, check the mailbox and paste the hash token into the `confirmEmailHash` environment variable."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hash\": \"{{confirmEmailHash}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base}}/auth/email/confirm",
+              "host": ["{{base}}"],
+              "path": ["auth", "email", "confirm"]
+            },
+            "description": "Activates the account using the hash from the confirmation email. Expected: **204 No Content**.\n\nPrerequisite: set `confirmEmailHash` in the environment."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm New Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hash\": \"{{newEmailConfirmHash}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base}}/auth/email/confirm/new",
+              "host": ["{{base}}"],
+              "path": ["auth", "email", "confirm", "new"]
+            },
+            "description": "Confirms a new email address after the user has requested an email change via PATCH /auth/me. Expected: **204 No Content**.\n\nPrerequisite: set `newEmailConfirmHash` from the change-email confirmation email."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base}}/auth/email/login",
+              "host": ["{{base}}"],
+              "path": ["auth", "email", "login"]
+            },
+            "description": "Authenticates the admin account. On success the server also sets an **HttpOnly `refresh_token` cookie**.\n\nThe Tests script below automatically saves `token` → `accessToken` environment variable."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Response has token', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('token');",
+                  "  pm.environment.set('accessToken', json.token);",
+                  "  if (json.user && json.user.id) {",
+                  "    pm.environment.set('userId', json.user.id);",
+                  "  }",
+                  "  console.log('accessToken saved:', json.token.substring(0, 30) + '...');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login (Test User)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"{{testPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base}}/auth/email/login",
+              "host": ["{{base}}"],
+              "path": ["auth", "email", "login"]
+            },
+            "description": "Authenticates the test/regular user account created by the Register request."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Response has token', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('token');",
+                  "  pm.environment.set('accessToken', json.token);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Current User (me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{base}}/auth/me",
+              "host": ["{{base}}"],
+              "path": ["auth", "me"]
+            },
+            "description": "Returns the full profile of the currently authenticated user (serialized with group `me` — includes email, provider, socialId).\n\nRequires: `accessToken`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Response has user id', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('id');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Profile (me)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Updated\",\n  \"lastName\": \"Name\"\n}"
+            },
+            "url": {
+              "raw": "{{base}}/auth/me",
+              "host": ["{{base}}"],
+              "path": ["auth", "me"]
+            },
+            "description": "Partially updates the current user's profile. All fields are optional.\n\nAvailable fields: `firstName`, `lastName`, `email` (triggers confirmation email), `password` + `oldPassword`, `photo` (FileType id).\n\nRequires: `accessToken`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"NewSecret@123456\",\n  \"oldPassword\": \"{{testPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base}}/auth/me",
+              "host": ["{{base}}"],
+              "path": ["auth", "me"]
+            },
+            "description": "Changes the user's password. Both `oldPassword` and `password` are required when changing the password.\n\nRequires: `accessToken`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{testEmail}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base}}/auth/forgot/password",
+              "host": ["{{base}}"],
+              "path": ["auth", "forgot", "password"]
+            },
+            "description": "Sends a password-reset email to the provided address. Expected: **204 No Content**.\n\nAfter calling, paste the hash from the email into `forgotPasswordHash`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hash\": \"{{forgotPasswordHash}}\",\n  \"password\": \"Renewed@123456\"\n}"
+            },
+            "url": {
+              "raw": "{{base}}/auth/reset/password",
+              "host": ["{{base}}"],
+              "path": ["auth", "reset", "password"]
+            },
+            "description": "Sets a new password using the one-time hash from the forgot-password email. Expected: **204 No Content**.\n\nPrerequisite: set `forgotPasswordHash`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{base}}/auth/refresh",
+              "host": ["{{base}}"],
+              "path": ["auth", "refresh"]
+            },
+            "description": "Issues a new `accessToken` (and rotates the `refresh_token` cookie). The guard reads the `refresh_token` **HttpOnly cookie** set during login — Postman forwards it automatically if cookie management is enabled.\n\nThe Tests script saves the new token to `accessToken`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('New token saved', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('token');",
+                  "  pm.environment.set('accessToken', json.token);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{base}}/auth/logout",
+              "host": ["{{base}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Invalidates the current session and clears the `refresh_token` cookie. Expected: **204 No Content**."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204', () => pm.response.to.have.status(204));",
+                  "pm.environment.set('accessToken', '');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Account (me)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{base}}/auth/me",
+              "host": ["{{base}}"],
+              "path": ["auth", "me"]
+            },
+            "description": "Soft-deletes the current user's account. Expected: **204 No Content**.\n\n⚠️ This action is irreversible from the API — use on test accounts only."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auth — Google OAuth",
+      "description": "Social login via Google ID token.",
+      "item": [
+        {
+          "name": "Google Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idToken\": \"{{googleIdToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base}}/auth/google/login",
+              "host": ["{{base}}"],
+              "path": ["auth", "google", "login"]
+            },
+            "description": "Authenticates via a Google ID token obtained from the OAuth2 consent screen. On first call an account is auto-created.\n\nPrerequisite: obtain a valid `idToken` from Google and set it in `googleIdToken`.\n\nThe Tests script saves `accessToken` automatically."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Token saved', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('token');",
+                  "  pm.environment.set('accessToken', json.token);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auth — Facebook OAuth",
+      "description": "Social login via Facebook user access token.\n\n**Cách lấy token để test:**\n1. Vào [Graph API Explorer](https://developers.facebook.com/tools/explorer)\n2. Chọn đúng App (phải khớp với `FACEBOOK_APP_ID` trong `.env`)\n3. Click **Generate Access Token** → cấp quyền `email` và `public_profile`\n4. Copy token vào biến `facebookAccessToken` trong environment\n\n**Lưu ý:** Token từ Explorer có hạn ~1 giờ. Dùng để test, không phải production.",
+      "item": [
+        {
+          "name": "Facebook Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accessToken\": \"{{facebookAccessToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base}}/auth/facebook/login",
+              "host": ["{{base}}"],
+              "path": ["auth", "facebook", "login"]
+            },
+            "description": "Xác thực bằng Facebook user access token. Server sẽ:\n1. Gọi `/debug_token` để verify token thuộc đúng app\n2. Gọi `/me?fields=id,first_name,last_name,email` để lấy profile\n3. Tự tạo tài khoản nếu chưa tồn tại\n4. Trả về `token` (JWT) và set `refresh_token` httpOnly cookie\n\nPrerequisite: set `facebookAccessToken` trong environment."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Token saved', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('token');",
+                  "  pm.environment.set('accessToken', json.token);",
+                  "  if (json.user && json.user.id) {",
+                  "    pm.environment.set('userId', json.user.id);",
+                  "  }",
+                  "  console.log('Facebook login OK, accessToken saved');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auth — GitHub OAuth",
+      "description": "Social login via GitHub OAuth access token.\n\n**Cách lấy token để test (nhanh nhất):**\n1. Vào [GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)](https://github.com/settings/tokens)\n2. Click **Generate new token (classic)**\n3. Chọn scope: `read:user`, `user:email`\n4. Copy token vào biến `githubAccessToken` trong environment\n\n**Lưu ý:** Personal Access Token không hết hạn (trừ khi bạn đặt expiry). Phù hợp để test local.\n\n**Production flow:** Dùng Authorization Code Flow — exchange `code` lấy `access_token` trước, rồi gọi endpoint này.",
+      "item": [
+        {
+          "name": "GitHub Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accessToken\": \"{{githubAccessToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base}}/auth/github/login",
+              "host": ["{{base}}"],
+              "path": ["auth", "github", "login"]
+            },
+            "description": "Xác thực bằng GitHub access token. Server sẽ:\n1. Gọi `GET https://api.github.com/user` với `Authorization: Bearer <token>`\n2. Tự tạo tài khoản nếu chưa tồn tại (dùng `login` làm tên nếu không có `name`)\n3. Trả về `token` (JWT) và set `refresh_token` httpOnly cookie\n\n**Lưu ý về email:** GitHub cho phép user để email private. Nếu email bị ẩn, tài khoản sẽ được tạo không có email.\n\nPrerequisite: set `githubAccessToken` trong environment."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Token saved', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('token');",
+                  "  pm.environment.set('accessToken', json.token);",
+                  "  if (json.user && json.user.id) {",
+                  "    pm.environment.set('userId', json.user.id);",
+                  "  }",
+                  "  console.log('GitHub login OK, accessToken saved');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auth — X (Twitter) OAuth",
+      "description": "Social login via X (Twitter) OAuth 2.0 user access token.\n\n**Cách lấy token để test:**\n1. Vào [Twitter Developer Portal](https://developer.twitter.com/en/portal/dashboard)\n2. Tạo hoặc mở Project/App của bạn\n3. Vào **Keys and tokens** → **OAuth 2.0 Client ID and Client Secret**\n4. Thực hiện Authorization Code Flow với PKCE:\n   - Scope cần thiết: `tweet.read users.read offline.access`\n   - Callback URL: `http://localhost:3000/auth/twitter/callback`\n5. Dùng **OAuth 2.0 Playground** hoặc tool như [Twurl](https://github.com/twitter/twurl) để lấy access token\n6. Paste token vào biến `twitterAccessToken` trong environment\n\n**Lưu ý:** Twitter API v2 không trả email theo mặc định — tài khoản sẽ được tạo không có email, dùng Twitter ID làm định danh.",
+      "item": [
+        {
+          "name": "X (Twitter) Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accessToken\": \"{{twitterAccessToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base}}/auth/twitter/login",
+              "host": ["{{base}}"],
+              "path": ["auth", "twitter", "login"]
+            },
+            "description": "Xác thực bằng X (Twitter) OAuth 2.0 user access token. Server sẽ:\n1. Gọi `GET https://api.twitter.com/2/users/me?user.fields=name,username`\n2. Tự tạo tài khoản nếu chưa tồn tại\n3. Trả về `token` (JWT) và set `refresh_token` httpOnly cookie\n\n**Về tên:** Twitter trả `name` (full name) — server tự split thành `firstName`/`lastName`.\n**Về email:** Không khả dụng qua API v2 mặc định.\n\nPrerequisite: set `twitterAccessToken` trong environment."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Token saved', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('token');",
+                  "  pm.environment.set('accessToken', json.token);",
+                  "  if (json.user && json.user.id) {",
+                  "    pm.environment.set('userId', json.user.id);",
+                  "  }",
+                  "  console.log('Twitter login OK, accessToken saved');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Users (Admin only)",
+      "description": "All endpoints in this folder require JWT + ADMIN role.\n\nMake sure `accessToken` belongs to an admin account (use *Login (Admin)* first).",
+      "item": [
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"created@example.com\",\n  \"password\": \"Created@123456\",\n  \"firstName\": \"Created\",\n  \"lastName\": \"ByAdmin\",\n  \"roles\": [\"user\"],\n  \"status\": \"active\"\n}"
+            },
+            "url": {
+              "raw": "{{base}}/users",
+              "host": ["{{base}}"],
+              "path": ["users"]
+            },
+            "description": "Creates a new user as an admin (bypasses email confirmation).\n\nAvailable values:\n- `roles`: `admin` | `manager` | `user`\n- `status`: `active` | `inactive` | `pending` | `banned`\n- `provider`: `email` | `google` | `facebook` | `twitter` | `github`\n\nThe Tests script saves the new user's `id` → `userId`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('userId saved', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('id');",
+                  "  pm.environment.set('userId', json.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{base}}/users?page=1&limit=10",
+              "host": ["{{base}}"],
+              "path": ["users"],
+              "query": [
+                { "key": "page", "value": "1", "description": "Page number (default: 1)" },
+                { "key": "limit", "value": "10", "description": "Items per page (default: 10)" },
+                { "key": "q", "value": "", "description": "Search by name/email", "disabled": true },
+                { "key": "order", "value": "Desc", "description": "Asc | Desc", "disabled": true },
+                { "key": "filters", "value": "[{\"field\":\"status\",\"value\":\"active\"}]", "description": "JSON array of filter objects", "disabled": true },
+                { "key": "sort", "value": "[{\"orderBy\":\"createdAt\",\"order\":\"Desc\"}]", "description": "JSON array of sort objects", "disabled": true }
+              ]
+            },
+            "description": "Returns a paginated list of users (admin serialization — includes all fields).\n\nQuery params:\n- `page` (default 1)\n- `limit` (default 10)\n- `q` — full-text search\n- `order` — `Asc` | `Desc`\n- `filters` — JSON array: `[{\"field\":\"status\",\"value\":\"active\"}]`\n- `sort` — JSON array: `[{\"orderBy\":\"createdAt\",\"order\":\"Desc\"}]`"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Response has data array', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('data').that.is.an('array');",
+                  "  pm.expect(json).to.have.property('pagination');",
+                  "  if (json.data.length > 0 && !pm.environment.get('userId')) {",
+                  "    pm.environment.set('userId', json.data[0].id);",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{base}}/users/{{userId}}",
+              "host": ["{{base}}"],
+              "path": ["users", "{{userId}}"]
+            },
+            "description": "Retrieves a single user by UUID.\n\nPrerequisite: set `userId` (auto-set by Create User or List Users)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('User id matches', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.id).to.equal(pm.environment.get('userId'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Updated\",\n  \"lastName\": \"ByAdmin\",\n  \"status\": \"active\"\n}"
+            },
+            "url": {
+              "raw": "{{base}}/users/{{userId}}",
+              "host": ["{{base}}"],
+              "path": ["users", "{{userId}}"]
+            },
+            "description": "Partially updates any user field as an admin. All body fields are optional.\n\nPrerequisite: set `userId`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{base}}/users/{{userId}}",
+              "host": ["{{base}}"],
+              "path": ["users", "{{userId}}"]
+            },
+            "description": "Soft-deletes a user by UUID.\n\nPrerequisite: set `userId`.\n\n⚠️ Use on test accounts only."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Roles",
+      "description": "Role management. List is public; Get by ID and Assign require JWT + ADMIN.",
+      "item": [
+        {
+          "name": "List All Roles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base}}/roles",
+              "host": ["{{base}}"],
+              "path": ["roles"]
+            },
+            "description": "Returns all roles in the system. **Public** endpoint — no auth required.\n\nExpected roles: `admin`, `manager`, `user`.\n\nThe Tests script saves the first role's `id` → `roleId`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Roles is array', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.be.an('array');",
+                  "  if (json.length > 0) {",
+                  "    pm.environment.set('roleId', json[0].id);",
+                  "    console.log('roleId saved:', json[0].id, '(' + json[0].name + ')');",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Role by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{base}}/roles/{{roleId}}",
+              "host": ["{{base}}"],
+              "path": ["roles", "{{roleId}}"]
+            },
+            "description": "Retrieves a single role by UUID. Requires JWT + ADMIN role.\n\nPrerequisite: set `roleId` (auto-set by List All Roles)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Role has id and name', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('id');",
+                  "  pm.expect(json).to.have.property('name');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Assign Roles to User",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roles\": [\"user\"]\n}"
+            },
+            "url": {
+              "raw": "{{base}}/roles/users/{{userId}}",
+              "host": ["{{base}}"],
+              "path": ["roles", "users", "{{userId}}"]
+            },
+            "description": "Replaces the target user's roles. Requires JWT + ADMIN.\n\nValid role values: `admin` | `manager` | `user`.\n\nPrerequisite: set `userId`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Files",
+      "description": "File upload endpoints. All require JWT.\n\nOnly one upload strategy is active at a time — determined by the `FILE_DRIVER` env var (`local` | `s3` | `s3-presigned` | `cloudinary`). Requests for inactive strategies will receive a 404 or module-not-found error.",
+      "item": [
+        {
+          "name": "Upload — Local Storage",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "",
+                  "description": "Image file to upload (jpg, jpeg, png, gif)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base}}/files/upload",
+              "host": ["{{base}}"],
+              "path": ["files", "upload"]
+            },
+            "description": "Uploads an image to the **local filesystem** (`./uploads/` on the server).\n\nActive when `FILE_DRIVER=local`.\n\nAccepted types: `image/jpeg`, `image/png`, `image/gif`.\n\nResponse:\n```json\n{\n  \"file\": {\n    \"id\": \"<uuid>\",\n    \"path\": \"<relative-path>\"\n  }\n}\n```"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Response has file', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('file');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Download — Local Storage",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base}}/files/:path",
+              "host": ["{{base}}"],
+              "path": ["files", ":path"],
+              "variable": [
+                {
+                  "key": "path",
+                  "value": "replace-with-file-path-from-upload-response",
+                  "description": "The `path` value returned by the Local Upload response"
+                }
+              ]
+            },
+            "description": "Downloads/streams a file from local storage by its relative path.\n\nActive when `FILE_DRIVER=local`."
+          },
+          "response": []
+        },
+        {
+          "name": "Upload — AWS S3",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "",
+                  "description": "Image file to upload (jpg, jpeg, png, gif)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base}}/files/upload",
+              "host": ["{{base}}"],
+              "path": ["files", "upload"]
+            },
+            "description": "Uploads an image directly to **AWS S3**.\n\nActive when `FILE_DRIVER=s3`.\n\nRequires env vars: `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `AWS_DEFAULT_S3_BUCKET`, `AWS_S3_REGION`.\n\nResponse:\n```json\n{\n  \"file\": {\n    \"id\": \"<uuid>\",\n    \"path\": \"<s3-object-key>\"\n  }\n}\n```\n\nThe Tests script saves `file.id` → `fileId` for use in the **Get Presigned URL** request below."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('File id saved', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('file');",
+                  "  pm.expect(json.file).to.have.property('id');",
+                  "  pm.environment.set('fileId', json.file.id);",
+                  "  console.log('fileId saved:', json.file.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Presigned URL — AWS S3",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{base}}/files/{{fileId}}/url",
+              "host": ["{{base}}"],
+              "path": ["files", "{{fileId}}", "url"],
+              "query": [
+                {
+                  "key": "expiresIn",
+                  "value": "3600",
+                  "description": "URL TTL in seconds (default: 3600 = 1 hour)",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Returns a **presigned GET URL** for the file with the given ID. The URL can be used directly in `<img src>` or downloaded — no Authorization header needed.\n\nActive when `FILE_DRIVER=s3`.\n\nWorks for both **public and private** S3 buckets.\n\nPrerequisite: `fileId` must be set (auto-saved by *Upload — AWS S3* above).\n\nResponse:\n```json\n{ \"url\": \"https://bucket.s3.amazonaws.com/key?X-Amz-...\" }\n```\n\nOptional query param `expiresIn` (seconds) controls how long the URL is valid."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Response has presigned url', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('url');",
+                  "  pm.expect(json.url).to.include('X-Amz-Signature');",
+                  "  console.log('Presigned URL:', json.url.substring(0, 80) + '...');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Upload — S3 Presigned URL",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileName\": \"my-image.jpg\",\n  \"fileSize\": 204800,\n  \"mimeType\": \"image/jpeg\"\n}"
+            },
+            "url": {
+              "raw": "{{base}}/files/upload",
+              "host": ["{{base}}"],
+              "path": ["files", "upload"]
+            },
+            "description": "Returns a **presigned S3 URL** that the client must use to PUT the file directly to S3 (server never receives the binary).\n\nActive when `FILE_DRIVER=s3-presigned`.\n\nResponse:\n```json\n{\n  \"file\": { \"id\": \"<uuid>\", \"path\": \"<s3-key>\" },\n  \"uploadSignedUrl\": \"https://...\"\n}\n```\n\nAfter receiving the response, upload the file via:\n```\nPUT {{uploadSignedUrl}}\nContent-Type: image/jpeg\nBody: <binary file>\n```"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Response has uploadSignedUrl', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('uploadSignedUrl');",
+                  "  console.log('Use this URL to PUT your file:', json.uploadSignedUrl);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Upload — Cloudinary",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "",
+                  "description": "Image file to upload (jpg, jpeg, png, gif, webp, svg)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base}}/files/upload",
+              "host": ["{{base}}"],
+              "path": ["files", "upload"]
+            },
+            "description": "Uploads an image to **Cloudinary**.\n\nActive when `FILE_DRIVER=cloudinary`.\n\nRequires env vars: `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`.\n\nAccepted types: `image/jpeg`, `image/png`, `image/gif`, `image/webp`, `image/svg+xml`.\n\nResponse:\n```json\n{\n  \"file\": {\n    \"id\": \"<uuid>\",\n    \"path\": \"https://res.cloudinary.com/<cloud>/<public_id>\"\n  }\n}\n```"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Response has file', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('file');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

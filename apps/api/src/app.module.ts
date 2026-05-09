@@ -15,16 +15,45 @@ import { TypeOrmConfigService } from './database/typeorm-config.service';
 import authConfig from './config/auth/auth.config';
 import appConfig from './config/app/app.config';
 import mailConfig from './config/mail/mail.config';
+import fileConfig from './config/files/file.config';
+import { FileDriver } from './config/files/file-config.type';
 import googleConfig from './config/auth-google/google.config';
+import facebookConfig from './config/auth-facebook/facebook.config';
+import githubConfig from './config/auth-github/github.config';
+import twitterConfig from './config/auth-twitter/twitter.config';
 
 import { UsersModule } from './users/users.module';
 import { AuthGoogleModule } from './auth-google/auth-google.module';
+import { AuthFacebookModule } from './auth-facebook/auth-facebook.module';
+import { AuthGithubModule } from './auth-github/auth-github.module';
+import { AuthTwitterModule } from './auth-twitter/auth-twitter.module';
 import { FilesModule } from './files/files.module';
+import { FilesLocalModule } from './files/infrastructure/uploader/local/files.module';
+import { FilesS3Module } from './files/infrastructure/uploader/s3/files.module';
+import { FilesS3PresignedModule } from './files/infrastructure/uploader/s3-presigned/files.module';
+import { FilesCloudinaryModule } from './files/infrastructure/uploader/cloudinary/files.module';
 import { AuthModule } from './auth/auth.module';
 import { SessionModule } from './session/session.module';
 import { MailModule } from './mail/mail.module';
 import { MailerModule } from './mailer/mailer.module';
 import { HealthModule } from './health/health.module';
+
+// <file-block>
+const fileUploaderModule = (() => {
+  const driver =
+    (process.env.FILE_DRIVER as FileDriver | undefined) ?? FileDriver.LOCAL;
+  switch (driver) {
+    case FileDriver.S3:
+      return FilesS3Module;
+    case FileDriver.S3_PRESIGNED:
+      return FilesS3PresignedModule;
+    case FileDriver.CLOUDINARY:
+      return FilesCloudinaryModule;
+    default:
+      return FilesLocalModule;
+  }
+})();
+// </file-block>
 
 // <database-block>
 const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
@@ -47,7 +76,17 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [databaseConfig, authConfig, appConfig, mailConfig, googleConfig],
+      load: [
+        databaseConfig,
+        authConfig,
+        appConfig,
+        mailConfig,
+        fileConfig,
+        googleConfig,
+        facebookConfig,
+        githubConfig,
+        twitterConfig,
+      ],
       envFilePath: ['.env'],
     }),
     infrastructureDatabaseModule,
@@ -78,12 +117,16 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
     }),
     UsersModule,
     FilesModule,
+    fileUploaderModule,
     AuthModule,
     SessionModule,
     MailModule,
     MailerModule,
     HealthModule,
     AuthGoogleModule,
+    AuthFacebookModule,
+    AuthGithubModule,
+    AuthTwitterModule,
   ],
 })
 export class AppModule {}

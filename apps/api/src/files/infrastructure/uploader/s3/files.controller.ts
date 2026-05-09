@@ -1,6 +1,9 @@
 import {
   Controller,
+  Get,
+  Param,
   Post,
+  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -11,6 +14,10 @@ import {
   ApiBody,
   ApiConsumes,
   ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
@@ -25,9 +32,7 @@ import { FileResponseDto } from './dto/file-response.dto';
 export class FilesS3Controller {
   constructor(private readonly filesService: FilesS3Service) {}
 
-  @ApiCreatedResponse({
-    type: FileResponseDto,
-  })
+  @ApiCreatedResponse({ type: FileResponseDto })
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
   @Post('upload')
@@ -36,10 +41,7 @@ export class FilesS3Controller {
     schema: {
       type: 'object',
       properties: {
-        file: {
-          type: 'string',
-          format: 'binary',
-        },
+        file: { type: 'string', format: 'binary' },
       },
     },
   })
@@ -48,5 +50,29 @@ export class FilesS3Controller {
     @UploadedFile() file: Express.MulterS3.File,
   ): Promise<FileResponseDto> {
     return this.filesService.create(file);
+  }
+
+  @ApiOperation({ summary: 'Get a presigned URL to download/display a file' })
+  @ApiParam({ name: 'id', description: 'File record ID' })
+  @ApiQuery({
+    name: 'expiresIn',
+    required: false,
+    description: 'URL TTL in seconds (default: 3600)',
+    type: Number,
+  })
+  @ApiOkResponse({
+    schema: { type: 'object', properties: { url: { type: 'string' } } },
+  })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  @Get(':id/url')
+  async getPresignedUrl(
+    @Param('id') id: string,
+    @Query('expiresIn') expiresIn?: number,
+  ): Promise<{ url: string }> {
+    return this.filesService.getPresignedUrl(
+      id,
+      expiresIn ? Number(expiresIn) : 3600,
+    );
   }
 }
