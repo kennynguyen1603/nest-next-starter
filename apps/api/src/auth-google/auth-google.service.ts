@@ -47,6 +47,7 @@ export class AuthGoogleService {
       provider: 'google',
       firstName: data.given_name,
       lastName: data.family_name,
+      photoUrl: data.picture,
     };
   }
 }

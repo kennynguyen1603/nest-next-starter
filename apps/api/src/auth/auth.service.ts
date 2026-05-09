@@ -13,6 +13,7 @@ import bcrypt from 'bcryptjs';
 import ms from 'ms';
 
 import { AllConfigType } from '@/config/config.type';
+import { FilesService } from '@/files/files.service';
 import { MailService } from '@/mail/mail.service';
 import { RoleEnum } from '@/roles/roles.enum';
 import { PermissionEnum } from '@/roles/permissions.enum';
@@ -44,6 +45,7 @@ export class AuthService {
     private readonly mailService: MailService,
     private readonly configService: ConfigService<AllConfigType>,
     private readonly rolesService: RolesService,
+    private readonly filesService: FilesService,
   ) {}
 
   async validateLogin(
@@ -133,12 +135,21 @@ export class AuthService {
     } else if (userByEmail) {
       user = userByEmail;
     } else if (socialData.id) {
+      let photoDto: { id: string } | undefined;
+      if (socialData.photoUrl) {
+        const file = await this.filesService.create({
+          path: socialData.photoUrl,
+        });
+        photoDto = { id: file.id };
+      }
+
       user = await this.usersService.create({
         email: socialEmail ?? null,
         firstName: socialData.firstName ?? null,
         lastName: socialData.lastName ?? null,
         socialId: socialData.id,
         provider: authProvider,
+        photo: photoDto,
         roles: [{ name: RoleEnum.USER }],
         status: UserStatus.ACTIVE,
       });
