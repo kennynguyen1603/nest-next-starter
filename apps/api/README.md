@@ -1,98 +1,253 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# API — NestJS Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Backend of **nest-next-starter**, built on [NestJS 11](https://nestjs.com) with strict TypeScript.  
+Runs by default at **http://localhost:8080**.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## Features
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+### 🔐 Authentication & Authorization
+- **Email/Password** — Register, login, email confirmation, forgot/reset password
+- **OAuth 2.0** — Google, Facebook, GitHub, Twitter/X (Passport strategies)
+- **JWT** — Short-lived access token (15 min) + long-lived refresh token (7 days) stored in an HttpOnly cookie
+- **Session management** — Each login creates an isolated session; logout invalidates the session; changing password revokes all other active sessions
+- **RBAC** — Role-based (USER, ADMIN) and permission-based access control; JWT payload embeds `roles` + `permissions`
+- **Guards & Decorators** — `@ApiAuth()`, `@ApiPublic()` to distinguish public vs protected endpoints
 
-## Project setup
+### 🗄️ Database — Dual Adapter
+Select the database type via `DATABASE_TYPE` in `.env` — **no code changes required**:
 
-```bash
-$ pnpm install
+| `DATABASE_TYPE` | Adapter | ORM/ODM |
+|-----------------|---------|---------|
+| `mongodb` | MongoDB | Mongoose + mongoose-autopopulate |
+| `postgres` / `mysql` / `sqlite` | SQL | TypeORM |
+
+Each module has two separate infrastructure layers (`document/` and `relational/`).  
+Database seeders: `seed:run:document` / `seed:run:relational`.
+
+### 📁 File Upload — Multi-driver
+Select the driver via `FILE_DRIVER`:
+
+| Driver | Description |
+|--------|-------------|
+| `local` | Store files on the server filesystem |
+| `s3` | AWS S3 (multipart upload) |
+| `s3-presigned` | AWS S3 with presigned URLs |
+| `cloudinary` | Cloudinary CDN |
+
+### 📧 Mail
+- Nodemailer + Handlebars templates
+- Automated emails: registration confirmation, new email confirmation, forgot password
+
+### 🌍 Internationalization (i18n)
+- `nestjs-i18n` with header-based resolver (`x-custom-lang`)
+- Fallback language: `en`
+
+### 📄 API Docs (Swagger)
+- Auto-generated at `/docs`
+- Bearer Auth, URI versioning (`/api/v1/...`), global language header
+
+### 🛡️ Security
+- `helmet` — HTTP security headers
+- `cookie-parser` — HttpOnly cookie for the refresh token
+- CORS configured to the frontend domain
+- `class-validator` + `class-transformer` — Request input validation
+
+### 🏥 Health Check
+- `/health` endpoint (`HealthModule`)
+
+### 📊 GraphQL (Optional)
+- Apollo Server pre-integrated (`@nestjs/graphql`, `@nestjs/apollo`)
+
+---
+
+## Directory Structure
+
+```
+src/
+├── app.module.ts           ← Root module (auto-selects DB & file driver)
+├── main.ts                 ← Bootstrap: CORS, Helmet, Swagger, Versioning
+│
+├── auth/                   ← Email/password auth + JWT strategies
+│   ├── auth.controller.ts
+│   ├── auth.service.ts
+│   ├── dto/
+│   └── strategies/         ← jwt, jwt-refresh, anonymous
+│
+├── auth-google/            ← Google OAuth strategy & controller
+├── auth-facebook/          ← Facebook OAuth strategy & controller
+├── auth-github/            ← GitHub OAuth strategy & controller
+├── auth-twitter/           ← Twitter/X OAuth strategy & controller
+│
+├── users/                  ← User CRUD + domain model
+│   ├── domain/user.ts
+│   ├── infrastructure/
+│   │   ├── document/       ← Mongoose schema & repository
+│   │   └── relational/     ← TypeORM entity & repository
+│   └── users.service.ts
+│
+├── session/                ← Session management (multi-device logout)
+├── roles/                  ← RBAC: RoleEnum, PermissionEnum, RolesService
+├── files/                  ← File upload abstraction + multi-driver adapters
+│   └── infrastructure/uploader/
+│       ├── local/
+│       ├── s3/
+│       ├── s3-presigned/
+│       └── cloudinary/
+│
+├── mail/                   ← High-level mail service
+├── mailer/                 ← Nodemailer + Handlebars adapter
+├── health/                 ← Health check endpoint
+├── graphql/                ← GraphQL setup
+├── i18n/                   ← Translation files
+├── social/                 ← Shared social profile interface
+│
+├── config/                 ← Typed config with @nestjs/config
+│   ├── app/, auth/, database/
+│   ├── auth-google/, auth-facebook/, auth-github/, auth-twitter/
+│   ├── files/, mail/
+│   └── config.type.ts      ← Aggregate type AllConfigType
+│
+├── database/
+│   ├── mongoose-config.service.ts
+│   ├── typeorm-config.service.ts
+│   ├── seeds/
+│   └── migrations/
+│
+├── decorators/             ← @ApiAuth, @ApiPublic, etc.
+├── common/                 ← Shared DTOs, query types
+└── utils/                  ← Serializer interceptor, validation options
 ```
 
-## Compile and run the project
+---
+
+## API Endpoints
+
+### Auth (`/api/v1/auth`)
+
+| Method | Path | Description | Guard |
+|--------|------|-------------|-------|
+| `POST` | `/email/login` | Login with email & password | Public |
+| `POST` | `/email/register` | Register a new account | Public |
+| `POST` | `/email/confirm` | Confirm registration email | Public |
+| `POST` | `/email/confirm/new` | Confirm new email after change | Public |
+| `POST` | `/forgot/password` | Send a password reset link | Public |
+| `POST` | `/reset/password` | Reset password using token | Public |
+| `GET`  | `/me` | Get current user profile | JWT |
+| `PATCH`| `/me` | Update current user profile | JWT |
+| `DELETE`| `/me` | Delete account (soft delete) | JWT |
+| `POST` | `/refresh` | Refresh access token | Refresh cookie |
+| `POST` | `/logout` | Logout, invalidate session | JWT |
+
+### OAuth (`/api/v1/auth`)
+
+| Method | Path | Provider |
+|--------|------|----------|
+| `POST` | `/google/login` | Google (idToken) |
+| `POST` | `/facebook/login` | Facebook (accessToken) |
+| `POST` | `/github/login` | GitHub (accessToken) |
+| `POST` | `/twitter/login` | Twitter/X (accessToken) |
+
+### Users (`/api/v1/users`)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET`  | `/` | List users (paginated) |
+| `POST` | `/` | Create a new user |
+| `GET`  | `/:id` | Get user by ID |
+| `PATCH`| `/:id` | Update user |
+| `DELETE`| `/:id` | Delete user |
+
+### Files (`/api/v1/files`)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/upload` | Upload a file |
+
+---
+
+## Setup & Running
 
 ```bash
-# development
-$ pnpm run start
+# From the monorepo root
+pnpm install
 
-# watch mode
-$ pnpm run start:dev
+# Configure environment
+cp apps/api/.env.example apps/api/.env
+# Edit apps/api/.env
 
-# production mode
-$ pnpm run start:prod
+# Development (watch mode)
+pnpm dev --filter=api
+
+# Production
+pnpm build --filter=api
+pnpm --filter=api start:prod
+
+# Tests
+pnpm --filter=api test          # Unit tests
+pnpm --filter=api test:e2e      # E2E tests
+pnpm --filter=api test:cov      # Coverage report
+
+# Database seeds
+pnpm --filter=api seed:run:document    # MongoDB
+pnpm --filter=api seed:run:relational  # SQL
 ```
 
-## Run tests
+---
 
-```bash
-# unit tests
-$ pnpm run test
+## Environment Variables
 
-# e2e tests
-$ pnpm run test:e2e
+See the full reference at [`apps/api/.env.example`](./.env.example).
 
-# test coverage
-$ pnpm run test:cov
+### Required
+
+```env
+NODE_ENV=development
+APP_PORT=8080
+FRONTEND_DOMAIN=http://localhost:3000
+DATABASE_TYPE=mongodb          # mongodb | postgres | mysql | sqlite
+DATABASE_URL=mongodb://localhost:27017/nest_starter
+AUTH_JWT_SECRET=change_me_jwt_secret
+AUTH_REFRESH_SECRET=change_me_refresh_secret
 ```
 
-## Deployment
+### Mail
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+```env
+MAIL_HOST=smtp.example.com
+MAIL_PORT=587
+MAIL_USER=
+MAIL_PASSWORD=
+MAIL_DEFAULT_EMAIL=noreply@example.com
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### File Storage
 
-## Resources
+```env
+FILE_DRIVER=local              # local | s3 | s3-presigned | cloudinary
+# If using S3:
+ACCESS_KEY_ID=
+SECRET_ACCESS_KEY=
+AWS_DEFAULT_S3_BUCKET=
+AWS_S3_REGION=ap-southeast-1
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+### OAuth (Optional)
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+```env
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+FACEBOOK_APP_ID=
+FACEBOOK_APP_SECRET=
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+TWITTER_CLIENT_ID=
+TWITTER_CLIENT_SECRET=
+```
 
-## Support
+---
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## Swagger
 
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Once running, visit: **http://localhost:8080/docs**
