@@ -1,23 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { Link } from "@/lib/navigation";
 import { api } from "@/lib/api";
 
-const schema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-});
-type FormValues = z.infer<typeof schema>;
+type FormValues = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+};
 
 export default function RegisterPage() {
   const [serverError, setServerError] = useState("");
   const [success, setSuccess] = useState(false);
+  const t = useTranslations("auth.register");
+
+  const schema = useMemo(
+    () =>
+      z.object({
+        firstName: z.string().min(1, t("errorFirstName")),
+        lastName: z.string().min(1, t("errorLastName")),
+        email: z.string().email(t("errorInvalidEmail")),
+        password: z.string().min(8, t("errorPasswordLength")),
+      }),
+    [t],
+  );
 
   const {
     register,
@@ -32,9 +44,7 @@ export default function RegisterPage() {
       setSuccess(true);
     } catch (err) {
       setServerError(
-        err instanceof Error
-          ? err.message
-          : "Registration failed. Please try again.",
+        err instanceof Error ? err.message : t("errorDefault"),
       );
     }
   }
@@ -60,18 +70,17 @@ export default function RegisterPage() {
         </div>
         <div>
           <h2 className="text-xl font-semibold tracking-tight">
-            Check your email
+            {t("successTitle")}
           </h2>
           <p className="mt-2 text-sm text-neutral-500 leading-relaxed">
-            We&apos;ve sent a confirmation link to your email address. Check
-            your inbox and click the link to activate your account.
+            {t("successMessage")}
           </p>
         </div>
         <Link
           href="/login"
           className="text-sm text-black font-medium underline underline-offset-2 hover:text-neutral-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black self-start"
         >
-          ← Back to sign in
+          {t("backToSignIn")}
         </Link>
       </div>
     );
@@ -80,16 +89,14 @@ export default function RegisterPage() {
   return (
     <>
       <div className="mb-8">
-        <h1 className="text-3xl font-semibold tracking-tight">
-          Create account
-        </h1>
+        <h1 className="text-3xl font-semibold tracking-tight">{t("title")}</h1>
         <p className="mt-2 text-sm text-neutral-500">
-          Already have an account?{" "}
+          {t("hasAccount")}{" "}
           <Link
             href="/login"
             className="text-black font-medium underline underline-offset-2 hover:text-neutral-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
           >
-            Sign in
+            {t("signIn")}
           </Link>
         </p>
       </div>
@@ -105,7 +112,7 @@ export default function RegisterPage() {
               htmlFor="firstName"
               className="text-xs font-medium text-neutral-500 uppercase tracking-wider"
             >
-              First name
+              {t("firstName")}
             </label>
             <input
               id="firstName"
@@ -126,7 +133,7 @@ export default function RegisterPage() {
               htmlFor="lastName"
               className="text-xs font-medium text-neutral-500 uppercase tracking-wider"
             >
-              Last name
+              {t("lastName")}
             </label>
             <input
               id="lastName"
@@ -149,7 +156,7 @@ export default function RegisterPage() {
             htmlFor="email"
             className="text-xs font-medium text-neutral-500 uppercase tracking-wider"
           >
-            Email
+            {t("email")}
           </label>
           <input
             id="email"
@@ -172,13 +179,13 @@ export default function RegisterPage() {
             htmlFor="password"
             className="text-xs font-medium text-neutral-500 uppercase tracking-wider"
           >
-            Password
+            {t("password")}
           </label>
           <input
             id="password"
             type="password"
             autoComplete="new-password"
-            placeholder="Min. 8 characters…"
+            placeholder={t("passwordPlaceholder")}
             className="border border-[#D0D0D0] px-4 py-3.5 text-sm transition-colors focus-visible:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black"
             {...register("password")}
           />
@@ -207,7 +214,7 @@ export default function RegisterPage() {
           {isSubmitting && (
             <span className="w-4 h-4 border-2 border-white/30 border-t-white animate-spin rounded-full shrink-0" />
           )}
-          {isSubmitting ? "Creating account…" : "Create account"}
+          {isSubmitting ? t("submitting") : t("submit")}
         </button>
       </form>
     </>

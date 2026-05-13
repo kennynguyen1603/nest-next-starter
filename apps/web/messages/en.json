@@ -1,0 +1,112 @@
+{
+  "common": {
+    "appName": "Starter",
+    "loading": "Loading…",
+    "cancel": "Cancel",
+    "saveChanges": "Save changes"
+  },
+  "home": {
+    "signOut": "Sign out",
+    "hello": "Hello, {name}",
+    "accountDashboard": "This is your account dashboard.",
+    "accountInfo": "Account Information",
+    "fullName": "Full Name",
+    "email": "Email",
+    "provider": "Provider"
+  },
+  "auth": {
+    "layout": {
+      "tagline": "The modern platform\nfor your next project.",
+      "description": "Ship faster with a pre-configured stack — NestJS, Next.js, PostgreSQL, and full authentication out of the box.",
+      "copyright": "© 2026 Starter"
+    },
+    "login": {
+      "title": "Sign in",
+      "noAccount": "Don't have an account?",
+      "createOne": "Create one",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Sign in",
+      "submitting": "Signing in…",
+      "orContinueWith": "or continue with",
+      "oauthOpening": "Opening…",
+      "errorInvalidEmail": "Invalid email address",
+      "errorPasswordLength": "Password must be at least 8 characters",
+      "errorDefault": "Sign in failed. Please try again.",
+      "errorGeneric": "Something went wrong. Please try again."
+    },
+    "register": {
+      "title": "Create account",
+      "hasAccount": "Already have an account?",
+      "signIn": "Sign in",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "email": "Email",
+      "password": "Password",
+      "passwordPlaceholder": "Min. 8 characters…",
+      "submit": "Create account",
+      "submitting": "Creating account…",
+      "errorFirstName": "First name is required",
+      "errorLastName": "Last name is required",
+      "errorInvalidEmail": "Invalid email address",
+      "errorPasswordLength": "Password must be at least 8 characters",
+      "errorDefault": "Registration failed. Please try again.",
+      "successTitle": "Check your email",
+      "successMessage": "We've sent a confirmation link to your email address. Check your inbox and click the link to activate your account.",
+      "backToSignIn": "← Back to sign in"
+    },
+    "forgotPassword": {
+      "title": "Forgot password",
+      "description": "Enter your email and we'll send you a reset link.",
+      "email": "Email",
+      "submit": "Send reset link",
+      "submitting": "Sending…",
+      "successTitle": "Check your email",
+      "successMessage": "If an account exists with this email, a reset link has been sent.",
+      "backToSignIn": "← Back to sign in",
+      "errorInvalidEmail": "Invalid email address",
+      "errorDefault": "Something went wrong. Please try again."
+    },
+    "resetPassword": {
+      "title": "Reset password",
+      "description": "Enter your new password below.",
+      "password": "New password",
+      "passwordPlaceholder": "Min. 8 characters…",
+      "submit": "Reset password",
+      "submitting": "Resetting…",
+      "successTitle": "Password reset",
+      "successMessage": "Your password has been reset. You can now sign in.",
+      "backToSignIn": "← Back to sign in",
+      "errorPasswordLength": "Password must be at least 8 characters",
+      "errorDefault": "Invalid or expired link. Please request a new one.",
+      "errorMissingHash": "Invalid reset link."
+    }
+  },
+  "user": {
+    "editProfile": "Edit profile",
+    "uploadPhoto": "Change photo",
+    "photoWillSaveOnSubmit": "Will be saved when you click Save",
+    "deleteAccount": "Delete account",
+    "deleteConfirm": "Are you sure? This cannot be undone.",
+    "saveChanges": "Save changes",
+    "saving": "Saving…",
+    "deleting": "Deleting…",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "email": "Email",
+    "oldPassword": "Current password",
+    "newPassword": "New password",
+    "newPasswordPlaceholder": "Min. 8 characters…",
+    "updateSuccess": "Profile updated successfully",
+    "deleteSuccess": "Account deleted",
+    "errorFirstName": "First name is required",
+    "errorLastName": "Last name is required",
+    "errorPasswordLength": "Password must be at least 8 characters",
+    "errorDefault": "Something went wrong. Please try again."
+  },
+  "locale": {
+    "switchLanguage": "Language",
+    "en": "English",
+    "vi": "Tiếng Việt"
+  }
+}

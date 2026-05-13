@@ -1,21 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { Link, useRouter } from "@/lib/navigation";
+import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth-store";
 import { buildOAuthUrl } from "@/lib/oauth";
 import type { OAuthProvider } from "@/lib/oauth";
 
-const schema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-});
-type FormValues = z.infer<typeof schema>;
+type FormValues = {
+  email: string;
+  password: string;
+};
 
 const OAUTH_PROVIDERS: {
   id: OAuthProvider;
@@ -106,12 +106,22 @@ const OAUTH_PROVIDERS: {
   },
 ];
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const setAuth = useAuthStore((s) => s.setAuth);
   const [serverError, setServerError] = useState("");
   const [oauthLoading, setOauthLoading] = useState<OAuthProvider | null>(null);
+  const t = useTranslations("auth.login");
+
+  const schema = useMemo(
+    () =>
+      z.object({
+        email: z.string().email(t("errorInvalidEmail")),
+        password: z.string().min(8, t("errorPasswordLength")),
+      }),
+    [t],
+  );
 
   useEffect(() => {
     const error = searchParams.get("error");
@@ -136,9 +146,7 @@ export default function LoginPage() {
       router.push("/");
     } catch (err) {
       setServerError(
-        err instanceof Error
-          ? err.message
-          : "Sign in failed. Please try again.",
+        err instanceof Error ? err.message : t("errorDefault"),
       );
     }
   }
@@ -150,7 +158,7 @@ export default function LoginPage() {
       const url = await buildOAuthUrl(provider);
       window.location.href = url;
     } catch {
-      setServerError("Something went wrong. Please try again.");
+      setServerError(t("errorGeneric"));
       setOauthLoading(null);
     }
   }
@@ -158,14 +166,14 @@ export default function LoginPage() {
   return (
     <>
       <div className="mb-8">
-        <h1 className="text-3xl font-semibold tracking-tight">Sign in</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">{t("title")}</h1>
         <p className="mt-2 text-sm text-neutral-500">
-          Don&apos;t have an account?{" "}
+          {t("noAccount")}{" "}
           <Link
             href="/register"
             className="text-black font-medium underline underline-offset-2 hover:text-neutral-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
           >
-            Create one
+            {t("createOne")}
           </Link>
         </p>
       </div>
@@ -180,7 +188,7 @@ export default function LoginPage() {
             htmlFor="email"
             className="text-xs font-medium text-neutral-500 uppercase tracking-wider"
           >
-            Email
+            {t("email")}
           </label>
           <input
             id="email"
@@ -203,7 +211,7 @@ export default function LoginPage() {
             htmlFor="password"
             className="text-xs font-medium text-neutral-500 uppercase tracking-wider"
           >
-            Password
+            {t("password")}
           </label>
           <input
             id="password"
@@ -238,14 +246,14 @@ export default function LoginPage() {
           {isSubmitting && (
             <span className="w-4 h-4 border-2 border-white/30 border-t-white animate-spin rounded-full shrink-0" />
           )}
-          {isSubmitting ? "Signing in…" : "Sign in"}
+          {isSubmitting ? t("submitting") : t("submit")}
         </button>
       </form>
 
       <div className="flex items-center gap-3 my-7">
         <div className="flex-1 h-px bg-[#E8E8E8]" />
         <span className="text-[11px] font-medium text-neutral-400 uppercase tracking-wider">
-          or continue with
+          {t("orContinueWith")}
         </span>
         <div className="flex-1 h-px bg-[#E8E8E8]" />
       </div>
@@ -264,10 +272,18 @@ export default function LoginPage() {
             ) : (
               icon
             )}
-            <span>{oauthLoading === id ? "Opening…" : label}</span>
+            <span>{oauthLoading === id ? t("oauthOpening") : label}</span>
           </button>
         ))}
       </div>
     </>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginPageContent />
+    </Suspense>
   );
 }

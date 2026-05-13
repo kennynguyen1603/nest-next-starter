@@ -1,8 +1,12 @@
+import { useTranslations } from "next-intl";
+
 export default function AuthLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const t = useTranslations("auth.layout");
+
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[480px_1fr]">
       <div className="hidden lg:flex flex-col justify-between bg-black text-white p-12">
@@ -10,17 +14,14 @@ export default function AuthLayout({
           Starter
         </span>
         <div>
-          <p className="text-[2rem] font-semibold leading-tight tracking-tight [text-wrap:balance]">
-            The modern platform
-            <br />
-            for your next project.
+          <p className="text-[2rem] font-semibold leading-tight tracking-tight text-balance whitespace-pre-line">
+            {t("tagline")}
           </p>
           <p className="mt-4 text-sm text-neutral-500 leading-relaxed max-w-xs">
-            Ship faster with a pre-configured stack — NestJS, Next.js,
-            PostgreSQL, and full authentication out of the box.
+            {t("description")}
           </p>
         </div>
-        <p className="text-xs text-neutral-700">© 2026 Starter</p>
+        <p className="text-xs text-neutral-700">{t("copyright")}</p>
       </div>
 
       <div className="flex min-h-screen items-center justify-center bg-white px-6 py-20">

@@ -4,6 +4,12 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080'
 
 type RequestOptions = Omit<RequestInit, 'body'> & { body?: unknown }
 
+export function getLocale(): string {
+  if (typeof document === 'undefined') return 'en'
+  const match = document.cookie.match(/(?:^|;)\s*NEXT_LOCALE=([^;]+)/)
+  return match?.[1] ?? 'en'
+}
+
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { body, headers, ...rest } = options
   const token = useAuthStore.getState().accessToken
@@ -13,6 +19,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
+      'x-custom-lang': getLocale(),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...headers,
     },
@@ -47,8 +54,18 @@ async function tryRefresh(): Promise<boolean> {
       credentials: 'include',
     })
     if (!res.ok) return false
-    const data = await res.json()
-    useAuthStore.getState().setAuth(data.token, data.tokenExpires, data.user)
+    const { token, tokenExpires } = await res.json()
+
+    // The refresh endpoint only returns a new token — fetch the user separately.
+    const meRes = await fetch(`${BASE_URL}/api/v1/auth/me`, {
+      credentials: 'include',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'x-custom-lang': getLocale(),
+      },
+    })
+    const user = meRes.ok ? await meRes.json() : null
+    useAuthStore.getState().setAuth(token, tokenExpires, user)
     return true
   } catch {
     return false

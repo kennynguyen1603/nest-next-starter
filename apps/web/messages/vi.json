@@ -1,0 +1,112 @@
+{
+  "common": {
+    "appName": "Starter",
+    "loading": "Đang tải…",
+    "cancel": "Hủy",
+    "saveChanges": "Lưu thay đổi"
+  },
+  "home": {
+    "signOut": "Đăng xuất",
+    "hello": "Xin chào, {name}",
+    "accountDashboard": "Đây là trang tổng quan tài khoản của bạn.",
+    "accountInfo": "Thông tin tài khoản",
+    "fullName": "Họ và tên",
+    "email": "Email",
+    "provider": "Nhà cung cấp"
+  },
+  "auth": {
+    "layout": {
+      "tagline": "Nền tảng hiện đại\ncho dự án tiếp theo của bạn.",
+      "description": "Ship nhanh hơn với stack đã được cấu hình sẵn — NestJS, Next.js, PostgreSQL và xác thực đầy đủ.",
+      "copyright": "© 2026 Starter"
+    },
+    "login": {
+      "title": "Đăng nhập",
+      "noAccount": "Chưa có tài khoản?",
+      "createOne": "Tạo tài khoản",
+      "email": "Email",
+      "password": "Mật khẩu",
+      "submit": "Đăng nhập",
+      "submitting": "Đang đăng nhập…",
+      "orContinueWith": "hoặc tiếp tục với",
+      "oauthOpening": "Đang mở…",
+      "errorInvalidEmail": "Địa chỉ email không hợp lệ",
+      "errorPasswordLength": "Mật khẩu phải có ít nhất 8 ký tự",
+      "errorDefault": "Đăng nhập thất bại. Vui lòng thử lại.",
+      "errorGeneric": "Đã xảy ra lỗi. Vui lòng thử lại."
+    },
+    "register": {
+      "title": "Tạo tài khoản",
+      "hasAccount": "Đã có tài khoản?",
+      "signIn": "Đăng nhập",
+      "firstName": "Tên",
+      "lastName": "Họ",
+      "email": "Email",
+      "password": "Mật khẩu",
+      "passwordPlaceholder": "Tối thiểu 8 ký tự…",
+      "submit": "Tạo tài khoản",
+      "submitting": "Đang tạo tài khoản…",
+      "errorFirstName": "Tên là bắt buộc",
+      "errorLastName": "Họ là bắt buộc",
+      "errorInvalidEmail": "Địa chỉ email không hợp lệ",
+      "errorPasswordLength": "Mật khẩu phải có ít nhất 8 ký tự",
+      "errorDefault": "Đăng ký thất bại. Vui lòng thử lại.",
+      "successTitle": "Kiểm tra email của bạn",
+      "successMessage": "Chúng tôi đã gửi link xác nhận đến địa chỉ email của bạn. Kiểm tra hộp thư và nhấp vào link để kích hoạt tài khoản.",
+      "backToSignIn": "← Quay lại đăng nhập"
+    },
+    "forgotPassword": {
+      "title": "Quên mật khẩu",
+      "description": "Nhập email của bạn và chúng tôi sẽ gửi link đặt lại mật khẩu.",
+      "email": "Email",
+      "submit": "Gửi link đặt lại",
+      "submitting": "Đang gửi…",
+      "successTitle": "Kiểm tra email của bạn",
+      "successMessage": "Nếu tài khoản tồn tại với email này, link đặt lại mật khẩu đã được gửi.",
+      "backToSignIn": "← Quay lại đăng nhập",
+      "errorInvalidEmail": "Địa chỉ email không hợp lệ",
+      "errorDefault": "Đã xảy ra lỗi. Vui lòng thử lại."
+    },
+    "resetPassword": {
+      "title": "Đặt lại mật khẩu",
+      "description": "Nhập mật khẩu mới của bạn bên dưới.",
+      "password": "Mật khẩu mới",
+      "passwordPlaceholder": "Tối thiểu 8 ký tự…",
+      "submit": "Đặt lại mật khẩu",
+      "submitting": "Đang đặt lại…",
+      "successTitle": "Mật khẩu đã được đặt lại",
+      "successMessage": "Mật khẩu của bạn đã được đặt lại. Bạn có thể đăng nhập ngay bây giờ.",
+      "backToSignIn": "← Quay lại đăng nhập",
+      "errorPasswordLength": "Mật khẩu phải có ít nhất 8 ký tự",
+      "errorDefault": "Link không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu link mới.",
+      "errorMissingHash": "Link đặt lại không hợp lệ."
+    }
+  },
+  "user": {
+    "editProfile": "Chỉnh sửa hồ sơ",
+    "uploadPhoto": "Đổi ảnh đại diện",
+    "photoWillSaveOnSubmit": "Ảnh sẽ được lưu khi bạn nhấn Lưu thay đổi",
+    "deleteAccount": "Xóa tài khoản",
+    "deleteConfirm": "Bạn có chắc chắn không? Hành động này không thể hoàn tác.",
+    "saveChanges": "Lưu thay đổi",
+    "saving": "Đang lưu…",
+    "deleting": "Đang xóa…",
+    "firstName": "Tên",
+    "lastName": "Họ",
+    "email": "Email",
+    "oldPassword": "Mật khẩu hiện tại",
+    "newPassword": "Mật khẩu mới",
+    "newPasswordPlaceholder": "Tối thiểu 8 ký tự…",
+    "updateSuccess": "Cập nhật hồ sơ thành công",
+    "deleteSuccess": "Đã xóa tài khoản",
+    "errorFirstName": "Tên là bắt buộc",
+    "errorLastName": "Họ là bắt buộc",
+    "errorPasswordLength": "Mật khẩu phải có ít nhất 8 ký tự",
+    "errorDefault": "Đã xảy ra lỗi. Vui lòng thử lại."
+  },
+  "locale": {
+    "switchLanguage": "Ngôn ngữ",
+    "en": "English",
+    "vi": "Tiếng Việt"
+  }
+}
