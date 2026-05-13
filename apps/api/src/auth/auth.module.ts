@@ -7,7 +7,6 @@ import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { AnonymousStrategy } from './strategies/anonymous.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
-import { FilesModule } from '@/files/files.module';
 import { MailModule } from '@/mail/mail.module';
 import { SessionModule } from '@/session/session.module';
 import { UsersModule } from '@/users/users.module';
@@ -18,7 +17,6 @@ import { RolesModule } from '@/roles/roles.module';
     UsersModule,
     SessionModule,
     RolesModule,
-    FilesModule,
     PassportModule,
     MailModule,
     JwtModule.register({}),

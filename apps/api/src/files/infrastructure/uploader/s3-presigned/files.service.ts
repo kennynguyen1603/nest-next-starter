@@ -1,10 +1,15 @@
 import {
   HttpStatus,
   Injectable,
+  NotFoundException,
   PayloadTooLargeException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  GetObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomStringGenerator } from '@nestjs/common/utils/random-string-generator.util';
 import { ConfigService } from '@nestjs/config';
@@ -13,10 +18,12 @@ import { FileRepository } from '@/files/infrastructure/persistence/file.reposito
 import { FileType } from '@/files/domain/file';
 import { FileUploadDto } from './dto/file.dto';
 import { AllConfigType } from '@/config/config.type';
+import { IFileUploadService } from '@/files/infrastructure/uploader/uploader.interface';
 
 @Injectable()
-export class FilesS3PresignedService {
+export class FilesS3PresignedService implements IFileUploadService {
   private s3: S3Client;
+  private readonly bucket: string;
 
   constructor(
     private readonly fileRepository: FileRepository,
@@ -32,6 +39,9 @@ export class FilesS3PresignedService {
           infer: true,
         }),
       },
+    });
+    this.bucket = configService.getOrThrow('file.awsDefaultS3Bucket', {
+      infer: true,
     });
   }
 
@@ -75,9 +85,7 @@ export class FilesS3PresignedService {
       ?.toLowerCase()}`;
 
     const command = new PutObjectCommand({
-      Bucket: this.configService.getOrThrow('file.awsDefaultS3Bucket', {
-        infer: true,
-      }),
+      Bucket: this.bucket,
       Key: key,
       ContentLength: file.fileSize,
     });
@@ -90,5 +98,50 @@ export class FilesS3PresignedService {
       file: data,
       uploadSignedUrl: signedUrl,
     };
+  }
+
+  async uploadFromBuffer(
+    buffer: Buffer,
+    options: { filename: string; mimetype: string },
+  ): Promise<FileType> {
+    const ext =
+      options.filename.split('.').pop()?.toLowerCase() ??
+      options.mimetype.split('/')[1] ??
+      'jpg';
+    const key = `${randomStringGenerator()}.${ext}`;
+
+    await this.s3.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: buffer,
+        ContentType: options.mimetype,
+      }),
+    );
+
+    return this.fileRepository.create({ path: key });
+  }
+
+  async getFileUrl(id: FileType['id']): Promise<{ url: string }> {
+    const file = await this.fileRepository.findById(id);
+
+    if (!file) {
+      throw new NotFoundException({
+        status: HttpStatus.NOT_FOUND,
+        error: 'fileNotFound',
+      });
+    }
+
+    if (file.path.startsWith('http')) {
+      return { url: file.path };
+    }
+
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: file.path,
+    });
+
+    const url = await getSignedUrl(this.s3, command, { expiresIn: 3600 });
+    return { url };
   }
 }

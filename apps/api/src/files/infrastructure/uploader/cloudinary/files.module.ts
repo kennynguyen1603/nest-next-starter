@@ -1,8 +1,10 @@
 import {
+  Global,
   HttpStatus,
   Module,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import { FILE_UPLOAD_SERVICE } from '@/files/infrastructure/uploader/uploader.interface';
 import { FilesCloudinaryController } from './files.controller';
 import { MulterModule } from '@nestjs/platform-express';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -25,6 +27,7 @@ const infrastructurePersistenceModule = (databaseConfig() as DatabaseConfig)
 
 type FileFilterCallback = (error: Error | null, acceptFile: boolean) => void;
 
+@Global()
 @Module({
   imports: [
     infrastructurePersistenceModule,
@@ -56,7 +59,10 @@ type FileFilterCallback = (error: Error | null, acceptFile: boolean) => void;
     }),
   ],
   controllers: [FilesCloudinaryController],
-  providers: [FilesCloudinaryService],
-  exports: [FilesCloudinaryService],
+  providers: [
+    FilesCloudinaryService,
+    { provide: FILE_UPLOAD_SERVICE, useExisting: FilesCloudinaryService },
+  ],
+  exports: [FilesCloudinaryService, FILE_UPLOAD_SERVICE],
 })
 export class FilesCloudinaryModule {}

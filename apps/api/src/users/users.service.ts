@@ -3,6 +3,7 @@ import {
   Injectable,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import { I18nContext, I18nService } from 'nestjs-i18n';
 import { CreateUserDto } from './dto/create-user.dto';
 import { NullableType } from '../utils/types/nullable.type';
 import { FilterUserDto, SortUserDto, QueryUserDto } from './dto/query-user.dto';
@@ -24,7 +25,12 @@ export class UsersService {
   constructor(
     private readonly usersRepository: UserRepository,
     private readonly filesService: FilesService,
+    private readonly i18n: I18nService,
   ) {}
+
+  private t(key: string): string {
+    return this.i18n.t(key, { lang: I18nContext.current()?.lang ?? 'en' });
+  }
 
   async create(createUserDto: CreateUserDto): Promise<User> {
     // Do not remove comment below.
@@ -46,7 +52,7 @@ export class UsersService {
       if (existingUser) {
         throw new UnprocessableEntityException({
           status: HttpStatus.UNPROCESSABLE_ENTITY,
-          errors: { email: 'emailAlreadyExists' },
+          errors: { email: this.t('user.EMAIL_EXISTS') },
         });
       }
       email = createUserDto.email;
@@ -59,7 +65,7 @@ export class UsersService {
       if (!file) {
         throw new UnprocessableEntityException({
           status: HttpStatus.UNPROCESSABLE_ENTITY,
-          errors: { photo: 'imageNotExists' },
+          errors: { photo: this.t('user.INVALID_PHOTO') },
         });
       }
       photo = file;
@@ -162,7 +168,7 @@ export class UsersService {
       if (existingUser && existingUser.id !== id) {
         throw new UnprocessableEntityException({
           status: HttpStatus.UNPROCESSABLE_ENTITY,
-          errors: { email: 'emailAlreadyExists' },
+          errors: { email: this.t('user.EMAIL_EXISTS') },
         });
       }
       email = updateUserDto.email;
@@ -177,7 +183,7 @@ export class UsersService {
       if (!file) {
         throw new UnprocessableEntityException({
           status: HttpStatus.UNPROCESSABLE_ENTITY,
-          errors: { photo: 'imageNotExists' },
+          errors: { photo: this.t('user.INVALID_PHOTO') },
         });
       }
       photo = file;
@@ -218,7 +224,7 @@ export class UsersService {
     if (hasInvalidRole) {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: { roles: 'roleNotExists' },
+        errors: { roles: this.t('user.INVALID_ROLE') },
       });
     }
     return roleDtos.map((roleDto) => {

@@ -3,7 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  HttpStatus,
   Patch,
   Post,
   Request,
@@ -70,61 +69,50 @@ export class AuthController {
   public async login(
     @Body() loginDto: AuthEmailLoginDto,
     @Res({ passthrough: true }) response: Response,
-  ): Promise<LoginResponseDto> {
+  ): Promise<Omit<LoginResponseDto, never> & { message: string }> {
     const { refreshToken, ...result } =
       await this.service.validateLogin(loginDto);
     this.setRefreshCookie(response, refreshToken);
     return result;
   }
 
-  @ApiPublic({
-    statusCode: HttpStatus.NO_CONTENT,
-    summary: 'Register new account',
-  })
+  @ApiPublic({ summary: 'Register new account' })
   @Post('email/register')
-  async register(@Body() createUserDto: AuthRegisterLoginDto): Promise<void> {
+  async register(
+    @Body() createUserDto: AuthRegisterLoginDto,
+  ): Promise<{ message: string }> {
     return this.service.register(createUserDto);
   }
 
-  @ApiPublic({
-    statusCode: HttpStatus.NO_CONTENT,
-    summary: 'Confirm email address',
-  })
+  @ApiPublic({ summary: 'Confirm email address' })
   @Post('email/confirm')
   async confirmEmail(
     @Body() confirmEmailDto: AuthConfirmEmailDto,
-  ): Promise<void> {
+  ): Promise<{ message: string }> {
     return this.service.confirmEmail(confirmEmailDto.hash);
   }
 
-  @ApiPublic({
-    statusCode: HttpStatus.NO_CONTENT,
-    summary: 'Confirm new email address',
-  })
+  @ApiPublic({ summary: 'Confirm new email address' })
   @Post('email/confirm/new')
   async confirmNewEmail(
     @Body() confirmEmailDto: AuthConfirmEmailDto,
-  ): Promise<void> {
+  ): Promise<{ message: string }> {
     return this.service.confirmNewEmail(confirmEmailDto.hash);
   }
 
-  @ApiPublic({
-    statusCode: HttpStatus.NO_CONTENT,
-    summary: 'Request password reset',
-  })
+  @ApiPublic({ summary: 'Request password reset' })
   @Post('forgot/password')
   async forgotPassword(
     @Body() forgotPasswordDto: AuthForgotPasswordDto,
-  ): Promise<void> {
+  ): Promise<{ message: string }> {
     return this.service.forgotPassword(forgotPasswordDto.email);
   }
 
-  @ApiPublic({
-    statusCode: HttpStatus.NO_CONTENT,
-    summary: 'Reset password with token',
-  })
+  @ApiPublic({ summary: 'Reset password with token' })
   @Post('reset/password')
-  resetPassword(@Body() resetPasswordDto: AuthResetPasswordDto): Promise<void> {
+  resetPassword(
+    @Body() resetPasswordDto: AuthResetPasswordDto,
+  ): Promise<{ message: string }> {
     return this.service.resetPassword(
       resetPasswordDto.hash,
       resetPasswordDto.password,
@@ -161,18 +149,15 @@ export class AuthController {
     return result;
   }
 
-  @ApiAuth({
-    statusCode: HttpStatus.NO_CONTENT,
-    summary: 'Logout current session',
-  })
+  @ApiAuth({ summary: 'Logout current session' })
   @UseGuards(AuthGuard('jwt'))
   @Post('logout')
   public async logout(
     @Request() request: { user: JwtPayloadType },
     @Res({ passthrough: true }) response: Response,
-  ): Promise<void> {
+  ): Promise<{ message: string }> {
     this.clearRefreshCookie(response);
-    await this.service.logout({ sessionId: request.user.sessionId });
+    return this.service.logout({ sessionId: request.user.sessionId });
   }
 
   // Same reason as GET /me — see comment above.
@@ -188,12 +173,12 @@ export class AuthController {
     return this.service.update(request.user, userDto);
   }
 
-  @ApiAuth({ statusCode: HttpStatus.NO_CONTENT, summary: 'Delete account' })
+  @ApiAuth({ summary: 'Delete account' })
   @UseGuards(AuthGuard('jwt'))
   @Delete('me')
-  public async delete(
+  public delete(
     @Request() request: { user: JwtPayloadType },
-  ): Promise<void> {
+  ): Promise<{ message: string }> {
     return this.service.softDelete(request.user.id);
   }
 }

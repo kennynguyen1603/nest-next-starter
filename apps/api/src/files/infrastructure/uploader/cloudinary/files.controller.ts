@@ -1,5 +1,7 @@
 import {
   Controller,
+  Get,
+  Param,
   Post,
   UploadedFile,
   UseGuards,
@@ -11,6 +13,9 @@ import {
   ApiBody,
   ApiConsumes,
   ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
@@ -53,5 +58,17 @@ export class FilesCloudinaryController {
     },
   ): Promise<FileResponseDto> {
     return this.filesService.create(file);
+  }
+
+  @ApiOperation({ summary: 'Get URL to display a file' })
+  @ApiParam({ name: 'id', description: 'File record ID' })
+  @ApiOkResponse({
+    schema: { type: 'object', properties: { url: { type: 'string' } } },
+  })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  @Get(':id/url')
+  async getFileUrl(@Param('id') id: string): Promise<{ url: string }> {
+    return this.filesService.getFileUrl(id);
   }
 }

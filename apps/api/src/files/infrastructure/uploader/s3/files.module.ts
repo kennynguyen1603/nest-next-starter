@@ -1,8 +1,10 @@
 import {
+  Global,
   HttpStatus,
   Module,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import { FILE_UPLOAD_SERVICE } from '@/files/infrastructure/uploader/uploader.interface';
 import { FilesS3Controller } from './files.controller';
 import { MulterModule } from '@nestjs/platform-express';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -41,6 +43,7 @@ interface StorageEngine {
   ): void;
 }
 
+@Global()
 @Module({
   imports: [
     infrastructurePersistenceModule,
@@ -102,7 +105,10 @@ interface StorageEngine {
     }),
   ],
   controllers: [FilesS3Controller],
-  providers: [FilesS3Service],
-  exports: [FilesS3Service],
+  providers: [
+    FilesS3Service,
+    { provide: FILE_UPLOAD_SERVICE, useExisting: FilesS3Service },
+  ],
+  exports: [FilesS3Service, FILE_UPLOAD_SERVICE],
 })
 export class FilesS3Module {}

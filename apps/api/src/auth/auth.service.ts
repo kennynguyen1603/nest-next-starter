@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import {
   HttpStatus,
+  Inject,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -11,9 +12,11 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcryptjs';
 import ms from 'ms';
+import { I18nContext, I18nService } from 'nestjs-i18n';
 
 import { AllConfigType } from '@/config/config.type';
-import { FilesService } from '@/files/files.service';
+import { FILE_UPLOAD_SERVICE } from '@/files/infrastructure/uploader/uploader.interface';
+import type { IFileUploadService } from '@/files/infrastructure/uploader/uploader.interface';
 import { MailService } from '@/mail/mail.service';
 import { RoleEnum } from '@/roles/roles.enum';
 import { PermissionEnum } from '@/roles/permissions.enum';
@@ -45,32 +48,42 @@ export class AuthService {
     private readonly mailService: MailService,
     private readonly configService: ConfigService<AllConfigType>,
     private readonly rolesService: RolesService,
-    private readonly filesService: FilesService,
+    private readonly i18n: I18nService,
+    @Inject(FILE_UPLOAD_SERVICE)
+    private readonly fileUploadService: IFileUploadService,
   ) {}
+
+  private lang(): string {
+    return I18nContext.current()?.lang ?? 'en';
+  }
+
+  private t(key: string): string {
+    return this.i18n.t(key, { lang: this.lang() });
+  }
 
   async validateLogin(
     loginDto: AuthEmailLoginDto,
-  ): Promise<LoginResponseDto & { refreshToken: string }> {
+  ): Promise<LoginResponseDto & { refreshToken: string; message: string }> {
     const user = await this.usersService.findByEmail(loginDto.email);
 
     if (!user) {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: { email: 'notFound' },
+        errors: { email: this.t('auth.EMAIL_NOT_FOUND') },
       });
     }
 
     if ((user.provider as AuthProvidersEnum) !== AuthProvidersEnum.EMAIL) {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: { email: `needLoginViaProvider:${user.provider}` },
+        errors: { email: this.t('auth.CANNOT_LOGIN_WITH_SOCIAL') },
       });
     }
 
     if (!user.password) {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: { password: 'incorrectPassword' },
+        errors: { password: this.t('auth.INCORRECT_PASSWORD') },
       });
     }
 
@@ -82,7 +95,7 @@ export class AuthService {
     if (!isValidPassword) {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: { password: 'incorrectPassword' },
+        errors: { password: this.t('auth.INCORRECT_PASSWORD') },
       });
     }
 
@@ -105,13 +118,19 @@ export class AuthService {
       hash,
     });
 
-    return { refreshToken, token, tokenExpires, user };
+    return {
+      refreshToken,
+      token,
+      tokenExpires,
+      user,
+      message: this.t('auth.LOGIN_SUCCESS'),
+    };
   }
 
   async validateSocialLogin(
     authProvider: string,
     socialData: SocialInterface,
-  ): Promise<LoginResponseDto & { refreshToken: string }> {
+  ): Promise<LoginResponseDto & { refreshToken: string; message: string }> {
     let user: NullableType<User> = null;
     const socialEmail = socialData.email?.toLowerCase();
     let userByEmail: NullableType<User> = null;
@@ -137,10 +156,21 @@ export class AuthService {
     } else if (socialData.id) {
       let photoDto: { id: string } | undefined;
       if (socialData.photoUrl) {
-        const file = await this.filesService.create({
-          path: socialData.photoUrl,
-        });
-        photoDto = { id: file.id };
+        try {
+          const res = await fetch(socialData.photoUrl);
+          if (res.ok) {
+            const buffer = Buffer.from(await res.arrayBuffer());
+            const contentType = res.headers.get('content-type') ?? 'image/jpeg';
+            const ext = contentType.split('/')[1]?.split('+')[0] ?? 'jpg';
+            const file = await this.fileUploadService.uploadFromBuffer(buffer, {
+              filename: `avatar.${ext}`,
+              mimetype: contentType,
+            });
+            photoDto = { id: file.id };
+          }
+        } catch {
+          // Non-critical — proceed without avatar
+        }
       }
 
       user = await this.usersService.create({
@@ -160,7 +190,7 @@ export class AuthService {
     if (!user) {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: { user: 'userNotFound' },
+        errors: { user: this.t('auth.USER_NOT_FOUND') },
       });
     }
 
@@ -187,10 +217,16 @@ export class AuthService {
       hash,
     });
 
-    return { refreshToken, token: jwtToken, tokenExpires, user };
+    return {
+      refreshToken,
+      token: jwtToken,
+      tokenExpires,
+      user,
+      message: this.t('auth.LOGIN_SUCCESS'),
+    };
   }
 
-  async register(dto: AuthRegisterLoginDto): Promise<void> {
+  async register(dto: AuthRegisterLoginDto): Promise<{ message: string }> {
     const user = await this.usersService.create({
       ...dto,
       email: dto.email,
@@ -211,9 +247,11 @@ export class AuthService {
     );
 
     await this.mailService.userSignUp({ to: dto.email, data: { hash } });
+
+    return { message: this.t('auth.REGISTER_SUCCESS') };
   }
 
-  async confirmEmail(hash: string): Promise<void> {
+  async confirmEmail(hash: string): Promise<{ message: string }> {
     let userId: User['id'];
 
     try {
@@ -228,7 +266,7 @@ export class AuthService {
     } catch {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: { hash: `invalidHash` },
+        errors: { hash: this.t('auth.INVALID_HASH') },
       });
     }
 
@@ -237,15 +275,17 @@ export class AuthService {
     if (!user || user?.status !== UserStatus.INACTIVE) {
       throw new NotFoundException({
         status: HttpStatus.NOT_FOUND,
-        error: `notFound`,
+        error: this.t('auth.USER_NOT_FOUND'),
       });
     }
 
     user.status = UserStatus.ACTIVE;
     await this.usersService.update(user.id, user);
+
+    return { message: this.t('auth.EMAIL_CONFIRM_SUCCESS') };
   }
 
-  async confirmNewEmail(hash: string): Promise<void> {
+  async confirmNewEmail(hash: string): Promise<{ message: string }> {
     let userId: User['id'];
     let newEmail: User['email'];
 
@@ -263,7 +303,7 @@ export class AuthService {
     } catch {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: { hash: `invalidHash` },
+        errors: { hash: this.t('auth.INVALID_HASH') },
       });
     }
 
@@ -272,23 +312,23 @@ export class AuthService {
     if (!user) {
       throw new NotFoundException({
         status: HttpStatus.NOT_FOUND,
-        error: `notFound`,
+        error: this.t('auth.USER_NOT_FOUND'),
       });
     }
 
     user.email = newEmail;
     user.status = UserStatus.ACTIVE;
     await this.usersService.update(user.id, user);
+
+    return { message: this.t('auth.NEW_EMAIL_CONFIRM_SUCCESS') };
   }
 
-  async forgotPassword(email: string): Promise<void> {
+  async forgotPassword(email: string): Promise<{ message: string }> {
     const user = await this.usersService.findByEmail(email);
 
     if (!user) {
-      throw new UnprocessableEntityException({
-        status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: { email: 'emailNotExists' },
-      });
+      // Security: same message regardless of whether email exists
+      return { message: this.t('auth.FORGOT_PASSWORD_SUCCESS') };
     }
 
     const tokenExpiresIn = this.configService.getOrThrow('auth.forgotExpires', {
@@ -310,9 +350,14 @@ export class AuthService {
       to: email,
       data: { hash, tokenExpires },
     });
+
+    return { message: this.t('auth.FORGOT_PASSWORD_SUCCESS') };
   }
 
-  async resetPassword(hash: string, password: string): Promise<void> {
+  async resetPassword(
+    hash: string,
+    password: string,
+  ): Promise<{ message: string }> {
     let userId: User['id'];
 
     try {
@@ -327,7 +372,7 @@ export class AuthService {
     } catch {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: { hash: `invalidHash` },
+        errors: { hash: this.t('auth.INVALID_HASH') },
       });
     }
 
@@ -336,13 +381,15 @@ export class AuthService {
     if (!user) {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: { hash: `notFound` },
+        errors: { hash: this.t('auth.USER_NOT_FOUND') },
       });
     }
 
     user.password = password;
     await this.sessionService.deleteByUserId({ userId: user.id });
     await this.usersService.update(user.id, user);
+
+    return { message: this.t('auth.RESET_PASSWORD_SUCCESS') };
   }
 
   async me(userJwtPayload: JwtPayloadType): Promise<NullableType<User>> {
@@ -358,7 +405,7 @@ export class AuthService {
     if (!currentUser) {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: { user: 'userNotFound' },
+        errors: { user: this.t('auth.USER_NOT_FOUND') },
       });
     }
 
@@ -366,14 +413,14 @@ export class AuthService {
       if (!userDto.oldPassword) {
         throw new UnprocessableEntityException({
           status: HttpStatus.UNPROCESSABLE_ENTITY,
-          errors: { oldPassword: 'missingOldPassword' },
+          errors: { oldPassword: this.t('auth.OLD_PASSWORD_INCORRECT') },
         });
       }
 
       if (!currentUser.password) {
         throw new UnprocessableEntityException({
           status: HttpStatus.UNPROCESSABLE_ENTITY,
-          errors: { oldPassword: 'incorrectOldPassword' },
+          errors: { oldPassword: this.t('auth.OLD_PASSWORD_INCORRECT') },
         });
       }
 
@@ -385,7 +432,7 @@ export class AuthService {
       if (!isValidOldPassword) {
         throw new UnprocessableEntityException({
           status: HttpStatus.UNPROCESSABLE_ENTITY,
-          errors: { oldPassword: 'incorrectOldPassword' },
+          errors: { oldPassword: this.t('auth.OLD_PASSWORD_INCORRECT') },
         });
       } else {
         await this.sessionService.deleteByUserIdWithExclude({
@@ -401,7 +448,7 @@ export class AuthService {
       if (userByEmail && userByEmail.id !== currentUser.id) {
         throw new UnprocessableEntityException({
           status: HttpStatus.UNPROCESSABLE_ENTITY,
-          errors: { email: 'emailExists' },
+          errors: { email: this.t('auth.EMAIL_ALREADY_EXISTS') },
         });
       }
 
@@ -468,12 +515,16 @@ export class AuthService {
     return { token, refreshToken, tokenExpires };
   }
 
-  async softDelete(userId: User['id']): Promise<void> {
+  async softDelete(userId: User['id']): Promise<{ message: string }> {
     await this.usersService.remove(userId);
+    return { message: this.t('auth.DELETE_SUCCESS') };
   }
 
-  async logout(data: Pick<JwtRefreshPayloadType, 'sessionId'>) {
-    return this.sessionService.deleteById(data.sessionId);
+  async logout(
+    data: Pick<JwtRefreshPayloadType, 'sessionId'>,
+  ): Promise<{ message: string }> {
+    await this.sessionService.deleteById(data.sessionId);
+    return { message: this.t('auth.LOGOUT_SUCCESS') };
   }
 
   private async getTokensData(data: {
