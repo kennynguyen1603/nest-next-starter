@@ -1,0 +1,9 @@
+{
+  "CREATE_SUCCESS": "User created successfully",
+  "UPDATE_SUCCESS": "User updated successfully",
+  "DELETE_SUCCESS": "User deleted successfully",
+  "NOT_FOUND": "User not found",
+  "EMAIL_EXISTS": "This email is already registered",
+  "INVALID_PHOTO": "Invalid photo reference",
+  "INVALID_ROLE": "Invalid role specified"
+}
