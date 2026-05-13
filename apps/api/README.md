@@ -12,7 +12,7 @@ Runs by default at **http://localhost:8080**.
 - **OAuth 2.0** — Google, Facebook, GitHub, Twitter/X (Passport strategies)
 - **JWT** — Short-lived access token (15 min) + long-lived refresh token (7 days) stored in an HttpOnly cookie
 - **Session management** — Each login creates an isolated session; logout invalidates the session; changing password revokes all other active sessions
-- **RBAC** — Role-based (USER, ADMIN) and permission-based access control; JWT payload embeds `roles` + `permissions`
+- **RBAC** — Role-based (USER, MANAGER, ADMIN) and permission-based access control; JWT payload embeds `roles` + `permissions`
 - **Guards & Decorators** — `@ApiAuth()`, `@ApiPublic()` to distinguish public vs protected endpoints
 
 ### 🗄️ Database — Dual Adapter
@@ -164,6 +164,8 @@ src/
 | Method | Path | Description |
 |--------|------|-------------|
 | `POST` | `/upload` | Upload a file |
+| `GET`  | `/:id/url` | Get file URL by ID |
+| `GET`  | `/:path` | Download file by path |
 
 ---
 

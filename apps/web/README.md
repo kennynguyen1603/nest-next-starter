@@ -19,7 +19,8 @@ Runs by default at **http://localhost:3000**.
 
 ### 🗄️ State Management
 - **Zustand** (`lib/auth-store.ts`) — Stores `accessToken`, `tokenExpires`, and `user` in memory
-- Tokens are **not stored in `localStorage`**; the refresh token is stored server-side in an **HttpOnly cookie**
+- The refresh token is stored server-side in an **HttpOnly cookie**
+- `localStorage` is used temporarily during the OAuth flow to pass the result from the callback page to the home page (`_oauth_result` key); it is cleared immediately after being read
 
 ### 🌐 API Client
 - `lib/api.ts` — Fetch wrapper with:
@@ -32,12 +33,14 @@ Runs by default at **http://localhost:3000**.
 
 | Route | Description |
 |-------|-------------|
-| `/` | Dashboard — displays account info, requires authentication |
-| `/login` | Sign-in page (email form + OAuth buttons) |
-| `/register` | Account registration page |
+| `/[locale]/` | Dashboard — displays account info, requires authentication |
+| `/[locale]/login` | Sign-in page (email form + OAuth buttons) |
+| `/[locale]/register` | Account registration page |
+| `/[locale]/forgot-password` | Request a password reset email |
+| `/[locale]/reset-password` | Reset password using the token from email |
 | `/auth/[provider]/callback` | OAuth callback handler (Google, Facebook, GitHub, Twitter) |
 
-> Route `/` automatically redirects to `/login` if the user is not authenticated.
+> Route `/[locale]/` automatically redirects to `/[locale]/login` if the user is not authenticated.
 
 ---
 
@@ -47,13 +50,23 @@ Runs by default at **http://localhost:3000**.
 apps/web/
 ├── app/
 │   ├── layout.tsx                  ← Root layout
-│   ├── page.tsx                    ← Dashboard (protected)
 │   ├── globals.css
 │   │
-│   ├── (auth)/                     ← Auth layout group (centered card)
+│   ├── [locale]/                   ← Locale-aware routes (e.g. /en/, /vi/)
 │   │   ├── layout.tsx
-│   │   ├── login/page.tsx          ← Sign-in page
-│   │   └── register/page.tsx       ← Registration page
+│   │   ├── page.tsx                ← Dashboard (protected)
+│   │   │
+│   │   ├── (auth)/                 ← Auth layout group (centered card)
+│   │   │   ├── layout.tsx
+│   │   │   ├── login/page.tsx          ← Sign-in page
+│   │   │   ├── register/page.tsx       ← Registration page
+│   │   │   ├── forgot-password/page.tsx ← Request password reset
+│   │   │   └── reset-password/page.tsx  ← Reset password with token
+│   │   │
+│   │   └── _components/
+│   │       ├── edit-profile-dialog.tsx    ← Edit name, photo, password
+│   │       ├── delete-account-dialog.tsx  ← Confirm account deletion
+│   │       └── language-switcher.tsx      ← Switch locale
 │   │
 │   ├── auth/
 │   │   └── [provider]/callback/
@@ -66,8 +79,15 @@ apps/web/
 ├── lib/
 │   ├── api.ts                      ← Fetch wrapper with auth & auto-refresh
 │   ├── auth-store.ts               ← Zustand store (accessToken, user)
-│   └── oauth.ts                    ← Build OAuth authorization URLs
+│   ├── oauth.ts                    ← Build OAuth authorization URLs
+│   └── navigation.ts               ← next-intl locale-aware router & Link
 │
+├── i18n/
+│   ├── routing.ts                  ← Configured locales
+│   └── request.ts                  ← Server-side locale resolution
+│
+├── messages/                       ← Translation files (en, vi, …)
+├── middleware.ts                   ← next-intl locale routing middleware
 ├── public/
 ├── next.config.js
 ├── tailwind.config.js
@@ -163,3 +183,4 @@ TWITTER_CLIENT_SECRET=         # Server-only
 | `react-hook-form` | Form handling |
 | `zod` | Schema validation |
 | `@hookform/resolvers` | Connects zod with react-hook-form |
+| `next-intl` | Internationalization and locale routing |
