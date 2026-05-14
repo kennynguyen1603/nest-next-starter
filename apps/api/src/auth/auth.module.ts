@@ -7,10 +7,10 @@ import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { AnonymousStrategy } from './strategies/anonymous.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
-import { MailModule } from '@/mail/mail.module';
 import { SessionModule } from '@/session/session.module';
 import { UsersModule } from '@/users/users.module';
 import { RolesModule } from '@/roles/roles.module';
+import { EmailQueueModule } from '@/worker/queues/email/email.module';
 
 @Module({
   imports: [
@@ -18,7 +18,7 @@ import { RolesModule } from '@/roles/roles.module';
     SessionModule,
     RolesModule,
     PassportModule,
-    MailModule,
+    EmailQueueModule,
     JwtModule.register({}),
   ],
   controllers: [AuthController],

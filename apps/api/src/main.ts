@@ -13,10 +13,16 @@ import { useContainer } from 'class-validator';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 
+import { Request, Response, NextFunction } from 'express';
+
 import { AppModule } from './app.module';
 import { ResolvePromisesInterceptor } from '@/utils/serializer.interceptor';
 import validationOptions from '@/utils/validation-options';
 import { AllConfigType } from './config/config.type';
+import { BULL_BOARD_PATH } from './config/bull/bull.config';
+import { basicAuthMiddleware } from './middlewares/basic-auth.middleware';
+
+export const SWAGGER_PATH = '/docs';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -68,6 +74,19 @@ async function bootstrap() {
     new ResolvePromisesInterceptor(),
     new ClassSerializerInterceptor(app.get(Reflector)),
   );
+
+  const pathsToIntercept = [
+    `/api${BULL_BOARD_PATH}`,
+    SWAGGER_PATH,
+    `/api/auth/reference`,
+  ];
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if (pathsToIntercept.some((path) => req.url.startsWith(path))) {
+      basicAuthMiddleware(req, res, next);
+    } else {
+      next();
+    }
+  });
 
   const options = new DocumentBuilder()
     .setTitle('API')

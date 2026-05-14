@@ -6,6 +6,10 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { HeaderResolver, I18nModule } from 'nestjs-i18n';
 import { DataSource, DataSourceOptions } from 'typeorm';
+import { BullModule } from '@nestjs/bullmq';
+import { BullBoardModule } from '@bull-board/nestjs';
+import { ExpressAdapter } from '@bull-board/express';
+import { WorkerModule } from './worker/queues/worker.module';
 
 import { AllConfigType } from './config/config.type';
 import databaseConfig from './config/database/database.config';
@@ -38,8 +42,7 @@ import { MailModule } from './mail/mail.module';
 import { MailerModule } from './mailer/mailer.module';
 import { HealthModule } from './health/health.module';
 import redisConfig from './config/redis/redis.config';
-import bullConfig from './config/bull/bull.config';
-import { BullModule } from '@nestjs/bullmq';
+import bullConfig, { BULL_BOARD_PATH } from './config/bull/bull.config';
 import useBullFactory from './config/bull/bull.factory';
 
 // <file-block>
@@ -125,6 +128,11 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
       inject: [ConfigService],
       useFactory: useBullFactory,
     }),
+    BullBoardModule.forRoot({
+      route: BULL_BOARD_PATH,
+      adapter: ExpressAdapter,
+    }),
+    WorkerModule,
     UsersModule,
     FilesModule,
     fileUploaderModule,

@@ -9,4 +9,8 @@ export type AuthConfig = {
   forgotExpires?: ms.StringValue;
   confirmEmailSecret?: string;
   confirmEmailExpires?: ms.StringValue;
+  basicAuth: {
+    username: string;
+    password: string;
+  };
 };

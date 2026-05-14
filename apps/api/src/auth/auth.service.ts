@@ -17,7 +17,7 @@ import { I18nContext, I18nService } from 'nestjs-i18n';
 import { AllConfigType } from '@/config/config.type';
 import { FILE_UPLOAD_SERVICE } from '@/files/infrastructure/uploader/uploader.interface';
 import type { IFileUploadService } from '@/files/infrastructure/uploader/uploader.interface';
-import { MailService } from '@/mail/mail.service';
+import { EmailQueueService } from '@/worker/queues/email/email.service';
 import { RoleEnum } from '@/roles/roles.enum';
 import { PermissionEnum } from '@/roles/permissions.enum';
 import { RolesService } from '@/roles/roles.service';
@@ -45,7 +45,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly usersService: UsersService,
     private readonly sessionService: SessionService,
-    private readonly mailService: MailService,
+    private readonly emailQueueService: EmailQueueService,
     private readonly configService: ConfigService<AllConfigType>,
     private readonly rolesService: RolesService,
     private readonly i18n: I18nService,
@@ -246,7 +246,10 @@ export class AuthService {
       },
     );
 
-    await this.mailService.userSignUp({ to: dto.email, data: { hash } });
+    await this.emailQueueService.addEmailVerificationJob({
+      email: dto.email,
+      hash,
+    });
 
     return { message: this.t('auth.REGISTER_SUCCESS') };
   }
@@ -346,9 +349,10 @@ export class AuthService {
       },
     );
 
-    await this.mailService.forgotPassword({
-      to: email,
-      data: { hash, tokenExpires },
+    await this.emailQueueService.addResetPasswordJob({
+      email,
+      hash,
+      tokenExpires,
     });
 
     return { message: this.t('auth.FORGOT_PASSWORD_SUCCESS') };
@@ -464,9 +468,9 @@ export class AuthService {
         },
       );
 
-      await this.mailService.confirmNewEmail({
-        to: userDto.email,
-        data: { hash },
+      await this.emailQueueService.addConfirmNewEmailJob({
+        email: userDto.email,
+        hash,
       });
     }
 
@@ -566,5 +570,20 @@ export class AuthService {
     ]);
 
     return { token, refreshToken, tokenExpires };
+  }
+
+  createBasicAuthHeaders() {
+    const username = this.configService.getOrThrow('auth.basicAuth.username', {
+      infer: true,
+    });
+    const password = this.configService.getOrThrow('auth.basicAuth.password', {
+      infer: true,
+    });
+    const base64Credential = Buffer.from(`${username}:${password}`).toString(
+      'base64',
+    );
+    return {
+      Authorization: `Basic ${base64Credential}`,
+    };
   }
 }

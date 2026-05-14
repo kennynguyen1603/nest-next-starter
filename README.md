@@ -27,7 +27,8 @@ nest-next-starter/                  ← Turborepo monorepo (pnpm workspaces)
 | Database | **MongoDB** (Mongoose) or **SQL** (TypeORM) — switched via `DATABASE_TYPE` |
 | Auth | JWT (Access + Refresh token), OAuth 2.0 (Google / Facebook / GitHub / Twitter) |
 | File Storage | Local / AWS S3 / S3 Presigned / Cloudinary — switched via `FILE_DRIVER` |
-| Mail | Nodemailer + Handlebars templates |
+| Queue | BullMQ + Redis — async job processing (email delivery) |
+| Mail | Nodemailer + Handlebars templates, dispatched via job queue |
 | i18n | nestjs-i18n (header-based language resolver) |
 | Linting | ESLint + Prettier + Husky pre-commit hooks |
 
@@ -38,6 +39,7 @@ nest-next-starter/                  ← Turborepo monorepo (pnpm workspaces)
 - **Node.js** ≥ 18
 - **pnpm** 9.x (`npm install -g pnpm@9`)
 - MongoDB or PostgreSQL/MySQL (depending on `DATABASE_TYPE`)
+- **Redis** ≥ 6 (required for BullMQ job queue)
 
 ---
 

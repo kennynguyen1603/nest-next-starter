@@ -36,9 +36,16 @@ Select the driver via `FILE_DRIVER`:
 | `s3-presigned` | AWS S3 with presigned URLs |
 | `cloudinary` | Cloudinary CDN |
 
+### ⚡ Async Job Queue (BullMQ)
+- **BullMQ** — Reliable job queue backed by Redis; all email sending is done asynchronously
+- **Email queue** — Three job types: `email-verification`, `confirm-new-email`, `reset-password`
+- **Rate limiter** — Max 1 email job per 150 ms to avoid mail server throttling
+- **Auto-cleanup** — Completed jobs kept for 1 000 entries; failed jobs kept for 5 000 entries
+- **Bull Board** — Queue monitoring dashboard at `/api/queues` (protected by Basic Auth)
+
 ### 📧 Mail
 - Nodemailer + Handlebars templates
-- Automated emails: registration confirmation, new email confirmation, forgot password
+- Emails dispatched via the BullMQ email queue (non-blocking): registration confirmation, new email confirmation, forgot password
 
 ### 🌍 Internationalization (i18n)
 - `nestjs-i18n` with header-based resolver (`x-custom-lang`)
@@ -53,6 +60,7 @@ Select the driver via `FILE_DRIVER`:
 - `cookie-parser` — HttpOnly cookie for the refresh token
 - CORS configured to the frontend domain
 - `class-validator` + `class-transformer` — Request input validation
+- **Basic Auth middleware** — Protects `/api/queues` (Bull Board) and `/docs` (Swagger) with username/password
 
 ### 🏥 Health Check
 - `/health` endpoint (`HealthModule`)
@@ -102,11 +110,19 @@ src/
 ├── graphql/                ← GraphQL setup
 ├── i18n/                   ← Translation files
 ├── social/                 ← Shared social profile interface
+├── middlewares/            ← Express middlewares (Basic Auth)
+│
+├── worker/                 ← BullMQ async job queues
+│   └── queues/
+│       ├── worker.module.ts
+│       └── email/          ← Email queue (processor, service, events, types)
 │
 ├── config/                 ← Typed config with @nestjs/config
 │   ├── app/, auth/, database/
 │   ├── auth-google/, auth-facebook/, auth-github/, auth-twitter/
 │   ├── files/, mail/
+│   ├── redis/              ← Redis connection config
+│   ├── bull/               ← BullMQ global config + factory
 │   └── config.type.ts      ← Aggregate type AllConfigType
 │
 ├── database/
@@ -214,6 +230,21 @@ AUTH_JWT_SECRET=change_me_jwt_secret
 AUTH_REFRESH_SECRET=change_me_refresh_secret
 ```
 
+### Redis (required for BullMQ)
+
+```env
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=                # optional
+```
+
+### Basic Auth (protects /queues and /docs)
+
+```env
+AUTH_BASIC_USERNAME=admin
+AUTH_BASIC_PASSWORD=change_me
+```
+
 ### Mail
 
 ```env
@@ -253,3 +284,11 @@ TWITTER_CLIENT_SECRET=
 ## Swagger
 
 Once running, visit: **http://localhost:8080/docs**
+
+---
+
+## Queue Dashboard (Bull Board)
+
+Visit **http://localhost:8080/api/queues** — protected by Basic Auth (`AUTH_BASIC_USERNAME` / `AUTH_BASIC_PASSWORD`).
+
+Displays active, completed, failed, delayed, and waiting jobs for every registered queue.

@@ -67,8 +67,6 @@ export function getConfig(): RedisConfig {
 }
 
 export default registerAs<RedisConfig>('redis', () => {
-  // eslint-disable-next-line no-console
-  console.info(`Registering RedisConfig from environment variables`);
   validateConfig(process.env, EnvironmentVariablesValidator);
   return getConfig();
 });
