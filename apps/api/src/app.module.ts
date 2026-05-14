@@ -37,6 +37,11 @@ import { SessionModule } from './session/session.module';
 import { MailModule } from './mail/mail.module';
 import { MailerModule } from './mailer/mailer.module';
 import { HealthModule } from './health/health.module';
+import redisConfig from './config/redis/redis.config';
+import bullConfig from './config/bull/bull.config';
+import awsConfig from './config/aws/aws.config';
+import { BullModule } from '@nestjs/bullmq';
+import useBullFactory from './config/bull/bull.factory';
 
 // <file-block>
 const fileUploaderModule = (() => {
@@ -86,6 +91,9 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
         facebookConfig,
         githubConfig,
         twitterConfig,
+        redisConfig,
+        bullConfig,
+        awsConfig,
       ],
       envFilePath: ['.env'],
     }),
@@ -114,6 +122,10 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
       ],
       imports: [ConfigModule],
       inject: [ConfigService],
+    }),
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: useBullFactory,
     }),
     UsersModule,
     FilesModule,
