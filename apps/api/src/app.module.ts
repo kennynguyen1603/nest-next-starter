@@ -39,7 +39,6 @@ import { MailerModule } from './mailer/mailer.module';
 import { HealthModule } from './health/health.module';
 import redisConfig from './config/redis/redis.config';
 import bullConfig from './config/bull/bull.config';
-import awsConfig from './config/aws/aws.config';
 import { BullModule } from '@nestjs/bullmq';
 import useBullFactory from './config/bull/bull.factory';
 
@@ -93,7 +92,6 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
         twitterConfig,
         redisConfig,
         bullConfig,
-        awsConfig,
       ],
       envFilePath: ['.env'],
     }),

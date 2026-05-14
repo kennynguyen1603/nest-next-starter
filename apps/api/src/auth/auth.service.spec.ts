@@ -80,7 +80,10 @@ describe('AuthService', () => {
         service.validateLogin({ email: 'x@x.com', password: 'pass' }),
       ).rejects.toThrow(UnprocessableEntityException);
 
-      expect(mockI18n.t).toHaveBeenCalledWith('auth.EMAIL_NOT_FOUND', expect.any(Object));
+      expect(mockI18n.t).toHaveBeenCalledWith(
+        'auth.EMAIL_NOT_FOUND',
+        expect.any(Object),
+      );
     });
 
     it('throws UnprocessableEntityException when provider is not email', async () => {
@@ -131,7 +134,10 @@ describe('AuthService', () => {
         password: hash,
         roles: [{ name: 'user' }],
       });
-      mockSessionService.create.mockResolvedValue({ id: 'session1', hash: 'h' });
+      mockSessionService.create.mockResolvedValue({
+        id: 'session1',
+        hash: 'h',
+      });
       mockJwtService.signAsync.mockResolvedValue('jwt-token');
 
       const result = await service.validateLogin({
@@ -142,7 +148,10 @@ describe('AuthService', () => {
       expect(result).toHaveProperty('token');
       expect(result).toHaveProperty('refreshToken');
       expect(result).toHaveProperty('message', 'mocked');
-      expect(mockI18n.t).toHaveBeenCalledWith('auth.LOGIN_SUCCESS', expect.any(Object));
+      expect(mockI18n.t).toHaveBeenCalledWith(
+        'auth.LOGIN_SUCCESS',
+        expect.any(Object),
+      );
     });
   });
 
@@ -160,7 +169,10 @@ describe('AuthService', () => {
       });
 
       expect(result).toEqual({ message: 'mocked' });
-      expect(mockI18n.t).toHaveBeenCalledWith('auth.REGISTER_SUCCESS', expect.any(Object));
+      expect(mockI18n.t).toHaveBeenCalledWith(
+        'auth.REGISTER_SUCCESS',
+        expect.any(Object),
+      );
     });
   });
 
@@ -175,7 +187,10 @@ describe('AuthService', () => {
     });
 
     it('sends reset email when user exists', async () => {
-      mockUsersService.findByEmail.mockResolvedValue({ id: '1', email: 'x@x.com' });
+      mockUsersService.findByEmail.mockResolvedValue({
+        id: '1',
+        email: 'x@x.com',
+      });
       mockJwtService.signAsync.mockResolvedValue('reset-token');
       mockMailService.forgotPassword.mockResolvedValue(undefined);
 
@@ -196,7 +211,10 @@ describe('AuthService', () => {
 
       expect(result).toEqual({ message: 'mocked' });
       expect(mockSessionService.deleteById).toHaveBeenCalledWith('session1');
-      expect(mockI18n.t).toHaveBeenCalledWith('auth.LOGOUT_SUCCESS', expect.any(Object));
+      expect(mockI18n.t).toHaveBeenCalledWith(
+        'auth.LOGOUT_SUCCESS',
+        expect.any(Object),
+      );
     });
   });
 
@@ -208,7 +226,10 @@ describe('AuthService', () => {
 
       expect(result).toEqual({ message: 'mocked' });
       expect(mockUsersService.remove).toHaveBeenCalledWith('user1');
-      expect(mockI18n.t).toHaveBeenCalledWith('auth.DELETE_SUCCESS', expect.any(Object));
+      expect(mockI18n.t).toHaveBeenCalledWith(
+        'auth.DELETE_SUCCESS',
+        expect.any(Object),
+      );
     });
   });
 });

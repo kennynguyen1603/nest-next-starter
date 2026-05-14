@@ -26,7 +26,7 @@ export class AuthGithubService {
         );
       }
 
-      const data: GithubInterface = await response.json();
+      const data: GithubInterface = (await response.json()) as GithubInterface;
 
       if (!data.id) {
         throw new HttpException(
@@ -51,7 +51,7 @@ export class AuthGithubService {
         throw error;
       }
 
-      if (error.name === 'TimeoutError') {
+      if (error instanceof Error && error.name === 'TimeoutError') {
         throw new HttpException(
           'GitHub API request timeout',
           HttpStatus.REQUEST_TIMEOUT,

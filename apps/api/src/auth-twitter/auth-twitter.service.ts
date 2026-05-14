@@ -28,7 +28,9 @@ export class AuthTwitterService {
         );
       }
 
-      const body: { data: TwitterInterface } = await response.json();
+      const body: { data: TwitterInterface } = (await response.json()) as {
+        data: TwitterInterface;
+      };
       const data = body.data;
 
       if (!data?.id) {
@@ -55,7 +57,7 @@ export class AuthTwitterService {
         throw error;
       }
 
-      if (error.name === 'TimeoutError') {
+      if (error instanceof Error && error.name === 'TimeoutError') {
         throw new HttpException(
           'Twitter API request timeout',
           HttpStatus.REQUEST_TIMEOUT,

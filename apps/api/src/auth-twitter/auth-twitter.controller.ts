@@ -23,7 +23,10 @@ export class AuthTwitterController {
     private readonly configService: ConfigService<AllConfigType>,
   ) {}
 
-  @ApiPublic({ type: LoginResponseDto, summary: 'Login with X (Twitter) OAuth' })
+  @ApiPublic({
+    type: LoginResponseDto,
+    summary: 'Login with X (Twitter) OAuth',
+  })
   @SerializeOptions({ groups: ['me'] })
   @Post('login')
   async login(
