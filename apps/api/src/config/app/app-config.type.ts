@@ -6,6 +6,12 @@ export type AppConfig = {
   backendDomain: string;
   port: number;
   apiPrefix: string;
+  appPrefix: string;
+  corsOrigin?: string;
   fallbackLanguage: string;
   headerLanguage: string;
+  appLogging: boolean;
+  debug: boolean;
+  logLevel: string;
+  logService: string;
 };

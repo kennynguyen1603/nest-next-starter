@@ -2,18 +2,19 @@ import 'dotenv/config';
 
 import {
   ClassSerializerInterceptor,
-  Logger,
   ValidationPipe,
   VersioningType,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory, Reflector } from '@nestjs/core';
+import { Logger } from 'nestjs-pino';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+
 import { useContainer } from 'class-validator';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
-
 import { Request, Response, NextFunction } from 'express';
+import { setupGracefulShutdown } from 'nestjs-graceful-shutdown';
 
 import { AppModule } from './app.module';
 import { ResolvePromisesInterceptor } from '@/utils/serializer.interceptor';
@@ -25,7 +26,9 @@ import { basicAuthMiddleware } from './middlewares/basic-auth.middleware';
 export const SWAGGER_PATH = '/docs';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const logger = app.get(Logger);
+  app.useLogger(logger);
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
   const configService = app.get(ConfigService<AllConfigType>);
 
@@ -108,8 +111,10 @@ async function bootstrap() {
 
   const port = configService.getOrThrow('app.port', { infer: true });
   await app.listen(port);
-  new Logger('Bootstrap').log(
+  setupGracefulShutdown({ app });
+  logger.log(
     `Application running on http://localhost:${port}/${configService.getOrThrow('app.apiPrefix', { infer: true })}`,
+    'Bootstrap',
   );
 }
 void bootstrap();

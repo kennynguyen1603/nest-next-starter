@@ -13,6 +13,8 @@ import { BullConfig } from '@/config/bull/bull-config.type';
 // import { SentryConfig } from '@/config/sentry/sentry-config.type';
 // import { ThrottlerConfig } from '@/config/throttler/throttler-config.type';
 
+export type GlobalConfig = AllConfigType;
+
 export type AllConfigType = {
   app: AppConfig;
   database: DatabaseConfig;

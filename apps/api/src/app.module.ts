@@ -2,6 +2,8 @@ import path from 'path';
 
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_FILTER } from '@nestjs/core';
+import { LoggerModule } from 'nestjs-pino';
 import { MongooseModule } from '@nestjs/mongoose';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { HeaderResolver, I18nModule } from 'nestjs-i18n';
@@ -9,6 +11,7 @@ import { DataSource, DataSourceOptions } from 'typeorm';
 import { BullModule } from '@nestjs/bullmq';
 import { BullBoardModule } from '@bull-board/nestjs';
 import { ExpressAdapter } from '@bull-board/express';
+import { GracefulShutdownModule } from 'nestjs-graceful-shutdown';
 import { WorkerModule } from './worker/queues/worker.module';
 
 import { AllConfigType } from './config/config.type';
@@ -44,6 +47,8 @@ import { HealthModule } from './health/health.module';
 import redisConfig from './config/redis/redis.config';
 import bullConfig, { BULL_BOARD_PATH } from './config/bull/bull.config';
 import useBullFactory from './config/bull/bull.factory';
+import useLoggerFactory from './tools/logger/logger-factory';
+import { GlobalExceptionFilter } from './filters/global-exception.filter';
 
 // <file-block>
 const fileUploaderModule = (() => {
@@ -124,6 +129,10 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
       imports: [ConfigModule],
       inject: [ConfigService],
     }),
+    LoggerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: useLoggerFactory,
+    }),
     BullModule.forRootAsync({
       inject: [ConfigService],
       useFactory: useBullFactory,
@@ -132,6 +141,7 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
       route: BULL_BOARD_PATH,
       adapter: ExpressAdapter,
     }),
+    GracefulShutdownModule.forRoot(),
     WorkerModule,
     UsersModule,
     FilesModule,
@@ -146,5 +156,6 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
     AuthGithubModule,
     AuthTwitterModule,
   ],
+  providers: [{ provide: APP_FILTER, useClass: GlobalExceptionFilter }],
 })
 export class AppModule {}

@@ -2,6 +2,7 @@ import { registerAs } from '@nestjs/config';
 import { AppConfig } from './app-config.type';
 import validateConfig from '@/utils/validate-config';
 import {
+  IsBoolean,
   IsEnum,
   IsInt,
   IsOptional,
@@ -10,6 +11,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
+import { LogService } from '@/constants/app.constant';
 
 enum Environment {
   Development = 'development',
@@ -47,11 +49,26 @@ class EnvironmentVariablesValidator {
   @IsString()
   @IsOptional()
   APP_HEADER_LANGUAGE?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  APP_DEBUG?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  APP_LOGGING?: boolean;
+
+  @IsString()
+  @IsOptional()
+  APP_LOG_LEVEL?: string;
+
+  @IsString()
+  @IsEnum(LogService)
+  @IsOptional()
+  APP_LOG_SERVICE?: string;
 }
 
-export default registerAs<AppConfig>('app', () => {
-  validateConfig(process.env, EnvironmentVariablesValidator);
-
+export function getConfig(): AppConfig {
   return {
     nodeEnv: process.env.NODE_ENV || 'development',
     name: process.env.APP_NAME || 'app',
@@ -64,7 +81,18 @@ export default registerAs<AppConfig>('app', () => {
         ? parseInt(process.env.PORT, 10)
         : 3000,
     apiPrefix: process.env.API_PREFIX || 'api',
+    appPrefix: process.env.APP_PREFIX || process.env.APP_NAME || 'app',
+    corsOrigin: process.env.FRONTEND_DOMAIN,
     fallbackLanguage: process.env.APP_FALLBACK_LANGUAGE || 'en',
     headerLanguage: process.env.APP_HEADER_LANGUAGE || 'x-custom-lang',
+    debug: process.env.APP_DEBUG === 'true',
+    appLogging: process.env.APP_LOGGING === 'true',
+    logLevel: process.env.APP_LOG_LEVEL || 'warn',
+    logService: process.env.APP_LOG_SERVICE || LogService.Console,
   };
+}
+
+export default registerAs<AppConfig>('app', () => {
+  validateConfig(process.env, EnvironmentVariablesValidator);
+  return getConfig();
 });
