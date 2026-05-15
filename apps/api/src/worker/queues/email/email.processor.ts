@@ -3,8 +3,8 @@ import {
   Queue as QueueName,
 } from '@/constants/job.constant';
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
-import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { EmailQueueService } from './email.service';
 import { EmailJobUnion } from './email.type';
 
@@ -18,14 +18,19 @@ const { Email: EmailJob } = JobConstants;
   limiter: { max: 1, duration: 150 },
 })
 export class EmailProcessor extends WorkerHost {
-  private readonly logger = new Logger(EmailProcessor.name);
-
-  constructor(private readonly emailQueueService: EmailQueueService) {
+  constructor(
+    private readonly emailQueueService: EmailQueueService,
+    @InjectPinoLogger(EmailProcessor.name)
+    private readonly logger: PinoLogger,
+  ) {
     super();
   }
 
   async process(job: EmailJobUnion, _token?: string): Promise<void> {
-    this.logger.debug(`Processing job ${job.id} of type ${job.name}`);
+    this.logger.debug(
+      { jobId: job.id, type: job.name },
+      'Processing email job',
+    );
 
     switch (job.name) {
       case EmailJob.EmailVerification:
@@ -43,34 +48,52 @@ export class EmailProcessor extends WorkerHost {
 
   @OnWorkerEvent('active')
   onActive(job: Job) {
-    this.logger.debug(`Job ${job.id} is now active`);
+    this.logger.debug(
+      { jobId: job.id, type: job.name, attempt: job.attemptsMade },
+      'Email job active',
+    );
   }
 
   @OnWorkerEvent('progress')
   onProgress(job: Job) {
     this.logger.debug(
-      `Job ${job.id} is ${JSON.stringify(job.progress)}% complete`,
+      { jobId: job.id, type: job.name, progress: job.progress },
+      'Email job progress',
     );
   }
 
   @OnWorkerEvent('completed')
   onCompleted(job: Job) {
-    this.logger.debug(`Job ${job.id} has been completed`);
+    this.logger.info(
+      { jobId: job.id, type: job.name, attempt: job.attemptsMade },
+      'Email job completed',
+    );
   }
 
   @OnWorkerEvent('failed')
   onFailed(job: Job) {
-    this.logger.error(`Job ${job.id} failed: ${job.failedReason}`);
-    this.logger.error(job.stacktrace);
+    this.logger.error(
+      {
+        jobId: job.id,
+        type: job.name,
+        attempt: job.attemptsMade,
+        reason: job.failedReason,
+        stacktrace: job.stacktrace,
+      },
+      'Email job failed',
+    );
   }
 
   @OnWorkerEvent('stalled')
   onStalled(job: Job) {
-    this.logger.error(`Job ${job.id} has been stalled`);
+    this.logger.error(
+      { jobId: job.id, type: job.name, attempt: job.attemptsMade },
+      'Email job stalled',
+    );
   }
 
   @OnWorkerEvent('error')
   onError(job: Job, error: Error) {
-    this.logger.error(`Job ${job.id} error: ${error.message}`);
+    this.logger.error({ jobId: job.id, err: error }, 'Email worker error');
   }
 }

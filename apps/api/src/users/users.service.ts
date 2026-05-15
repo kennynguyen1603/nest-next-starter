@@ -4,6 +4,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { I18nContext, I18nService } from 'nestjs-i18n';
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { CreateUserDto } from './dto/create-user.dto';
 import { NullableType } from '../utils/types/nullable.type';
 import { FilterUserDto, SortUserDto, QueryUserDto } from './dto/query-user.dto';
@@ -26,6 +27,8 @@ export class UsersService {
     private readonly usersRepository: UserRepository,
     private readonly filesService: FilesService,
     private readonly i18n: I18nService,
+    @InjectPinoLogger(UsersService.name)
+    private readonly logger: PinoLogger,
   ) {}
 
   private t(key: string): string {
@@ -79,7 +82,7 @@ export class UsersService {
       roles = this.resolveRoles(createUserDto.roles);
     }
 
-    return this.usersRepository.create({
+    const user = await this.usersRepository.create({
       // Do not remove comment below.
       // <creating-property-payload />
       firstName: createUserDto.firstName,
@@ -92,6 +95,11 @@ export class UsersService {
       provider: createUserDto.provider ?? AuthProvidersEnum.EMAIL,
       socialId: createUserDto.socialId,
     });
+    this.logger.debug(
+      { userId: user.id, provider: user.provider, status: user.status },
+      'User created',
+    );
+    return user;
   }
 
   async findManyWithPagination({
@@ -197,7 +205,7 @@ export class UsersService {
       roles = this.resolveRoles(updateUserDto.roles);
     }
 
-    return this.usersRepository.update(id, {
+    const updated = await this.usersRepository.update(id, {
       // Do not remove comment below.
       // <updating-property-payload />
       firstName: updateUserDto.firstName,
@@ -210,10 +218,13 @@ export class UsersService {
       provider: updateUserDto.provider,
       socialId: updateUserDto.socialId,
     });
+    this.logger.debug({ userId: id }, 'User updated');
+    return updated;
   }
 
   async remove(id: User['id']): Promise<void> {
     await this.usersRepository.remove(id);
+    this.logger.debug({ userId: id }, 'User removed');
   }
 
   private resolveRoles(roleDtos: RoleDto[]): Role[] {

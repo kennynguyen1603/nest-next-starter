@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomStringGenerator } from '@nestjs/common/utils/random-string-generator.util';
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 
 import { AllConfigType } from '@/config/config.type';
 import { FileType } from '@/files/domain/file';
@@ -18,6 +19,8 @@ export class FilesLocalService implements IFileUploadService {
   constructor(
     private readonly configService: ConfigService<AllConfigType>,
     private readonly fileRepository: FileRepository,
+    @InjectPinoLogger(FilesLocalService.name)
+    private readonly logger: PinoLogger,
   ) {}
 
   async create(file: { path: string }): Promise<{ file: FileType }> {
@@ -49,13 +52,23 @@ export class FilesLocalService implements IFileUploadService {
       'jpg';
     const filename = `${randomStringGenerator()}.${ext}`;
 
+    this.logger.debug(
+      { filename, mimetype: options.mimetype, size: buffer.length },
+      'Writing file to local storage',
+    );
+
     await fs.promises.mkdir('./files', { recursive: true });
     await fs.promises.writeFile(`./files/${filename}`, buffer);
 
     const apiPrefix = this.configService.get('app.apiPrefix', { infer: true });
-    return this.fileRepository.create({
+    const file = await this.fileRepository.create({
       path: `/${apiPrefix}/v1/files/${filename}`,
     });
+    this.logger.info(
+      { fileId: file.id, filename },
+      'File saved to local storage',
+    );
+    return file;
   }
 
   async getFileUrl(id: FileType['id']): Promise<{ url: string }> {

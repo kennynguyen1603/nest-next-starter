@@ -1,5 +1,6 @@
-import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { SocialInterface } from '../social/interfaces/social.interface';
 import {
   FacebookDebugTokenResponse,
@@ -12,12 +13,14 @@ import { AllConfigType } from '../config/config.type';
 
 @Injectable()
 export class AuthFacebookService {
-  private readonly logger = new Logger(AuthFacebookService.name);
-  // Base Facebook Graph API URL and API version
   private readonly baseUrl = 'https://graph.facebook.com';
   private readonly apiVersion = 'v23.0';
 
-  constructor(private readonly configService: ConfigService<AllConfigType>) {}
+  constructor(
+    private readonly configService: ConfigService<AllConfigType>,
+    @InjectPinoLogger(AuthFacebookService.name)
+    private readonly logger: PinoLogger,
+  ) {}
 
   /**
    * Retrieves a Facebook user profile using the provided access token.
@@ -28,6 +31,7 @@ export class AuthFacebookService {
   async getProfileByToken(
     loginDto: AuthFacebookLoginDto,
   ): Promise<SocialInterface> {
+    this.logger.debug('Fetching Facebook user profile');
     try {
       // Step 1: Verify that the token is valid and belongs to our app
       await this.verifyAccessToken(loginDto.accessToken);
@@ -53,6 +57,10 @@ export class AuthFacebookService {
         const errorData = (await response
           .json()
           .catch(() => ({}))) as FacebookErrorResponse;
+        this.logger.warn(
+          { statusCode: response.status },
+          'Facebook profile API returned non-OK status',
+        );
         throw new HttpException(
           errorData.error?.message || 'Facebook API error',
           response.status,
@@ -63,11 +71,14 @@ export class AuthFacebookService {
 
       // Ensure required fields are present in the response
       if (!data.id) {
+        this.logger.warn('Facebook profile response missing id field');
         throw new HttpException(
           'Invalid Facebook profile data',
           HttpStatus.BAD_REQUEST,
         );
       }
+
+      this.logger.debug({ facebookId: data.id }, 'Facebook profile retrieved');
 
       // Map Facebook data to our internal social user interface
       return {
@@ -78,18 +89,23 @@ export class AuthFacebookService {
         provider: 'facebook',
         photoUrl: data.picture?.data?.url,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof HttpException) {
         throw error;
       }
 
       if (error instanceof Error && error.name === 'TimeoutError') {
+        this.logger.warn('Facebook API request timed out');
         throw new HttpException(
           'Facebook API request timeout',
           HttpStatus.REQUEST_TIMEOUT,
         );
       }
 
+      this.logger.error(
+        { err: error },
+        'Unexpected error fetching Facebook profile',
+      );
       throw new HttpException(
         'Failed to get Facebook profile',
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -156,7 +172,7 @@ export class AuthFacebookService {
           HttpStatus.UNAUTHORIZED,
         );
       }
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof HttpException) {
         throw error;
       }
@@ -209,8 +225,8 @@ export class AuthFacebookService {
 
       const data = (await response.json()) as FacebookTokenExchangeResponse;
       return data.access_token;
-    } catch (error) {
-      this.logger.error('Facebook token exchange failed:', error);
+    } catch (error: unknown) {
+      this.logger.error({ err: error }, 'Facebook token exchange failed');
       throw new HttpException(
         'Failed to exchange token',
         HttpStatus.BAD_REQUEST,

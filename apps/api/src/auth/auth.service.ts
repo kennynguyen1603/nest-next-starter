@@ -18,6 +18,7 @@ import { AllConfigType } from '@/config/config.type';
 import { FILE_UPLOAD_SERVICE } from '@/files/infrastructure/uploader/uploader.interface';
 import type { IFileUploadService } from '@/files/infrastructure/uploader/uploader.interface';
 import { EmailQueueService } from '@/worker/queues/email/email.service';
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { RoleEnum } from '@/roles/roles.enum';
 import { PermissionEnum } from '@/roles/permissions.enum';
 import { RolesService } from '@/roles/roles.service';
@@ -51,6 +52,8 @@ export class AuthService {
     private readonly i18n: I18nService,
     @Inject(FILE_UPLOAD_SERVICE)
     private readonly fileUploadService: IFileUploadService,
+    @InjectPinoLogger(AuthService.name)
+    private readonly logger: PinoLogger,
   ) {}
 
   private lang(): string {
@@ -67,6 +70,10 @@ export class AuthService {
     const user = await this.usersService.findByEmail(loginDto.email);
 
     if (!user) {
+      this.logger.warn(
+        { email: loginDto.email },
+        'Login failed: email not found',
+      );
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
         errors: { email: this.t('auth.EMAIL_NOT_FOUND') },
@@ -74,6 +81,10 @@ export class AuthService {
     }
 
     if ((user.provider as AuthProvidersEnum) !== AuthProvidersEnum.EMAIL) {
+      this.logger.warn(
+        { userId: user.id, provider: user.provider },
+        'Login failed: social account attempted email login',
+      );
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
         errors: { email: this.t('auth.CANNOT_LOGIN_WITH_SOCIAL') },
@@ -81,6 +92,7 @@ export class AuthService {
     }
 
     if (!user.password) {
+      this.logger.warn({ userId: user.id }, 'Login failed: no password set');
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
         errors: { password: this.t('auth.INCORRECT_PASSWORD') },
@@ -93,6 +105,7 @@ export class AuthService {
     );
 
     if (!isValidPassword) {
+      this.logger.warn({ userId: user.id }, 'Login failed: incorrect password');
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
         errors: { password: this.t('auth.INCORRECT_PASSWORD') },
@@ -117,6 +130,11 @@ export class AuthService {
       sessionId: session.id,
       hash,
     });
+
+    this.logger.info(
+      { userId: user.id, sessionId: session.id, roles: roleNames },
+      'User logged in',
+    );
 
     return {
       refreshToken,
@@ -169,7 +187,10 @@ export class AuthService {
             photoDto = { id: file.id };
           }
         } catch {
-          // Non-critical — proceed without avatar
+          this.logger.warn(
+            { provider: authProvider, socialId: socialData.id },
+            'Failed to download social avatar — proceeding without photo',
+          );
         }
       }
 
@@ -184,10 +205,19 @@ export class AuthService {
         status: UserStatus.ACTIVE,
       });
 
+      this.logger.info(
+        { userId: user.id, provider: authProvider },
+        'New social user created',
+      );
+
       user = await this.usersService.findById(user.id);
     }
 
     if (!user) {
+      this.logger.warn(
+        { provider: authProvider, socialId: socialData.id },
+        'Social login failed: user not found after lookup',
+      );
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
         errors: { user: this.t('auth.USER_NOT_FOUND') },
@@ -216,6 +246,16 @@ export class AuthService {
       sessionId: session.id,
       hash,
     });
+
+    this.logger.info(
+      {
+        userId: user.id,
+        sessionId: session.id,
+        provider: authProvider,
+        roles: roleNames,
+      },
+      'Social login successful',
+    );
 
     return {
       refreshToken,
@@ -251,6 +291,11 @@ export class AuthService {
       hash,
     });
 
+    this.logger.info(
+      { userId: user.id },
+      'User registered — verification email queued',
+    );
+
     return { message: this.t('auth.REGISTER_SUCCESS') };
   }
 
@@ -267,6 +312,7 @@ export class AuthService {
       });
       userId = jwtData.confirmEmailUserId;
     } catch {
+      this.logger.warn('Email confirmation failed: invalid or expired hash');
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
         errors: { hash: this.t('auth.INVALID_HASH') },
@@ -276,6 +322,10 @@ export class AuthService {
     const user = await this.usersService.findById(userId);
 
     if (!user || user?.status !== UserStatus.INACTIVE) {
+      this.logger.warn(
+        { userId },
+        'Email confirmation failed: user not found or already active',
+      );
       throw new NotFoundException({
         status: HttpStatus.NOT_FOUND,
         error: this.t('auth.USER_NOT_FOUND'),
@@ -285,6 +335,10 @@ export class AuthService {
     user.status = UserStatus.ACTIVE;
     await this.usersService.update(user.id, user);
 
+    this.logger.info(
+      { userId: user.id },
+      'Email confirmed — account activated',
+    );
     return { message: this.t('auth.EMAIL_CONFIRM_SUCCESS') };
   }
 
@@ -330,6 +384,10 @@ export class AuthService {
     const user = await this.usersService.findByEmail(email);
 
     if (!user) {
+      this.logger.debug(
+        { email },
+        'Forgot password: email not found (silently ignored)',
+      );
       // Security: same message regardless of whether email exists
       return { message: this.t('auth.FORGOT_PASSWORD_SUCCESS') };
     }
@@ -355,6 +413,7 @@ export class AuthService {
       tokenExpires,
     });
 
+    this.logger.info({ userId: user.id }, 'Password reset email queued');
     return { message: this.t('auth.FORGOT_PASSWORD_SUCCESS') };
   }
 
@@ -393,6 +452,10 @@ export class AuthService {
     await this.sessionService.deleteByUserId({ userId: user.id });
     await this.usersService.update(user.id, user);
 
+    this.logger.info(
+      { userId: user.id },
+      'Password reset — all sessions invalidated',
+    );
     return { message: this.t('auth.RESET_PASSWORD_SUCCESS') };
   }
 
@@ -495,12 +558,20 @@ export class AuthService {
     );
 
     if (!session) {
+      this.logger.warn(
+        { sessionId: data.sessionId },
+        'Token refresh failed: session not found or hash mismatch',
+      );
       throw new UnauthorizedException();
     }
 
     const user = await this.usersService.findById(session.user.id);
 
     if (!user?.roles?.length) {
+      this.logger.warn(
+        { sessionId: data.sessionId, userId: session.user.id },
+        'Token refresh failed: user not found or has no roles',
+      );
       throw new UnauthorizedException();
     }
 
@@ -516,11 +587,16 @@ export class AuthService {
       hash,
     });
 
+    this.logger.debug(
+      { userId: session.user.id, sessionId: session.id },
+      'Token refreshed',
+    );
     return { token, refreshToken, tokenExpires };
   }
 
   async softDelete(userId: User['id']): Promise<{ message: string }> {
     await this.usersService.remove(userId);
+    this.logger.info({ userId }, 'User account soft-deleted');
     return { message: this.t('auth.DELETE_SUCCESS') };
   }
 
@@ -528,6 +604,7 @@ export class AuthService {
     data: Pick<JwtRefreshPayloadType, 'sessionId'>,
   ): Promise<{ message: string }> {
     await this.sessionService.deleteById(data.sessionId);
+    this.logger.info({ sessionId: data.sessionId }, 'User logged out');
     return { message: this.t('auth.LOGOUT_SUCCESS') };
   }
 

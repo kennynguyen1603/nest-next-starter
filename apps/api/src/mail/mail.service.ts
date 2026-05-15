@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { I18nContext } from 'nestjs-i18n';
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { MailData } from './interfaces/mail-data.interface';
 
 import { MailerService } from '../mailer/mailer.service';
@@ -12,6 +13,8 @@ export class MailService {
   constructor(
     private readonly mailerService: MailerService,
     private readonly configService: ConfigService<AllConfigType>,
+    @InjectPinoLogger(MailService.name)
+    private readonly logger: PinoLogger,
   ) {}
 
   async userSignUp(mailData: MailData<{ hash: string }>): Promise<void> {
@@ -30,6 +33,11 @@ export class MailService {
       }) + '/confirm-email',
     );
     url.searchParams.set('hash', mailData.data.hash);
+
+    this.logger.debug(
+      { to: mailData.to },
+      'Dispatching sign-up verification email',
+    );
 
     await this.mailerService.sendMail({
       to: mailData.to,
@@ -80,6 +88,8 @@ export class MailService {
     url.searchParams.set('hash', mailData.data.hash);
     url.searchParams.set('expires', mailData.data.tokenExpires.toString());
 
+    this.logger.debug({ to: mailData.to }, 'Dispatching forgot-password email');
+
     await this.mailerService.sendMail({
       to: mailData.to,
       subject: resetPasswordTitle,
@@ -124,6 +134,11 @@ export class MailService {
       }) + '/confirm-new-email',
     );
     url.searchParams.set('hash', mailData.data.hash);
+
+    this.logger.debug(
+      { to: mailData.to },
+      'Dispatching confirm-new-email email',
+    );
 
     await this.mailerService.sendMail({
       to: mailData.to,

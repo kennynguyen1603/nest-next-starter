@@ -20,6 +20,7 @@ import { SWAGGER_PATH } from '@/main';
 import { Redis } from 'ioredis';
 import databaseConfig from '@/config/database/database.config';
 import { DatabaseConfig } from '@/config/database/database-config.type';
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 
 const isDocumentDatabase = (databaseConfig() as DatabaseConfig)
   .isDocumentDatabase;
@@ -37,6 +38,8 @@ export class HealthController {
     private readonly healthIndicatorService: HealthIndicatorService,
     private readonly db: TypeOrmHealthIndicator,
     private readonly mongoDb: MongooseHealthIndicator,
+    @InjectPinoLogger(HealthController.name)
+    private readonly logger: PinoLogger,
   ) {}
 
   @Public()
@@ -79,7 +82,8 @@ export class HealthController {
       await redis.connect();
       await redis.ping();
       return indicator.up();
-    } catch (e) {
+    } catch (e: unknown) {
+      this.logger.error({ err: e }, 'Redis health check failed');
       return indicator.down({ error: String(e) });
     } finally {
       redis.disconnect();
@@ -95,10 +99,15 @@ export class HealthController {
         headers: this.authService.createBasicAuthHeaders(),
       });
       if (!response.ok) {
+        this.logger.warn(
+          { statusCode: response.status },
+          'Swagger docs health check failed',
+        );
         return indicator.down({ statusCode: response.status });
       }
       return indicator.up();
-    } catch (e) {
+    } catch (e: unknown) {
+      this.logger.error({ err: e }, 'Swagger docs health check threw error');
       return indicator.down({ error: String(e) });
     }
   }

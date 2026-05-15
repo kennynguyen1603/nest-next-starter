@@ -5,12 +5,13 @@ import { ConfigService } from '@nestjs/config';
 import { I18nService } from 'nestjs-i18n';
 import bcrypt from 'bcryptjs';
 
+import { getLoggerToken } from 'nestjs-pino';
 import { AuthService } from './auth.service';
 import { UsersService } from '@/users/users.service';
 import { SessionService } from '@/session/session.service';
-import { MailService } from '@/mail/mail.service';
 import { RolesService } from '@/roles/roles.service';
-import { FilesService } from '@/files/files.service';
+import { FILE_UPLOAD_SERVICE } from '@/files/infrastructure/uploader/uploader.interface';
+import { EmailQueueService } from '@/worker/queues/email/email.service';
 import { AuthProvidersEnum } from './auth-providers.enum';
 
 const mockI18n = { t: jest.fn().mockReturnValue('mocked') };
@@ -29,10 +30,14 @@ const mockSessionService = {
   deleteByUserIdWithExclude: jest.fn(),
   updateByHash: jest.fn(),
 };
-const mockMailService = {
-  userSignUp: jest.fn(),
-  forgotPassword: jest.fn(),
-  confirmNewEmail: jest.fn(),
+const mockEmailQueueService = {
+  addEmailVerificationJob: jest.fn(),
+  addConfirmNewEmailJob: jest.fn(),
+  addResetPasswordJob: jest.fn(),
+};
+const mockFileUploadService = {
+  uploadFromBuffer: jest.fn(),
+  getFileUrl: jest.fn(),
 };
 const mockJwtService = {
   signAsync: jest.fn().mockResolvedValue('token'),
@@ -44,9 +49,11 @@ const mockConfigService = {
 const mockRolesService = {
   getPermissionsForRoles: jest.fn().mockResolvedValue([]),
 };
-const mockFilesService = {
-  create: jest.fn(),
-  findById: jest.fn(),
+const mockLogger = {
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  debug: jest.fn(),
 };
 
 describe('AuthService', () => {
@@ -61,11 +68,12 @@ describe('AuthService', () => {
         { provide: I18nService, useValue: mockI18n },
         { provide: UsersService, useValue: mockUsersService },
         { provide: SessionService, useValue: mockSessionService },
-        { provide: MailService, useValue: mockMailService },
+        { provide: EmailQueueService, useValue: mockEmailQueueService },
         { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: RolesService, useValue: mockRolesService },
-        { provide: FilesService, useValue: mockFilesService },
+        { provide: FILE_UPLOAD_SERVICE, useValue: mockFileUploadService },
+        { provide: getLoggerToken(AuthService.name), useValue: mockLogger },
       ],
     }).compile();
 
@@ -159,7 +167,9 @@ describe('AuthService', () => {
     it('returns translated message on success', async () => {
       mockUsersService.create.mockResolvedValue({ id: '1', email: 'x@x.com' });
       mockJwtService.signAsync.mockResolvedValue('confirm-token');
-      mockMailService.userSignUp.mockResolvedValue(undefined);
+      mockEmailQueueService.addEmailVerificationJob.mockResolvedValue(
+        undefined,
+      );
 
       const result = await service.register({
         email: 'x@x.com',
@@ -183,7 +193,7 @@ describe('AuthService', () => {
       const result = await service.forgotPassword('notfound@x.com');
 
       expect(result).toEqual({ message: 'mocked' });
-      expect(mockMailService.forgotPassword).not.toHaveBeenCalled();
+      expect(mockEmailQueueService.addResetPasswordJob).not.toHaveBeenCalled();
     });
 
     it('sends reset email when user exists', async () => {
@@ -192,13 +202,13 @@ describe('AuthService', () => {
         email: 'x@x.com',
       });
       mockJwtService.signAsync.mockResolvedValue('reset-token');
-      mockMailService.forgotPassword.mockResolvedValue(undefined);
+      mockEmailQueueService.addResetPasswordJob.mockResolvedValue(undefined);
 
       const result = await service.forgotPassword('x@x.com');
 
       expect(result).toEqual({ message: 'mocked' });
-      expect(mockMailService.forgotPassword).toHaveBeenCalledWith(
-        expect.objectContaining({ to: 'x@x.com' }),
+      expect(mockEmailQueueService.addResetPasswordJob).toHaveBeenCalledWith(
+        expect.objectContaining({ email: 'x@x.com' }),
       );
     });
   });
