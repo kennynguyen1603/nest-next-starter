@@ -10,8 +10,8 @@ import { TwitterConfig } from '@/config/auth-twitter/twitter-config.type';
 import { GithubConfig } from '@/config/auth-github/github-config.type';
 import { BullConfig } from '@/config/bull/bull-config.type';
 // import { GrafanaConfig } from '@/config/grafana/grafana.type';
+import { ThrottlerConfig } from '@/config/throttler/throttler-config.type';
 // import { SentryConfig } from '@/config/sentry/sentry-config.type';
-// import { ThrottlerConfig } from '@/config/throttler/throttler-config.type';
 
 export type GlobalConfig = AllConfigType;
 
@@ -27,7 +27,7 @@ export type AllConfigType = {
   github: GithubConfig;
   twitter: TwitterConfig;
   queue: BullConfig;
-  //   sentry: SentryConfig;
-  //   throttler: ThrottlerConfig;
   //   grafana: GrafanaConfig;
+  throttler: ThrottlerConfig;
+  //   sentry: SentryConfig;
 };

@@ -61,6 +61,7 @@ Select the driver via `FILE_DRIVER`:
 - CORS configured to the frontend domain
 - `class-validator` + `class-transformer` — Request input validation
 - **Basic Auth middleware** — Protects `/api/queues` (Bull Board) and `/docs` (Swagger) with username/password
+- **Rate Limiting** — `@nestjs/throttler` applied globally as `APP_GUARD`; tracks requests per real IP extracted from `x-forwarded-for` / `x-real-ip` headers; Redis-backed storage (shared with BullMQ); configurable limit, TTL, and on/off toggle via env vars
 
 ### 🏥 Health Check
 - `/health` endpoint (`HealthModule`)
@@ -123,6 +124,7 @@ src/
 │   ├── files/, mail/
 │   ├── redis/              ← Redis connection config
 │   ├── bull/               ← BullMQ global config + factory
+│   ├── throttler/          ← Rate limiting config, factory & guard
 │   └── config.type.ts      ← Aggregate type AllConfigType
 │
 ├── database/
@@ -265,6 +267,17 @@ SECRET_ACCESS_KEY=
 AWS_DEFAULT_S3_BUCKET=
 AWS_S3_REGION=ap-southeast-1
 ```
+
+### Rate Limiting (Throttler)
+
+```env
+THROTTLER_ENABLED=true     # false = disable entirely (useful in development)
+THROTTLER_LIMIT=60         # max requests per TTL window per IP
+THROTTLER_TTL=60           # TTL window in seconds
+```
+
+> Default in `.env.example` is disabled (`THROTTLER_ENABLED=false`) — enable in production.  
+> Storage is Redis (shared with BullMQ). The tracker key is the client's real IP, resolved in order: `x-forwarded-for` → `x-real-ip` → `req.ips[0]` → `req.ip`.
 
 ### OAuth (Optional)
 

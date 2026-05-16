@@ -2,7 +2,7 @@ import path from 'path';
 
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { APP_FILTER } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { LoggerModule } from 'nestjs-pino';
 import { MongooseModule } from '@nestjs/mongoose';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -49,6 +49,11 @@ import bullConfig, { BULL_BOARD_PATH } from './config/bull/bull.config';
 import useBullFactory from './config/bull/bull.factory';
 import useLoggerFactory from './tools/logger/logger-factory';
 import { GlobalExceptionFilter } from './filters/global-exception.filter';
+import throttlerConfig from './config/throttler/throttler.config';
+// import grafanaConfig from './config/grafana/grafana.config';
+import useThrottlerFactory from './config/throttler/throttler.factory';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { AppThrottlerGuard } from './config/throttler/throttler.guard';
 
 // <file-block>
 const fileUploaderModule = (() => {
@@ -100,6 +105,8 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
         twitterConfig,
         redisConfig,
         bullConfig,
+        throttlerConfig,
+        // grafanaConfig,
       ],
       envFilePath: ['.env'],
     }),
@@ -137,6 +144,11 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
       inject: [ConfigService],
       useFactory: useBullFactory,
     }),
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: useThrottlerFactory,
+    }),
     BullBoardModule.forRoot({
       route: BULL_BOARD_PATH,
       adapter: ExpressAdapter,
@@ -156,6 +168,9 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
     AuthGithubModule,
     AuthTwitterModule,
   ],
-  providers: [{ provide: APP_FILTER, useClass: GlobalExceptionFilter }],
+  providers: [
+    { provide: APP_FILTER, useClass: GlobalExceptionFilter },
+    { provide: APP_GUARD, useClass: AppThrottlerGuard },
+  ],
 })
 export class AppModule {}
