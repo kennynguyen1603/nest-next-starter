@@ -219,6 +219,9 @@ importers:
       typeorm:
         specifier: ^0.3.28
         version: 0.3.28(ioredis@5.10.1)(mongodb@7.2.0(gcp-metadata@8.1.2))(ts-node@10.9.2(@swc/core@1.15.33(@swc/helpers@0.5.15))(@types/node@22.15.3)(typescript@5.9.2))
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.2
       uuid:
         specifier: ^14.0.0
         version: 14.0.0
@@ -307,9 +310,6 @@ importers:
       tsconfig-paths:
         specifier: ^4.2.0
         version: 4.2.0
-      typescript:
-        specifier: ^5.7.3
-        version: 5.9.2
       typescript-eslint:
         specifier: ^8.20.0
         version: 8.50.0(eslint@9.39.1(jiti@2.7.0))(typescript@5.9.2)
