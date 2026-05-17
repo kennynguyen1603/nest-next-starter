@@ -34,6 +34,7 @@ export default function RegisterPage() {
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
@@ -43,9 +44,22 @@ export default function RegisterPage() {
       await api.post("/api/v1/auth/email/register", values);
       setSuccess(true);
     } catch (err) {
-      setServerError(
-        err instanceof Error ? err.message : t("errorDefault"),
-      );
+      const details = (err as { details?: { property: string; message: string }[] })?.details;
+      if (details?.length) {
+        const fields = new Set<string>(["firstName", "lastName", "email", "password"]);
+        let hasFieldError = false;
+        for (const { property, message } of details) {
+          if (fields.has(property)) {
+            setError(property as keyof FormValues, { message });
+            hasFieldError = true;
+          }
+        }
+        if (!hasFieldError) {
+          setServerError(err instanceof Error ? err.message : t("errorDefault"));
+        }
+      } else {
+        setServerError(err instanceof Error ? err.message : t("errorDefault"));
+      }
     }
   }
 
