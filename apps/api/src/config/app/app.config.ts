@@ -52,6 +52,10 @@ class EnvironmentVariablesValidator {
 
   @IsBoolean()
   @IsOptional()
+  APP_COOKIE_SECURE?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
   APP_DEBUG?: boolean;
 
   @IsBoolean()
@@ -89,6 +93,10 @@ export function getConfig(): AppConfig {
     appLogging: process.env.APP_LOGGING === 'true',
     logLevel: process.env.APP_LOG_LEVEL || 'warn',
     logService: process.env.APP_LOG_SERVICE || LogService.Console,
+    cookieSecure:
+      process.env.APP_COOKIE_SECURE !== undefined
+        ? process.env.APP_COOKIE_SECURE === 'true'
+        : (process.env.NODE_ENV ?? 'development') === 'production',
   };
 }
 
