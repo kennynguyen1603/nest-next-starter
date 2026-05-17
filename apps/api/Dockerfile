@@ -1,4 +1,4 @@
-ARG NODE_IMAGE=node:20-slim
+ARG NODE_IMAGE=node:22-slim
 
 FROM ${NODE_IMAGE} AS base
 ENV PNPM_HOME="/pnpm"
@@ -22,8 +22,9 @@ COPY . .
 RUN pnpm --filter ./apps/api build
 RUN --mount=type=cache,id=pnpm-api,target=/pnpm/store pnpm --filter ./apps/api deploy --prod /standalone
 
-FROM ${NODE_IMAGE} AS production
+FROM node:22-alpine AS production
 WORKDIR /app
+ENV NODE_ENV=production
 RUN npm install -g pm2
 COPY --chown=node:node --from=builder /standalone/node_modules ./node_modules
 COPY --chown=node:node --from=builder /repo/apps/api/dist ./dist

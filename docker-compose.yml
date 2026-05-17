@@ -34,6 +34,12 @@ services:
       NEXT_PUBLIC_API_URL: http://localhost:8080
     depends_on:
       - api
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3000',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     restart: unless-stopped
 
   mongo:
