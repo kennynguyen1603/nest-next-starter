@@ -8,14 +8,16 @@ Runs by default at **http://localhost:3000**.
 ## Features
 
 ### 🔐 Authentication
-- **Email/Password login** — Form validation with `react-hook-form` + `zod`
+- **Email/Password login** — Form validation with `react-hook-form` + `zod`; field-level API errors (e.g. duplicate email on register) are shown under the relevant input
 - **Account registration** — Sends a confirmation email after successful signup
 - **OAuth Social Login** — Google, Facebook, GitHub, Twitter/X
   - Standard Authorization Code Flow (PKCE for Twitter/X)
   - Next.js Route Handler (`/api/auth/[provider]/exchange`) acts as a **server-side proxy** to securely exchange tokens without exposing client secrets to the browser
   - Callback page automatically handles the post-OAuth redirect
 - **Automatic token refresh** — When the access token expires, the client silently calls `/auth/refresh`; redirects to `/login` on failure
-- **Logout** — Clears client-side tokens and calls the backend logout endpoint
+- **Logout** — Clears client-side state and calls the backend logout endpoint
+
+> **Profile loading**: After any login (email or OAuth), the app always calls `GET /auth/me` to load the canonical user profile. This ensures all user fields are complete regardless of what the login response includes.
 
 ### 🗄️ State Management
 - **Zustand** (`lib/auth-store.ts`) — Stores `accessToken`, `tokenExpires`, and `user` in memory
@@ -28,6 +30,12 @@ Runs by default at **http://localhost:3000**.
   - `credentials: 'include'` for cookie support
   - Auto-retry after a successful token refresh
   - Redirects to `/login` when the session has expired
+  - Attaches `details` from API 422 responses to the thrown error, enabling field-level error display in forms
+
+### ✏️ Profile Management
+- **Edit profile** — Update first name, last name, and avatar photo
+- **Change password** — Only available for accounts registered with email/password; hidden for OAuth users (Google, GitHub, etc.) since they authenticate through their provider
+- **Delete account** — Requires confirmation before soft-deleting the account
 
 ### 📄 Pages & Routes
 
@@ -64,7 +72,7 @@ apps/web/
 │   │   │   └── reset-password/page.tsx  ← Reset password with token
 │   │   │
 │   │   └── _components/
-│   │       ├── edit-profile-dialog.tsx    ← Edit name, photo, password
+│   │       ├── edit-profile-dialog.tsx    ← Edit name, photo, password (email users only)
 │   │       ├── delete-account-dialog.tsx  ← Confirm account deletion
 │   │       └── language-switcher.tsx      ← Switch locale
 │   │
@@ -77,7 +85,7 @@ apps/web/
 │           └── route.ts            ← Server-side token exchange (Route Handler)
 │
 ├── lib/
-│   ├── api.ts                      ← Fetch wrapper with auth & auto-refresh
+│   ├── api.ts                      ← Fetch wrapper with auth, auto-refresh, and error details
 │   ├── auth-store.ts               ← Zustand store (accessToken, user)
 │   ├── oauth.ts                    ← Build OAuth authorization URLs
 │   └── navigation.ts               ← next-intl locale-aware router & Link
@@ -111,10 +119,15 @@ Browser               Next.js Server        Backend (NestJS)      Provider
   │      exchange { code } │── Exchange code ─────────────────────►│
   │                        │◄──── id_token ───────────────────────│
   │                        │── POST /api/v1/auth/google/login ────►│
-  │                        │◄── { token, tokenExpires, user } + cookie
-  │◄─── { token, user } ───│                      │                   │
+  │                        │◄── { token, tokenExpires } + cookie ──│
+  │◄─── { token } ─────────│                      │                   │
   │                        │                      │                   │
-  │ setAuth() → redirect / │                      │                   │
+  │ setAuth(token, null)   │                      │                   │
+  │ redirect /             │                      │                   │
+  │                        │                      │                   │
+  │── GET /api/v1/auth/me ────────────────────────►│                   │
+  │◄─── { user } ─────────────────────────────────│                   │
+  │ setAuth(token, user)   │                      │                   │
 ```
 
 > **Security note**: `client_secret` / `app_secret` values are never sent to the browser — all token exchanges happen inside the Next.js Route Handler (server-side).
@@ -122,6 +135,8 @@ Browser               Next.js Server        Backend (NestJS)      Provider
 ---
 
 ## Setup & Running
+
+### Local development
 
 ```bash
 # From the monorepo root
@@ -137,7 +152,21 @@ pnpm dev --filter=web
 # Production
 pnpm build --filter=web
 pnpm --filter=web start
+
+# Tests
+pnpm --filter=web test
 ```
+
+### Docker
+
+The web app is fully containerised. `NEXT_PUBLIC_*` variables must be provided as **build args** (they are baked into the bundle at build time):
+
+```bash
+# From the project root
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=xxx docker compose up --build
+```
+
+At runtime, the container reads `API_URL` (internal Docker network URL, e.g. `http://api:8080`) for server-side Route Handler calls, while client-side code uses the `NEXT_PUBLIC_API_URL` that was baked in at build time.
 
 ---
 
@@ -146,8 +175,12 @@ pnpm --filter=web start
 See the full reference at [`apps/web/.env.example`](./.env.example).
 
 ```env
-# Backend NestJS URL (required)
+# Backend NestJS URL — baked into the client bundle at build time
 NEXT_PUBLIC_API_URL=http://localhost:8080
+
+# Server-side only — used by Route Handlers inside the container
+# Set this to the internal Docker service name in production containers
+# API_URL=http://api:8080
 
 # Google OAuth
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=
@@ -168,7 +201,8 @@ TWITTER_CLIENT_SECRET=         # Server-only
 
 > [!IMPORTANT]
 > Variables prefixed with `NEXT_PUBLIC_` are bundled into the client (visible in the browser).  
-> Variables **without** the prefix exist server-side only and are **never exposed to the browser**.
+> Variables **without** the prefix exist server-side only and are **never exposed to the browser**.  
+> In Docker, `API_URL` must point to the internal service name (`http://api:8080`), not `localhost`.
 
 ---
 
@@ -184,3 +218,4 @@ TWITTER_CLIENT_SECRET=         # Server-only
 | `zod` | Schema validation |
 | `@hookform/resolvers` | Connects zod with react-hook-form |
 | `next-intl` | Internationalization and locale routing |
+| `vitest` | Unit test runner |

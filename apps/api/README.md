@@ -58,6 +58,8 @@ Select the driver via `FILE_DRIVER`:
 ### 🛡️ Security
 - `helmet` — HTTP security headers
 - `cookie-parser` — HttpOnly cookie for the refresh token
+- **Configurable cookie `secure` flag** — `APP_COOKIE_SECURE` env var controls whether the refresh token cookie requires HTTPS. Defaults to `true` in production; set to `false` for HTTP-only deployments (e.g. Docker without TLS termination)
+- **Generic credentials error** — All login failure paths (email not found, no password set, wrong password) return the same `INVALID_CREDENTIALS` error on the `email` field, preventing user enumeration attacks
 - CORS configured to the frontend domain
 - `class-validator` + `class-transformer` — Request input validation
 - **Basic Auth middleware** — Protects `/api/queues` (Bull Board) and `/docs` (Swagger) with username/password
@@ -153,7 +155,7 @@ src/
 | `POST` | `/forgot/password` | Send a password reset link | Public |
 | `POST` | `/reset/password` | Reset password using token | Public |
 | `GET`  | `/me` | Get current user profile | JWT |
-| `PATCH`| `/me` | Update current user profile | JWT |
+| `PATCH`| `/me` | Update profile (name, photo, password) | JWT |
 | `DELETE`| `/me` | Delete account (soft delete) | JWT |
 | `POST` | `/refresh` | Refresh access token | Refresh cookie |
 | `POST` | `/logout` | Logout, invalidate session | JWT |
@@ -189,6 +191,8 @@ src/
 
 ## Setup & Running
 
+### Local development
+
 ```bash
 # From the monorepo root
 pnpm install
@@ -214,6 +218,17 @@ pnpm --filter=api seed:run:document    # MongoDB
 pnpm --filter=api seed:run:relational  # SQL
 ```
 
+### Docker
+
+The API is fully containerised. See `docker-compose.yml` at the project root.
+
+```bash
+docker compose up --build   # Build and start (includes MongoDB, Redis, seed)
+docker compose down -v      # Stop and wipe volumes
+```
+
+The `seed` service in Docker Compose runs `dist/database/seeds/document/run-seed.js` automatically before the API starts. It populates the `roles` collection and is idempotent.
+
 ---
 
 ## Environment Variables
@@ -232,12 +247,22 @@ AUTH_JWT_SECRET=change_me_jwt_secret
 AUTH_REFRESH_SECRET=change_me_refresh_secret
 ```
 
-### Redis (required for BullMQ)
+### Redis (required for BullMQ and rate limiting)
 
 ```env
 REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_PASSWORD=                # optional
+REDIS_TLS=false                # set true if your Redis requires TLS
+```
+
+### Cookie Security
+
+```env
+# Controls the `secure` flag on the HttpOnly refresh token cookie.
+# Default: true in production (requires HTTPS), false in development.
+# Set to false explicitly when running behind HTTP without TLS (e.g. Docker locally).
+APP_COOKIE_SECURE=false
 ```
 
 ### Basic Auth (protects /queues and /docs)

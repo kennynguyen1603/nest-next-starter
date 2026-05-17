@@ -30,7 +30,8 @@ nest-next-starter/                  ← Turborepo monorepo (pnpm workspaces)
 | Queue | BullMQ + Redis — async job processing (email delivery) |
 | Rate Limiting | `@nestjs/throttler` + Redis storage — per-IP, globally applied |
 | Mail | Nodemailer + Handlebars templates, dispatched via job queue |
-| i18n | nestjs-i18n (header-based language resolver) |
+| i18n | nestjs-i18n (header-based) + next-intl (locale routing) |
+| Containers | Docker + Docker Compose — full stack in one command |
 | Linting | ESLint + Prettier + Husky pre-commit hooks |
 
 ---
@@ -40,19 +41,59 @@ nest-next-starter/                  ← Turborepo monorepo (pnpm workspaces)
 - **Node.js** ≥ 18
 - **pnpm** 9.x (`npm install -g pnpm@9`)
 - MongoDB or PostgreSQL/MySQL (depending on `DATABASE_TYPE`)
-- **Redis** ≥ 6 (required for BullMQ job queue)
+- **Redis** ≥ 6 (required for BullMQ job queue and rate limiting)
+
+> **Using Docker?** None of the above are required on the host — Docker Compose provides all services.
 
 ---
 
 ## Quick Start
 
-### 1. Install dependencies
+### Option A — Docker (recommended for full-stack)
+
+Runs the API, frontend, MongoDB, Redis, and an automatic database seed in one command.
+
+```bash
+# 1. Copy and configure the API environment file
+cp apps/api/.env.example apps/api/.env
+# Edit apps/api/.env with your values (mail, OAuth secrets, etc.)
+
+# 2. Build and start all services
+docker compose up --build
+```
+
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:3000 |
+| Backend API | http://localhost:8080/api/v1 |
+| Swagger Docs | http://localhost:8080/docs |
+
+> [!NOTE]
+> The `seed` service runs automatically before the API starts and populates the MongoDB `roles` collection (idempotent — safe to re-run). To reset all data, run `docker compose down -v && docker compose up --build`.
+
+#### Passing OAuth credentials at build time
+
+`NEXT_PUBLIC_*` variables are **baked into the Next.js bundle** at build time. Pass them as build args:
+
+```bash
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=xxx \
+NEXT_PUBLIC_GITHUB_CLIENT_ID=xxx \
+docker compose up --build
+```
+
+Or set them in a `.env` file at the project root and Docker Compose will pick them up automatically.
+
+---
+
+### Option B — Local development
+
+#### 1. Install dependencies
 
 ```bash
 pnpm install
 ```
 
-### 2. Configure environment variables
+#### 2. Configure environment variables
 
 ```bash
 # Backend
@@ -64,7 +105,7 @@ cp apps/web/.env.example apps/web/.env.local
 
 Edit the `.env` files with your values (see the **Environment Variables** section below).
 
-### 3. Start development
+#### 3. Start development
 
 ```bash
 # Run all apps simultaneously (recommended)
@@ -163,6 +204,18 @@ pnpm --filter=api seed:run:relational # Seed SQL
 pnpm --filter=web dev     # Dev server on port 3000
 pnpm --filter=web build   # Production build
 pnpm --filter=web start   # Run production
+pnpm --filter=web test    # Unit tests (Vitest)
+```
+
+### Docker
+
+```bash
+docker compose up --build          # Build images and start all services
+docker compose up                  # Start without rebuilding
+docker compose down                # Stop all services
+docker compose down -v             # Stop and remove volumes (wipes database)
+docker compose logs -f api         # Tail API logs
+docker compose logs -f web         # Tail web logs
 ```
 
 ---
