@@ -140,9 +140,8 @@ function LoginPageContent() {
       const data = await api.post<{
         token: string;
         tokenExpires: number;
-        user: import("@/lib/auth-store").AuthUser;
       }>("/api/v1/auth/email/login", values);
-      setAuth(data.token, data.tokenExpires, data.user);
+      setAuth(data.token, data.tokenExpires, null);
       router.push("/");
     } catch (err) {
       setServerError(
