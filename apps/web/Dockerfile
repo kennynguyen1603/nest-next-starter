@@ -18,6 +18,7 @@ COPY . .
 RUN pnpm --filter ./apps/web build
 
 FROM node:22-alpine AS runner
+RUN apk update && apk upgrade --no-cache && npm install -g npm@latest
 WORKDIR /app
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
