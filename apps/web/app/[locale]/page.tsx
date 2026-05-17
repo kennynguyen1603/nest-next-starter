@@ -1,14 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense, lazy } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/lib/navigation";
 import { useAuthStore } from "@/lib/auth-store";
 import { api, tryRefresh } from "@/lib/api";
 import type { AuthUser } from "@repo/types";
 import { LanguageSwitcher } from "./_components/language-switcher";
-import { EditProfileDialog } from "./_components/edit-profile-dialog";
-import { DeleteAccountDialog } from "./_components/delete-account-dialog";
+
+const EditProfileDialog = lazy(() =>
+  import("./_components/edit-profile-dialog").then((m) => ({
+    default: m.EditProfileDialog,
+  }))
+);
+const DeleteAccountDialog = lazy(() =>
+  import("./_components/delete-account-dialog").then((m) => ({
+    default: m.DeleteAccountDialog,
+  }))
+);
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
@@ -26,9 +35,12 @@ export default function Home() {
       if (pending) {
         localStorage.removeItem("_oauth_result");
         try {
-          const { token, tokenExpires: exp, user: u } = JSON.parse(pending);
-          setAuth(token, exp, u);
+          const { token, tokenExpires: exp } = JSON.parse(pending);
+          setAuth(token, exp, null);
+          const fetched = await api.get<AuthUser>("/api/v1/auth/me");
+          setAuth(token, exp, fetched);
         } catch {
+          clearAuth();
           router.replace("/login");
         }
         return;
@@ -176,14 +188,18 @@ export default function Home() {
       </main>
 
       {showEdit && (
-        <EditProfileDialog
-          user={user}
-          currentPhotoUrl={photoUrl}
-          onClose={() => setShowEdit(false)}
-        />
+        <Suspense fallback={null}>
+          <EditProfileDialog
+            user={user}
+            currentPhotoUrl={photoUrl}
+            onClose={() => setShowEdit(false)}
+          />
+        </Suspense>
       )}
       {showDelete && (
-        <DeleteAccountDialog onClose={() => setShowDelete(false)} />
+        <Suspense fallback={null}>
+          <DeleteAccountDialog onClose={() => setShowDelete(false)} />
+        </Suspense>
       )}
     </div>
   );

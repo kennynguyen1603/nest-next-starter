@@ -32,6 +32,8 @@ export function EditProfileDialog({ user, currentPhotoUrl, onClose }: Props) {
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
+  const isOAuthUser = user.provider !== "email";
+
   const schema = useMemo(
     () =>
       z
@@ -42,13 +44,12 @@ export function EditProfileDialog({ user, currentPhotoUrl, onClose }: Props) {
           newPassword: z.string().optional(),
         })
         .refine(
-          (d) => {
-            if (d.newPassword && d.newPassword.length > 0) {
-              return d.newPassword.length >= 8;
-            }
-            return true;
-          },
+          (d) => !d.newPassword || d.newPassword.length >= 8,
           { message: t("errorPasswordLength"), path: ["newPassword"] },
+        )
+        .refine(
+          (d) => !d.newPassword || d.newPassword.length < 8 || !!d.oldPassword,
+          { message: t("oldPasswordRequired"), path: ["oldPassword"] },
         ),
     [t],
   );
@@ -231,44 +232,53 @@ export function EditProfileDialog({ user, currentPhotoUrl, onClose }: Props) {
             </div>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="oldPassword"
-              className="text-xs font-medium text-neutral-500 uppercase tracking-wider"
-            >
-              {t("oldPassword")}
-            </label>
-            <input
-              id="oldPassword"
-              type="password"
-              autoComplete="current-password"
-              placeholder="••••••••"
-              className="border border-[#D0D0D0] px-3 py-2.5 text-sm focus-visible:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black"
-              {...register("oldPassword")}
-            />
-          </div>
+          {!isOAuthUser && (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <label
+                  htmlFor="oldPassword"
+                  className="text-xs font-medium text-neutral-500 uppercase tracking-wider"
+                >
+                  {t("oldPassword")}
+                </label>
+                <input
+                  id="oldPassword"
+                  type="password"
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  className="border border-[#D0D0D0] px-3 py-2.5 text-sm focus-visible:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black"
+                  {...register("oldPassword")}
+                />
+                {errors.oldPassword && (
+                  <span role="alert" className="text-xs text-red-600">
+                    {errors.oldPassword.message}
+                  </span>
+                )}
+              </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="newPassword"
-              className="text-xs font-medium text-neutral-500 uppercase tracking-wider"
-            >
-              {t("newPassword")}
-            </label>
-            <input
-              id="newPassword"
-              type="password"
-              autoComplete="new-password"
-              placeholder={t("newPasswordPlaceholder")}
-              className="border border-[#D0D0D0] px-3 py-2.5 text-sm focus-visible:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black"
-              {...register("newPassword")}
-            />
-            {errors.newPassword && (
-              <span role="alert" className="text-xs text-red-600">
-                {errors.newPassword.message}
-              </span>
-            )}
-          </div>
+              <div className="flex flex-col gap-1.5">
+                <label
+                  htmlFor="newPassword"
+                  className="text-xs font-medium text-neutral-500 uppercase tracking-wider"
+                >
+                  {t("newPassword")}
+                </label>
+                <input
+                  id="newPassword"
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder={t("newPasswordPlaceholder")}
+                  className="border border-[#D0D0D0] px-3 py-2.5 text-sm focus-visible:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black"
+                  {...register("newPassword")}
+                />
+                {errors.newPassword && (
+                  <span role="alert" className="text-xs text-red-600">
+                    {errors.newPassword.message}
+                  </span>
+                )}
+              </div>
+            </>
+          )}
 
           {serverError && (
             <p

@@ -50,9 +50,9 @@ export class AuthController {
     );
     response.cookie('refresh_token', token, {
       httpOnly: true,
-      secure:
-        this.configService.getOrThrow('app.nodeEnv', { infer: true }) ===
-        'production',
+      secure: this.configService.getOrThrow('app.cookieSecure', {
+        infer: true,
+      }),
       sameSite: 'strict',
       maxAge,
       path: '/',

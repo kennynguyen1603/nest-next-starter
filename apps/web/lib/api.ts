@@ -39,8 +39,10 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   }
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ message: 'Request failed' }))
-    throw new Error(err?.message ?? 'Request failed')
+    const body = await res.json().catch(() => ({ message: 'Request failed' }))
+    const error: Error & { details?: { property: string; message: string }[] } = new Error(body?.message ?? 'Request failed')
+    if (Array.isArray(body?.details)) error.details = body.details
+    throw error
   }
 
   if (res.status === 204) return undefined as T

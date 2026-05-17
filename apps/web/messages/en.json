@@ -102,6 +102,7 @@
     "errorFirstName": "First name is required",
     "errorLastName": "Last name is required",
     "errorPasswordLength": "Password must be at least 8 characters",
+    "oldPasswordRequired": "Current password is required to set a new password",
     "errorDefault": "Something went wrong. Please try again."
   },
   "locale": {

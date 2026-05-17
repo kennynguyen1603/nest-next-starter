@@ -102,6 +102,7 @@
     "errorFirstName": "Tên là bắt buộc",
     "errorLastName": "Họ là bắt buộc",
     "errorPasswordLength": "Mật khẩu phải có ít nhất 8 ký tự",
+    "oldPasswordRequired": "Cần nhập mật khẩu hiện tại để đặt mật khẩu mới",
     "errorDefault": "Đã xảy ra lỗi. Vui lòng thử lại."
   },
   "locale": {

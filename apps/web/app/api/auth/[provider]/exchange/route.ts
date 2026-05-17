@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+// API_URL is for server-side calls (Docker: use internal network URL via API_URL env var).
+// NEXT_PUBLIC_API_URL is baked at build time for client-side only.
+const API_URL =
+  process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
 type Provider = "google" | "facebook" | "github" | "twitter";
 

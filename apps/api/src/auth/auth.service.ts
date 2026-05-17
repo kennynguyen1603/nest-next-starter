@@ -76,7 +76,7 @@ export class AuthService {
       );
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: { email: this.t('auth.EMAIL_NOT_FOUND') },
+        errors: { email: this.t('auth.INVALID_CREDENTIALS') },
       });
     }
 
@@ -95,7 +95,7 @@ export class AuthService {
       this.logger.warn({ userId: user.id }, 'Login failed: no password set');
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: { password: this.t('auth.INCORRECT_PASSWORD') },
+        errors: { email: this.t('auth.INVALID_CREDENTIALS') },
       });
     }
 
@@ -108,7 +108,7 @@ export class AuthService {
       this.logger.warn({ userId: user.id }, 'Login failed: incorrect password');
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: { password: this.t('auth.INCORRECT_PASSWORD') },
+        errors: { email: this.t('auth.INVALID_CREDENTIALS') },
       });
     }
 
@@ -477,36 +477,33 @@ export class AuthService {
     }
 
     if (userDto.password) {
-      if (!userDto.oldPassword) {
-        throw new UnprocessableEntityException({
-          status: HttpStatus.UNPROCESSABLE_ENTITY,
-          errors: { oldPassword: this.t('auth.OLD_PASSWORD_INCORRECT') },
-        });
-      }
+      if (currentUser.password) {
+        // User already has a password — must verify the old one
+        if (!userDto.oldPassword) {
+          throw new UnprocessableEntityException({
+            status: HttpStatus.UNPROCESSABLE_ENTITY,
+            errors: { oldPassword: this.t('auth.OLD_PASSWORD_INCORRECT') },
+          });
+        }
 
-      if (!currentUser.password) {
-        throw new UnprocessableEntityException({
-          status: HttpStatus.UNPROCESSABLE_ENTITY,
-          errors: { oldPassword: this.t('auth.OLD_PASSWORD_INCORRECT') },
-        });
-      }
+        const isValidOldPassword = await bcrypt.compare(
+          userDto.oldPassword,
+          currentUser.password,
+        );
 
-      const isValidOldPassword = await bcrypt.compare(
-        userDto.oldPassword,
-        currentUser.password,
-      );
-
-      if (!isValidOldPassword) {
-        throw new UnprocessableEntityException({
-          status: HttpStatus.UNPROCESSABLE_ENTITY,
-          errors: { oldPassword: this.t('auth.OLD_PASSWORD_INCORRECT') },
-        });
-      } else {
-        await this.sessionService.deleteByUserIdWithExclude({
-          userId: currentUser.id,
-          excludeSessionId: userJwtPayload.sessionId,
-        });
+        if (!isValidOldPassword) {
+          throw new UnprocessableEntityException({
+            status: HttpStatus.UNPROCESSABLE_ENTITY,
+            errors: { oldPassword: this.t('auth.OLD_PASSWORD_INCORRECT') },
+          });
+        }
       }
+      // OAuth users (no password) are allowed to set a first password without oldPassword.
+      // Invalidate other sessions whenever the password changes.
+      await this.sessionService.deleteByUserIdWithExclude({
+        userId: currentUser.id,
+        excludeSessionId: userJwtPayload.sessionId,
+      });
     }
 
     if (userDto.email && userDto.email !== currentUser.email) {

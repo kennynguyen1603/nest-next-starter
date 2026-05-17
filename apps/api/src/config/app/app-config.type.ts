@@ -14,4 +14,5 @@ export type AppConfig = {
   debug: boolean;
   logLevel: string;
   logService: string;
+  cookieSecure: boolean;
 };
