@@ -76,7 +76,7 @@ export class AuthService {
       );
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: { email: this.t('auth.EMAIL_NOT_FOUND') },
+        errors: { email: this.t('auth.INVALID_CREDENTIALS') },
       });
     }
 
@@ -95,7 +95,7 @@ export class AuthService {
       this.logger.warn({ userId: user.id }, 'Login failed: no password set');
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: { password: this.t('auth.INCORRECT_PASSWORD') },
+        errors: { email: this.t('auth.INVALID_CREDENTIALS') },
       });
     }
 
@@ -108,7 +108,7 @@ export class AuthService {
       this.logger.warn({ userId: user.id }, 'Login failed: incorrect password');
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: { password: this.t('auth.INCORRECT_PASSWORD') },
+        errors: { email: this.t('auth.INVALID_CREDENTIALS') },
       });
     }
 
