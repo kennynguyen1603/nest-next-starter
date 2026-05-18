@@ -122,6 +122,9 @@ importers:
       '@types/multer-s3':
         specifier: ^3.0.3
         version: 3.0.3
+      '@willsoto/nestjs-prometheus':
+        specifier: ^6.1.0
+        version: 6.1.0(@nestjs/common@11.1.18(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(prom-client@15.1.3)
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3
@@ -341,10 +344,10 @@ importers:
         version: 10.5.0(postcss@8.5.14)
       next:
         specifier: 16.2.6
-        version: 16.2.6(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 16.2.6(@opentelemetry/api@1.9.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       next-intl:
         specifier: ^4.11.2
-        version: 4.11.2(@swc/helpers@0.5.15)(next@16.2.6(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0)(typescript@5.9.2)
+        version: 4.11.2(@swc/helpers@0.5.15)(next@16.2.6(@opentelemetry/api@1.9.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0)(typescript@5.9.2)
       postcss:
         specifier: ^8.5.14
         version: 8.5.14
@@ -399,7 +402,7 @@ importers:
         version: 5.9.2
       vitest:
         specifier: ^4.1.6
-        version: 4.1.6(@types/node@22.15.3)(@vitest/coverage-v8@4.1.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.12(@types/node@22.15.3)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3))
+        version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@22.15.3)(@vitest/coverage-v8@4.1.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.12(@types/node@22.15.3)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3))
 
   packages/eslint-config:
     devDependencies:
@@ -2054,6 +2057,10 @@ packages:
     engines: {node: ^14.18.0 || >=16.10.0, npm: '>=5.10.0'}
     hasBin: true
 
+  '@opentelemetry/api@1.9.1':
+    resolution: {integrity: sha512-gLyJlPHPZYdAk1JENA9LeHejZe1Ti77/pTeFm/nMXmQH/HFZlcS/O2XJB+L8fkbrNSqhdtlvjBVjxwUYanNH5Q==}
+    engines: {node: '>=8.0.0'}
+
   '@oxc-project/types@0.129.0':
     resolution: {integrity: sha512-3oz8m3FGdr2nDXVqmFUw7jolKliC4MoyXYIG2c7gpjBnzUWQpUGIYcXYKxTdTi+N2jusvt610ckTMkxdwHkYEg==}
 
@@ -3167,6 +3174,12 @@ packages:
     resolution: {integrity: sha512-Nst5JdK47VIl9UcGwtv2Rcgyn5lWtZ0/mhRQ4G8NN2isxpq2TO30iqHzmwoJycjWuyUfg3GFXqP/gFHXeV57IA==}
     engines: {node: '>=16.0.0'}
 
+  '@willsoto/nestjs-prometheus@6.1.0':
+    resolution: {integrity: sha512-lrCEnJBBSzUIYWGR+PsZw1YXs1B9jzxFEuNAa3RzTxuFAFdI+sW7Fp52il/U/dX2MWoHc32x06OS0nm56QwyzQ==}
+    peerDependencies:
+      '@nestjs/common': ^7.0.0 || ^8.0.0 || ^9.0.0 || ^10.0.0 || ^11.0.0
+      prom-client: ^15.0.0
+
   '@xtuc/ieee754@1.2.0':
     resolution: {integrity: sha512-DX8nKgqcGwsc0eJSqYt5lwP4DH5FlHnmuWWBRy7X0NcaGR0ZtuyeESgMwTYVEtxmsNGY+qit4QYT/MIYTOTPeA==}
 
@@ -3429,6 +3442,9 @@ packages:
   binary-extensions@2.3.0:
     resolution: {integrity: sha512-Ceh+7ox5qe7LJuLHoY0feh3pHuUDHAcRUeyL2VYghZwfpkNIy/+8Ocg0a3UuSoYzavmylwuLWQOf3hl0jjMMIw==}
     engines: {node: '>=8'}
+
+  bintrees@1.0.2:
+    resolution: {integrity: sha512-VOMgTMwjAaUG580SXn3LacVgjurrbMme7ZZNYGSSV7mmtY6QQRh0Eg3pwIcntQ77DErK1L0NxkbetjcoXzVwKw==}
 
   bl@4.1.0:
     resolution: {integrity: sha512-1W07cM9gS6DcLperZfFSj+bWLtaPGSOHWhPiGzXmvVJbRLdG82sH/Kn8EtW1VqWVA54AKf2h5k5BbnIbwF3h6w==}
@@ -5682,6 +5698,10 @@ packages:
   process-warning@5.0.0:
     resolution: {integrity: sha512-a39t9ApHNx2L4+HBnQKqxxHNs1r7KF+Intd8Q/g1bUh6q0WIp9voPXJ/x0j+ZL45KF1pJd9+q2jLIRMfvEshkA==}
 
+  prom-client@15.1.3:
+    resolution: {integrity: sha512-6ZiOBfCywsD4k1BN9IX0uZhF+tJkV8q8llP64G5Hajs4JOeVLPCwpPVcpXy3BwYiUGgyJzsJJQeOIv7+hDSq8g==}
+    engines: {node: ^16 || ^18 || >=20}
+
   prop-types@15.8.1:
     resolution: {integrity: sha512-oj87CgZICdulUohogVAR7AjlC0327U4el4L6eAvOqCeudMDVU0NThNaV+b9Df4dXgSP1gXMTnPdhfe/2qDH5cg==}
 
@@ -6205,6 +6225,9 @@ packages:
   tapable@2.3.2:
     resolution: {integrity: sha512-1MOpMXuhGzGL5TTCZFItxCc0AARf1EZFQkGqMm7ERKj8+Hgr5oLvJOVFcC+lRmR8hCe2S3jC4T5D7Vg/d7/fhA==}
     engines: {node: '>=6'}
+
+  tdigest@0.1.2:
+    resolution: {integrity: sha512-+G0LLgjjo9BZX2MfdvPfH+MKLCrxlXSYec5DaPYP1fe6Iyhf0/fSmJ0bFiZ1F8BT6cGXl2LpltQptzjXKWEkKA==}
 
   telejson@7.2.0:
     resolution: {integrity: sha512-1QTEcJkJEhc8OnStBx/ILRu5J2p0GjvWsBx56bmZRqnrkdBMUe+nX92jxV+p3dB4CP6PZCdJMQJwCggkNBMzkQ==}
@@ -8845,6 +8868,8 @@ snapshots:
     dependencies:
       consola: 3.4.2
 
+  '@opentelemetry/api@1.9.1': {}
+
   '@oxc-project/types@0.129.0': {}
 
   '@paralleldrive/cuid2@2.3.1':
@@ -9902,7 +9927,7 @@ snapshots:
       obug: 2.1.1
       std-env: 4.1.0
       tinyrainbow: 3.1.0
-      vitest: 4.1.6(@types/node@22.15.3)(@vitest/coverage-v8@4.1.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.12(@types/node@22.15.3)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3))
+      vitest: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@22.15.3)(@vitest/coverage-v8@4.1.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.12(@types/node@22.15.3)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3))
 
   '@vitest/expect@4.1.6':
     dependencies:
@@ -10024,6 +10049,11 @@ snapshots:
   '@whatwg-node/promise-helpers@1.3.2':
     dependencies:
       tslib: 2.8.1
+
+  '@willsoto/nestjs-prometheus@6.1.0(@nestjs/common@11.1.18(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(prom-client@15.1.3)':
+    dependencies:
+      '@nestjs/common': 11.1.18(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      prom-client: 15.1.3
 
   '@xtuc/ieee754@1.2.0': {}
 
@@ -10303,6 +10333,8 @@ snapshots:
   bignumber.js@9.3.1: {}
 
   binary-extensions@2.3.0: {}
+
+  bintrees@1.0.2: {}
 
   bl@4.1.0:
     dependencies:
@@ -12531,14 +12563,14 @@ snapshots:
 
   next-intl-swc-plugin-extractor@4.11.2: {}
 
-  next-intl@4.11.2(@swc/helpers@0.5.15)(next@16.2.6(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0)(typescript@5.9.2):
+  next-intl@4.11.2(@swc/helpers@0.5.15)(next@16.2.6(@opentelemetry/api@1.9.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0)(typescript@5.9.2):
     dependencies:
       '@formatjs/intl-localematcher': 0.8.7
       '@parcel/watcher': 2.5.6
       '@swc/core': 1.15.33(@swc/helpers@0.5.15)
       icu-minify: 4.11.2
       negotiator: 1.0.0
-      next: 16.2.6(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      next: 16.2.6(@opentelemetry/api@1.9.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       next-intl-swc-plugin-extractor: 4.11.2
       po-parser: 2.1.1
       react: 19.2.0
@@ -12548,7 +12580,7 @@ snapshots:
     transitivePeerDependencies:
       - '@swc/helpers'
 
-  next@16.2.6(react-dom@19.2.0(react@19.2.0))(react@19.2.0):
+  next@16.2.6(@opentelemetry/api@1.9.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0):
     dependencies:
       '@next/env': 16.2.6
       '@swc/helpers': 0.5.15
@@ -12567,6 +12599,7 @@ snapshots:
       '@next/swc-linux-x64-musl': 16.2.6
       '@next/swc-win32-arm64-msvc': 16.2.6
       '@next/swc-win32-x64-msvc': 16.2.6
+      '@opentelemetry/api': 1.9.1
       sharp: 0.34.5
     transitivePeerDependencies:
       - '@babel/core'
@@ -12871,6 +12904,11 @@ snapshots:
   process-warning@4.0.1: {}
 
   process-warning@5.0.0: {}
+
+  prom-client@15.1.3:
+    dependencies:
+      '@opentelemetry/api': 1.9.1
+      tdigest: 0.1.2
 
   prop-types@15.8.1:
     dependencies:
@@ -13499,6 +13537,10 @@ snapshots:
 
   tapable@2.3.2: {}
 
+  tdigest@0.1.2:
+    dependencies:
+      bintrees: 1.0.2
+
   telejson@7.2.0:
     dependencies:
       memoizerific: 1.11.3
@@ -13864,7 +13906,7 @@ snapshots:
       terser: 5.46.1
       yaml: 2.8.3
 
-  vitest@4.1.6(@types/node@22.15.3)(@vitest/coverage-v8@4.1.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.12(@types/node@22.15.3)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3)):
+  vitest@4.1.6(@opentelemetry/api@1.9.1)(@types/node@22.15.3)(@vitest/coverage-v8@4.1.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.12(@types/node@22.15.3)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3)):
     dependencies:
       '@vitest/expect': 4.1.6
       '@vitest/mocker': 4.1.6(vite@8.0.12(@types/node@22.15.3)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3))
@@ -13887,6 +13929,7 @@ snapshots:
       vite: 8.0.12(@types/node@22.15.3)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3)
       why-is-node-running: 2.3.0
     optionalDependencies:
+      '@opentelemetry/api': 1.9.1
       '@types/node': 22.15.3
       '@vitest/coverage-v8': 4.1.6(vitest@4.1.6)
       jsdom: 29.1.1(@noble/hashes@2.2.0)
