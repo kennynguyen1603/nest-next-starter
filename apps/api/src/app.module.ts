@@ -11,7 +11,10 @@ import { DataSource, DataSourceOptions } from 'typeorm';
 import { BullModule } from '@nestjs/bullmq';
 import { BullBoardModule } from '@bull-board/nestjs';
 import { ExpressAdapter } from '@bull-board/express';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { GracefulShutdownModule } from 'nestjs-graceful-shutdown';
+import { PrometheusModule } from '@willsoto/nestjs-prometheus';
+
 import { WorkerModule } from './worker/queues/worker.module';
 
 import { AllConfigType } from './config/config.type';
@@ -50,9 +53,8 @@ import useBullFactory from './config/bull/bull.factory';
 import useLoggerFactory from './tools/logger/logger-factory';
 import { GlobalExceptionFilter } from './filters/global-exception.filter';
 import throttlerConfig from './config/throttler/throttler.config';
-// import grafanaConfig from './config/grafana/grafana.config';
+import grafanaConfig from './config/grafana/grafana.config';
 import useThrottlerFactory from './config/throttler/throttler.factory';
-import { ThrottlerModule } from '@nestjs/throttler';
 import { AppThrottlerGuard } from './config/throttler/throttler.guard';
 
 // <file-block>
@@ -106,7 +108,7 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
         redisConfig,
         bullConfig,
         throttlerConfig,
-        // grafanaConfig,
+        grafanaConfig,
       ],
       envFilePath: ['.env'],
     }),
@@ -153,7 +155,13 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
       route: BULL_BOARD_PATH,
       adapter: ExpressAdapter,
     }),
-    GracefulShutdownModule.forRoot(),
+    PrometheusModule.register(),
+    GracefulShutdownModule.forRoot({
+      cleanup: (...args) => {
+        // eslint-disable-next-line no-console
+        console.log('App shutting down...', args);
+      },
+    }),
     WorkerModule,
     UsersModule,
     FilesModule,
