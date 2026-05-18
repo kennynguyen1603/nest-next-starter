@@ -37,6 +37,9 @@ yarn-error.log*
 .DS_Store
 *.pem
 
+# Docker runtime data (Prometheus time-series + Grafana state)
+.docker/
+
 .antigravityrules
 
 .agents/
