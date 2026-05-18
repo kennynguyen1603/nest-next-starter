@@ -68,6 +68,11 @@ Select the driver via `FILE_DRIVER`:
 ### 🏥 Health Check
 - `/health` endpoint (`HealthModule`)
 
+### 📈 Metrics (Prometheus)
+- `/metrics` endpoint — auto-exposed by `@willsoto/nestjs-prometheus`
+- Scraped by Prometheus every 15 seconds when the monitoring stack is running
+- No configuration required — active as long as `PrometheusModule` is registered in `AppModule`
+
 ### 📊 GraphQL (Optional)
 - Apollo Server pre-integrated (`@nestjs/graphql`, `@nestjs/apollo`)
 
@@ -127,7 +132,13 @@ src/
 │   ├── redis/              ← Redis connection config
 │   ├── bull/               ← BullMQ global config + factory
 │   ├── throttler/          ← Rate limiting config, factory & guard
+│   ├── grafana/            ← Grafana credentials config (validates env vars)
 │   └── config.type.ts      ← Aggregate type AllConfigType
+│
+├── tools/
+│   └── grafana/
+│       ├── dashboards/     ← Pre-built Grafana dashboard JSON (server, postgres, prometheus)
+│       └── provisioning/   ← Auto-provisioning config for datasources and dashboards
 │
 ├── database/
 │   ├── mongoose-config.service.ts
@@ -304,6 +315,19 @@ THROTTLER_TTL=60           # TTL window in seconds
 > Default in `.env.example` is disabled (`THROTTLER_ENABLED=false`) — enable in production.  
 > Storage is Redis (shared with BullMQ). The tracker key is the client's real IP, resolved in order: `x-forwarded-for` → `x-real-ip` → `req.ips[0]` → `req.ip`.
 
+### Grafana / Monitoring (optional)
+
+```env
+GRAFANA_USERNAME=admin
+GRAFANA_PASSWORD=your-secure-password
+DOCKER_PROMETHEUS_PORT=9090    # host port for Prometheus UI
+DOCKER_GRAFANA_PORT=3001       # host port for Grafana UI (3001 avoids conflict with web on 3000)
+DOCKER_PG_EXPORTER=9187        # host port for postgres-exporter (SQL users only)
+DOCKER_MONGO_EXPORTER=9216     # host port for mongodb-exporter (MongoDB users only)
+```
+
+These variables are only required when running the monitoring Docker Compose profile. See the [Monitoring section in the root README](../../README.md#monitoring-prometheus--grafana) for the full setup guide.
+
 ### OAuth (Optional)
 
 ```env
@@ -330,3 +354,78 @@ Once running, visit: **http://localhost:8080/docs**
 Visit **http://localhost:8080/api/queues** — protected by Basic Auth (`AUTH_BASIC_USERNAME` / `AUTH_BASIC_PASSWORD`).
 
 Displays active, completed, failed, delayed, and waiting jobs for every registered queue.
+
+---
+
+## Monitoring (Prometheus + Grafana)
+
+### Metrics endpoint
+
+The API exposes Prometheus-compatible metrics at:
+
+```
+GET http://localhost:8080/metrics
+```
+
+This is powered by `@willsoto/nestjs-prometheus` registered in `AppModule`. The endpoint requires no auth and is scraped automatically by Prometheus every 15 seconds when the monitoring stack is active.
+
+### Starting the monitoring stack
+
+```bash
+# From the project root — MongoDB users
+docker compose --profile monitoring up --build
+
+# PostgreSQL users (adds postgres-exporter)
+docker compose --profile monitoring --profile monitoring-postgres up --build
+```
+
+> [!IMPORTANT]
+> The main app stack must be running at the same time so Prometheus can reach `api:8080/metrics`. Start them together or ensure the app is up first.
+
+### Available dashboards
+
+Grafana is pre-provisioned with three dashboards (no manual import needed):
+
+| Dashboard | File | What it shows |
+|-----------|------|----------------|
+| **Server** | `server.dashboard.json` | Node.js process CPU, memory, heap, event-loop lag, active handles/requests |
+| **PostgreSQL** | `postgres.dashboard.json` | Transactions, locks, cache hit rate, connection count, buffer stats |
+| **Prometheus** | `prometheus.dashboard.json` | Prometheus internals: scrape duration, WAL, memory, compaction |
+
+Dashboard files live in `src/tools/grafana/dashboards/` and are auto-loaded by Grafana via the provisioning config in `src/tools/grafana/provisioning/`.
+
+### Access URLs
+
+| Interface | URL | Auth |
+|-----------|-----|------|
+| Grafana | http://localhost:3001 | `GRAFANA_USERNAME` / `GRAFANA_PASSWORD` |
+| Prometheus | http://localhost:9090 | None |
+| API metrics | http://localhost:8080/metrics | None |
+
+### Prometheus scrape targets
+
+Configured in `prometheus.config.yml` at the project root:
+
+| Job | Target | Description |
+|-----|--------|-------------|
+| `prometheus` | `localhost:9090` | Prometheus self-monitoring |
+| `server` | `api:8080` | NestJS API metrics |
+| `database` | `postgres-exporter:9187` | PostgreSQL metrics (SQL users) |
+| `mongodb` | `mongodb-exporter:9216` | MongoDB metrics (MongoDB users) |
+
+### Data persistence
+
+| Directory | Contents |
+|-----------|----------|
+| `.docker/prometheus-data/` | Prometheus time-series data (retained across restarts) |
+| `.docker/grafana-data/` | Grafana state: alert rules, user preferences, custom dashboard edits |
+
+Directories are created automatically on first start. File ownership is fixed by `setup_prometheus` and `setup_grafana` init containers.
+
+### Reset monitoring data
+
+```bash
+# From the project root
+docker compose --profile monitoring down
+rm -rf .docker/
+```

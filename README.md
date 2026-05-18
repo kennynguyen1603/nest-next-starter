@@ -32,6 +32,7 @@ nest-next-starter/                  ← Turborepo monorepo (pnpm workspaces)
 | Mail | Nodemailer + Handlebars templates, dispatched via job queue |
 | i18n | nestjs-i18n (header-based) + next-intl (locale routing) |
 | Containers | Docker + Docker Compose — full stack in one command |
+| Monitoring | Prometheus + Grafana — metrics, dashboards, alerting (optional profile) |
 | Linting | ESLint + Prettier + Husky pre-commit hooks |
 
 ---
@@ -217,6 +218,110 @@ docker compose down -v             # Stop and remove volumes (wipes database)
 docker compose logs -f api         # Tail API logs
 docker compose logs -f web         # Tail web logs
 ```
+
+### Monitoring
+
+```bash
+# MongoDB users
+docker compose --profile monitoring up --build
+
+# PostgreSQL users
+docker compose --profile monitoring --profile monitoring-postgres up --build
+
+# Stop monitoring stack only
+docker compose --profile monitoring down
+
+# Wipe all monitoring data (Prometheus time-series + Grafana state)
+docker compose --profile monitoring down && rm -rf .docker/
+```
+
+---
+
+## Monitoring (Prometheus + Grafana)
+
+The monitoring stack is **opt-in** — it runs separately from the main app via Docker Compose profiles and does not affect normal development.
+
+### What's included
+
+| Service | Image | Port | Description |
+|---------|-------|------|-------------|
+| Prometheus | `prom/prometheus:v3.0.1` | `9090` | Scrapes metrics from the API and exporters |
+| Grafana | `grafana/grafana-oss:11.3.1` | `3001` | Visualises dashboards |
+| MongoDB Exporter | `percona/mongodb_exporter:0.44` | `9216` | DB metrics for MongoDB users |
+| PostgreSQL Exporter | `prometheuscommunity/postgres-exporter` | `9187` | DB metrics for SQL users |
+
+Three dashboards are pre-provisioned automatically:
+
+| Dashboard | Metrics |
+|-----------|---------|
+| **Server** | Node.js CPU, memory, event-loop lag, heap, active handles |
+| **PostgreSQL** | Transactions, locks, cache hit rate, buffer stats |
+| **Prometheus** | Scrape duration, WAL, chunk compaction internals |
+
+### Setup
+
+**Step 1 — Configure environment variables** in `apps/api/.env`:
+
+```env
+GRAFANA_USERNAME=admin
+GRAFANA_PASSWORD=your-secure-password   # change before deploying
+DOCKER_PROMETHEUS_PORT=9090
+DOCKER_GRAFANA_PORT=3001
+DOCKER_PG_EXPORTER=9187
+DOCKER_MONGO_EXPORTER=9216
+```
+
+**Step 2 — Start the monitoring stack** (Docker must be running):
+
+```bash
+# MongoDB
+docker compose --profile monitoring up --build
+
+# PostgreSQL
+docker compose --profile monitoring --profile monitoring-postgres up --build
+```
+
+> [!NOTE]
+> The main app stack (`api`, `web`, `mongo`, `redis`) must also be running for Prometheus to scrape metrics. Start both together or run the app stack first.
+
+### Access
+
+| URL | Credential |
+|-----|------------|
+| Grafana — http://localhost:3001 | `GRAFANA_USERNAME` / `GRAFANA_PASSWORD` |
+| Prometheus — http://localhost:9090 | No auth |
+| API metrics — http://localhost:8080/metrics | No auth |
+
+### Metrics endpoint
+
+The API exposes `/metrics` automatically via `@willsoto/nestjs-prometheus`. Prometheus scrapes it every 15 seconds. No code changes are needed.
+
+### Data persistence
+
+Prometheus and Grafana data are stored in local bind-mount directories:
+
+```
+.docker/
+├── prometheus-data/    ← time-series metrics (retained across restarts)
+└── grafana-data/       ← dashboards, users, alert state
+```
+
+These directories are created automatically on first start by the `setup_prometheus` and `setup_grafana` init containers which fix file ownership permissions.
+
+### Reset monitoring data
+
+```bash
+docker compose --profile monitoring down
+rm -rf .docker/
+```
+
+### Docker Compose profiles explained
+
+| Profile | Services included |
+|---------|-------------------|
+| _(none)_ | `api`, `web`, `mongo`, `redis`, `seed` |
+| `monitoring` | Prometheus, Grafana, MongoDB Exporter, setup services |
+| `monitoring-postgres` | PostgreSQL Exporter |
 
 ---
 
