@@ -39,13 +39,13 @@ describe('useThrottlerFactory', () => {
     it('returns true when throttler is disabled', () => {
       mockConfig(false);
       const result = useThrottlerFactory(config as unknown as ConfigService);
-      expect(result.skipIf!({} as any)).toBe(true);
+      expect(result.skipIf({} as any)).toBe(true);
     });
 
     it('returns false when throttler is enabled', () => {
       mockConfig(true);
       const result = useThrottlerFactory(config as unknown as ConfigService);
-      expect(result.skipIf!({} as any)).toBe(false);
+      expect(result.skipIf({} as any)).toBe(false);
     });
   });
 

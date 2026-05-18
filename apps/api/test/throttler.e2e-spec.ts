@@ -45,21 +45,31 @@ describe('AppThrottlerGuard (e2e)', () => {
   it('allows requests under the rate limit', async () => {
     app = await buildApp(3, 60000);
     for (let i = 0; i < 3; i++) {
-      await request(app.getHttpServer()).get('/throttle-test/limited').expect(200);
+      await request(app.getHttpServer())
+        .get('/throttle-test/limited')
+        .expect(200);
     }
   });
 
   it('returns 429 when limit is exceeded', async () => {
     app = await buildApp(2, 60000);
-    await request(app.getHttpServer()).get('/throttle-test/limited').expect(200);
-    await request(app.getHttpServer()).get('/throttle-test/limited').expect(200);
-    await request(app.getHttpServer()).get('/throttle-test/limited').expect(429);
+    await request(app.getHttpServer())
+      .get('/throttle-test/limited')
+      .expect(200);
+    await request(app.getHttpServer())
+      .get('/throttle-test/limited')
+      .expect(200);
+    await request(app.getHttpServer())
+      .get('/throttle-test/limited')
+      .expect(429);
   });
 
   it('does not rate limit when skipIf returns true', async () => {
     app = await buildApp(1, 60000, () => true);
     for (let i = 0; i < 5; i++) {
-      await request(app.getHttpServer()).get('/throttle-test/limited').expect(200);
+      await request(app.getHttpServer())
+        .get('/throttle-test/limited')
+        .expect(200);
     }
   });
 

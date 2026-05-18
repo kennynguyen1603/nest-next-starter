@@ -23,7 +23,9 @@ describe('AppThrottlerGuard', () => {
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
-      imports: [ThrottlerModule.forRoot({ throttlers: [{ limit: 3, ttl: 60000 }] })],
+      imports: [
+        ThrottlerModule.forRoot({ throttlers: [{ limit: 3, ttl: 60000 }] }),
+      ],
       providers: [AppThrottlerGuard],
     }).compile();
     guard = module.get(AppThrottlerGuard);
@@ -45,7 +47,9 @@ describe('AppThrottlerGuard', () => {
         getContext: () => ({ req, res }),
       } as unknown as GqlExecutionContext);
 
-      const context = { getType: () => 'graphql' } as unknown as ExecutionContext;
+      const context = {
+        getType: () => 'graphql',
+      } as unknown as ExecutionContext;
       const result = guard.getRequestResponse(context);
       expect(result).toEqual({ req, res });
     });
@@ -57,12 +61,16 @@ describe('AppThrottlerGuard', () => {
     }
 
     it('returns single IP from x-forwarded-for string', async () => {
-      expect(await track({ headers: { 'x-forwarded-for': '1.2.3.4' } })).toBe('1.2.3.4');
+      expect(await track({ headers: { 'x-forwarded-for': '1.2.3.4' } })).toBe(
+        '1.2.3.4',
+      );
     });
 
     it('returns first IP when x-forwarded-for has multiple comma-separated IPs', async () => {
       expect(
-        await track({ headers: { 'x-forwarded-for': '1.2.3.4, 5.6.7.8, 9.10.11.12' } }),
+        await track({
+          headers: { 'x-forwarded-for': '1.2.3.4, 5.6.7.8, 9.10.11.12' },
+        }),
       ).toBe('1.2.3.4');
     });
 
@@ -73,11 +81,15 @@ describe('AppThrottlerGuard', () => {
     });
 
     it('trims whitespace from extracted IP', async () => {
-      expect(await track({ headers: { 'x-forwarded-for': '  1.2.3.4  ' } })).toBe('1.2.3.4');
+      expect(
+        await track({ headers: { 'x-forwarded-for': '  1.2.3.4  ' } }),
+      ).toBe('1.2.3.4');
     });
 
     it('falls back to x-real-ip when x-forwarded-for is absent', async () => {
-      expect(await track({ headers: { 'x-real-ip': '10.0.0.1' } })).toBe('10.0.0.1');
+      expect(await track({ headers: { 'x-real-ip': '10.0.0.1' } })).toBe(
+        '10.0.0.1',
+      );
     });
 
     it('uses req.ips[0] when no proxy headers and ips is populated', async () => {
@@ -87,11 +99,15 @@ describe('AppThrottlerGuard', () => {
     });
 
     it('falls back to req.ip when no proxy headers and ips is empty array', async () => {
-      expect(await track({ headers: {}, ips: [], ip: '127.0.0.1' })).toBe('127.0.0.1');
+      expect(await track({ headers: {}, ips: [], ip: '127.0.0.1' })).toBe(
+        '127.0.0.1',
+      );
     });
 
     it('falls back to req.ip when no proxy headers and ips is undefined', async () => {
-      expect(await track({ headers: {}, ips: undefined, ip: '172.16.0.1' })).toBe('172.16.0.1');
+      expect(
+        await track({ headers: {}, ips: undefined, ip: '172.16.0.1' }),
+      ).toBe('172.16.0.1');
     });
   });
 });

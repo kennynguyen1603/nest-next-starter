@@ -20,7 +20,7 @@ class ThrottlerValidator {
 }
 
 export function getConfig(): ThrottlerConfig {
-  const enabled = process.env.THROTTLER_ENABLED !== 'true';
+  const enabled = process.env.THROTTLER_ENABLED !== 'false';
   return {
     enabled: enabled,
     limit: Number.parseInt(process.env.THROTTLER_LIMIT || '3'),
@@ -31,8 +31,6 @@ export function getConfig(): ThrottlerConfig {
 }
 
 export default registerAs<ThrottlerConfig>('throttler', () => {
-  // eslint-disable-next-line no-console
-  console.info(`Registering ThrottlerConfig from environment variables`);
   validateConfig(process.env, ThrottlerValidator);
   return getConfig();
 });
