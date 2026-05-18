@@ -89,7 +89,7 @@ describe('AuthService', () => {
       ).rejects.toThrow(UnprocessableEntityException);
 
       expect(mockI18n.t).toHaveBeenCalledWith(
-        'auth.EMAIL_NOT_FOUND',
+        'auth.INVALID_CREDENTIALS',
         expect.any(Object),
       );
     });
@@ -113,6 +113,25 @@ describe('AuthService', () => {
       );
     });
 
+    it('throws UnprocessableEntityException when no password is set', async () => {
+      mockUsersService.findByEmail.mockResolvedValue({
+        id: '1',
+        email: 'x@x.com',
+        provider: AuthProvidersEnum.EMAIL,
+        password: null,
+        roles: [],
+      });
+
+      await expect(
+        service.validateLogin({ email: 'x@x.com', password: 'anypass' }),
+      ).rejects.toThrow(UnprocessableEntityException);
+
+      expect(mockI18n.t).toHaveBeenCalledWith(
+        'auth.INVALID_CREDENTIALS',
+        expect.any(Object),
+      );
+    });
+
     it('throws UnprocessableEntityException when password is incorrect', async () => {
       mockUsersService.findByEmail.mockResolvedValue({
         id: '1',
@@ -122,12 +141,23 @@ describe('AuthService', () => {
         roles: [],
       });
 
+      let thrownError: UnprocessableEntityException | undefined;
       await expect(
         service.validateLogin({ email: 'x@x.com', password: 'wrongpass' }),
       ).rejects.toThrow(UnprocessableEntityException);
 
+      // Error is on 'email' field (not 'password') to prevent user enumeration
+      await service
+        .validateLogin({ email: 'x@x.com', password: 'wrongpass' })
+        .catch((e: UnprocessableEntityException) => {
+          thrownError = e;
+        });
+      expect(thrownError?.getResponse()).toMatchObject({
+        errors: { email: 'mocked' },
+      });
+
       expect(mockI18n.t).toHaveBeenCalledWith(
-        'auth.INCORRECT_PASSWORD',
+        'auth.INVALID_CREDENTIALS',
         expect.any(Object),
       );
     });
@@ -225,6 +255,75 @@ describe('AuthService', () => {
         'auth.LOGOUT_SUCCESS',
         expect.any(Object),
       );
+    });
+  });
+
+  describe('update — password change', () => {
+    const jwtPayload = { id: 'user1', sessionId: 'session1' };
+
+    it('allows OAuth user to set a first password without oldPassword', async () => {
+      mockUsersService.findById.mockResolvedValue({
+        id: 'user1',
+        provider: 'google',
+        password: null,
+      });
+      mockSessionService.deleteByUserIdWithExclude.mockResolvedValue(undefined);
+      mockUsersService.update.mockResolvedValue(undefined);
+      mockUsersService.findById
+        .mockResolvedValueOnce({ id: 'user1', provider: 'google', password: null })
+        .mockResolvedValueOnce({ id: 'user1', provider: 'google' });
+
+      await expect(
+        service.update(jwtPayload as any, { password: 'newpass123' }),
+      ).resolves.not.toThrow();
+
+      expect(mockSessionService.deleteByUserIdWithExclude).toHaveBeenCalledWith({
+        userId: 'user1',
+        excludeSessionId: 'session1',
+      });
+    });
+
+    it('throws when email user omits oldPassword', async () => {
+      mockUsersService.findById.mockResolvedValue({
+        id: 'user1',
+        provider: 'email',
+        password: 'somehash',
+      });
+
+      await expect(
+        service.update(jwtPayload as any, { password: 'newpass123' }),
+      ).rejects.toThrow(UnprocessableEntityException);
+    });
+
+    it('throws when email user provides wrong oldPassword', async () => {
+      const hash = await bcrypt.hash('correctpass', 10);
+      mockUsersService.findById.mockResolvedValue({
+        id: 'user1',
+        provider: 'email',
+        password: hash,
+      });
+
+      await expect(
+        service.update(jwtPayload as any, { password: 'newpass123', oldPassword: 'wrongpass' }),
+      ).rejects.toThrow(UnprocessableEntityException);
+    });
+
+    it('allows email user to change password with correct oldPassword', async () => {
+      const hash = await bcrypt.hash('correctpass', 10);
+      mockUsersService.findById
+        .mockResolvedValueOnce({ id: 'user1', provider: 'email', password: hash })
+        .mockResolvedValueOnce({ id: 'user1', provider: 'email' });
+      mockSessionService.deleteByUserIdWithExclude.mockResolvedValue(undefined);
+      mockUsersService.update.mockResolvedValue(undefined);
+
+      await expect(
+        service.update(jwtPayload as any, { password: 'newpass123', oldPassword: 'correctpass' }),
+      ).resolves.not.toThrow();
+
+      expect(mockSessionService.deleteByUserIdWithExclude).toHaveBeenCalledWith({
+        userId: 'user1',
+        excludeSessionId: 'session1',
+      });
     });
   });
 
