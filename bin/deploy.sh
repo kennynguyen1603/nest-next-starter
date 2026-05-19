@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-cd "$(dirname "$(realpath "$0")")/.."
+cd ~/nest-next-starter
 
 echo "→ Pulling latest code..."
 git pull origin main
