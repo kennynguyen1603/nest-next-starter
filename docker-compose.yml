@@ -7,10 +7,15 @@ services:
       - apps/api/.env
     environment:
       NODE_ENV: production
-    command: node dist/database/seeds/document/run-seed.js
-    depends_on:
-      redis:
-        condition: service_healthy
+    command:
+      - sh
+      - -c
+      - |
+        if [ "$$DATABASE_TYPE" = "mongodb" ] || [ -z "$$DATABASE_TYPE" ]; then
+          node dist/database/seeds/document/run-seed.js
+        else
+          node dist/database/seeds/relational/run-seed.js
+        fi
     restart: "no"
 
   api:

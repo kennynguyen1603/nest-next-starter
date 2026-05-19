@@ -83,7 +83,7 @@ export function getConfig(): AppConfig {
       ? parseInt(process.env.APP_PORT, 10)
       : process.env.PORT
         ? parseInt(process.env.PORT, 10)
-        : 3000,
+        : 8080,
     apiPrefix: process.env.API_PREFIX || 'api',
     appPrefix: process.env.APP_PREFIX || process.env.APP_NAME || 'app',
     corsOrigin: process.env.FRONTEND_DOMAIN,
