@@ -19,21 +19,21 @@ nest-next-starter/                  ← Turborepo monorepo (pnpm workspaces)
 
 ### Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Monorepo | [Turborepo](https://turborepo.dev) + pnpm workspaces |
-| Backend | NestJS 11, TypeScript, Passport, Swagger |
-| Frontend | Next.js 16, React 19, TailwindCSS v4, Zustand |
-| Database | **MongoDB** (Mongoose) or **SQL** (TypeORM) — switched via `DATABASE_TYPE` |
-| Auth | JWT (Access + Refresh token), OAuth 2.0 (Google / Facebook / GitHub / Twitter) |
-| File Storage | Local / AWS S3 / S3 Presigned / Cloudinary — switched via `FILE_DRIVER` |
-| Queue | BullMQ + Redis — async job processing (email delivery) |
-| Rate Limiting | `@nestjs/throttler` + Redis storage — per-IP, globally applied |
-| Mail | Nodemailer + Handlebars templates, dispatched via job queue |
-| i18n | nestjs-i18n (header-based) + next-intl (locale routing) |
-| Containers | Docker + Docker Compose — full stack in one command |
-| Monitoring | Prometheus + Grafana — metrics, dashboards, alerting (optional profile) |
-| Linting | ESLint + Prettier + Husky pre-commit hooks |
+| Layer         | Technology                                                                     |
+| ------------- | ------------------------------------------------------------------------------ |
+| Monorepo      | [Turborepo](https://turborepo.dev) + pnpm workspaces                           |
+| Backend       | NestJS 11, TypeScript, Passport, Swagger                                       |
+| Frontend      | Next.js 16, React 19, TailwindCSS v4, Zustand                                  |
+| Database      | **MongoDB** (Mongoose) or **SQL** (TypeORM) — switched via `DATABASE_TYPE`     |
+| Auth          | JWT (Access + Refresh token), OAuth 2.0 (Google / Facebook / GitHub / Twitter) |
+| File Storage  | Local / AWS S3 / S3 Presigned / Cloudinary — switched via `FILE_DRIVER`        |
+| Queue         | BullMQ + Redis — async job processing (email delivery)                         |
+| Rate Limiting | `@nestjs/throttler` + Redis storage — per-IP, globally applied                 |
+| Mail          | Nodemailer + Handlebars templates, dispatched via job queue                    |
+| i18n          | nestjs-i18n (header-based) + next-intl (locale routing)                        |
+| Containers    | Docker + Docker Compose — full stack in one command                            |
+| Monitoring    | Prometheus + Grafana — metrics, dashboards, alerting (optional profile)        |
+| Linting       | ESLint + Prettier + Husky pre-commit hooks                                     |
 
 ---
 
@@ -63,14 +63,14 @@ cp apps/api/.env.example apps/api/.env
 docker compose up --build
 ```
 
-| Service | URL |
-|---------|-----|
-| Frontend | http://localhost:3000 |
-| Backend API | http://localhost:8080/api/v1 |
-| Swagger Docs | http://localhost:8080/docs |
+| Service      | URL                          |
+| ------------ | ---------------------------- |
+| Frontend     | http://localhost:3000        |
+| Backend API  | http://localhost:8080/api/v1 |
+| Swagger Docs | http://localhost:8080/docs   |
 
 > [!NOTE]
-> The `seed` service runs automatically before the API starts and populates the MongoDB `roles` collection (idempotent — safe to re-run). To reset all data, run `docker compose down -v && docker compose up --build`.
+> The `seed` service runs automatically before the API starts. It detects `DATABASE_TYPE` and runs the correct seed — MongoDB (`document`) or SQL (`relational`) — automatically. Seeds are idempotent and safe to re-run. To wipe all data: `docker compose down -v && docker compose up --build`.
 
 #### Passing OAuth credentials at build time
 
@@ -117,11 +117,11 @@ pnpm dev --filter=api
 pnpm dev --filter=web
 ```
 
-| App | URL |
-|-----|-----|
-| Backend API | http://localhost:8080/api/v1 |
-| Swagger Docs | http://localhost:8080/docs |
-| Frontend | http://localhost:3000 |
+| App          | URL                          |
+| ------------ | ---------------------------- |
+| Backend API  | http://localhost:8080/api/v1 |
+| Swagger Docs | http://localhost:8080/docs   |
+| Frontend     | http://localhost:3000        |
 
 ---
 
@@ -166,11 +166,11 @@ FILE_DRIVER=cloudinary     # Cloudinary
 
 Configure each provider by filling in the credentials in `apps/api/.env` and `apps/web/.env.local`. See the respective `.env.example` files for the full list of variables.
 
-| Provider | Where to create credentials |
-|----------|------------------------------|
-| Google | [console.cloud.google.com](https://console.cloud.google.com) |
-| Facebook | [developers.facebook.com](https://developers.facebook.com/apps) |
-| GitHub | [github.com/settings/developers](https://github.com/settings/developers) |
+| Provider  | Where to create credentials                                                |
+| --------- | -------------------------------------------------------------------------- |
+| Google    | [console.cloud.google.com](https://console.cloud.google.com)               |
+| Facebook  | [developers.facebook.com](https://developers.facebook.com/apps)            |
+| GitHub    | [github.com/settings/developers](https://github.com/settings/developers)   |
 | Twitter/X | [developer.twitter.com](https://developer.twitter.com/en/portal/dashboard) |
 
 ---
@@ -243,20 +243,20 @@ The monitoring stack is **opt-in** — it runs separately from the main app via 
 
 ### What's included
 
-| Service | Image | Port | Description |
-|---------|-------|------|-------------|
-| Prometheus | `prom/prometheus:v3.0.1` | `9090` | Scrapes metrics from the API and exporters |
-| Grafana | `grafana/grafana-oss:11.3.1` | `3001` | Visualises dashboards |
-| MongoDB Exporter | `percona/mongodb_exporter:0.44` | `9216` | DB metrics for MongoDB users |
-| PostgreSQL Exporter | `prometheuscommunity/postgres-exporter` | `9187` | DB metrics for SQL users |
+| Service             | Image                                   | Port   | Description                                |
+| ------------------- | --------------------------------------- | ------ | ------------------------------------------ |
+| Prometheus          | `prom/prometheus:v3.0.1`                | `9090` | Scrapes metrics from the API and exporters |
+| Grafana             | `grafana/grafana-oss:11.3.1`            | `3001` | Visualises dashboards                      |
+| MongoDB Exporter    | `percona/mongodb_exporter:0.44`         | `9216` | DB metrics for MongoDB users               |
+| PostgreSQL Exporter | `prometheuscommunity/postgres-exporter` | `9187` | DB metrics for SQL users                   |
 
 Three dashboards are pre-provisioned automatically:
 
-| Dashboard | Metrics |
-|-----------|---------|
-| **Server** | Node.js CPU, memory, event-loop lag, heap, active handles |
-| **PostgreSQL** | Transactions, locks, cache hit rate, buffer stats |
-| **Prometheus** | Scrape duration, WAL, chunk compaction internals |
+| Dashboard      | Metrics                                                   |
+| -------------- | --------------------------------------------------------- |
+| **Server**     | Node.js CPU, memory, event-loop lag, heap, active handles |
+| **PostgreSQL** | Transactions, locks, cache hit rate, buffer stats         |
+| **Prometheus** | Scrape duration, WAL, chunk compaction internals          |
 
 ### Setup
 
@@ -286,11 +286,11 @@ docker compose --profile monitoring --profile monitoring-postgres up --build
 
 ### Access
 
-| URL | Credential |
-|-----|------------|
-| Grafana — http://localhost:3001 | `GRAFANA_USERNAME` / `GRAFANA_PASSWORD` |
-| Prometheus — http://localhost:9090 | No auth |
-| API metrics — http://localhost:8080/metrics | No auth |
+| URL                                         | Credential                              |
+| ------------------------------------------- | --------------------------------------- |
+| Grafana — http://localhost:3001             | `GRAFANA_USERNAME` / `GRAFANA_PASSWORD` |
+| Prometheus — http://localhost:9090          | No auth                                 |
+| API metrics — http://localhost:8080/metrics | No auth                                 |
 
 ### Metrics endpoint
 
@@ -317,11 +317,146 @@ rm -rf .docker/
 
 ### Docker Compose profiles explained
 
-| Profile | Services included |
-|---------|-------------------|
-| _(none)_ | `api`, `web`, `mongo`, `redis`, `seed` |
-| `monitoring` | Prometheus, Grafana, MongoDB Exporter, setup services |
-| `monitoring-postgres` | PostgreSQL Exporter |
+| Profile               | Services included                                     |
+| --------------------- | ----------------------------------------------------- |
+| _(none)_              | `api`, `web`, `mongo`, `redis`, `seed`                |
+| `monitoring`          | Prometheus, Grafana, MongoDB Exporter, setup services |
+| `monitoring-postgres` | PostgreSQL Exporter                                   |
+
+---
+
+## CI/CD (GitHub Actions)
+
+A full CI/CD pipeline is included at [`.github/workflows/main.yml`](.github/workflows/main.yml).
+
+### Trigger events
+
+| Event                        | CI  | Deploy          |
+| ---------------------------- | --- | --------------- |
+| Push to `main`               | ✅  | ✅ (if enabled) |
+| Pull request to `main`       | ✅  | ❌              |
+| Manual (`workflow_dispatch`) | ✅  | ✅ (if enabled) |
+
+### CI job — runs on every push and PR
+
+| Step             | Command                      |
+| ---------------- | ---------------------------- |
+| Lint             | `pnpm lint`                  |
+| Type check       | `pnpm check-types`           |
+| Unit tests — API | `pnpm --filter=api test`     |
+| E2E tests — API  | `pnpm --filter=api test:e2e` |
+| Unit tests — Web | `pnpm --filter=web test`     |
+| Build            | `pnpm build`                 |
+
+The build step bakes `NEXT_PUBLIC_*` variables into the Next.js bundle using GitHub Actions repository **Variables** (not secrets, since these are public values).
+
+### Deploy job — SSH to EC2
+
+The deploy job runs only when **CI passes** and **`DEPLOY_ENABLED`** is set. It SSHs into the server and runs `./bin/deploy.sh`:
+
+```bash
+# bin/deploy.sh — runs on the server
+git pull origin main
+docker compose up -d --build
+docker compose run --rm seed
+```
+
+### Setup for a new repository
+
+#### Step 1 — Create the `production` environment
+
+**GitHub repo → Settings → Environments → New environment** → name it `production`.
+
+#### Step 2 — Add Secrets
+
+**Settings → Secrets and variables → Actions → Secrets**
+
+| Secret                         | Value                                        |
+| ------------------------------ | -------------------------------------------- |
+| `PRODUCTION_EC2_HOST`          | EC2 public IP or domain                      |
+| `PRODUCTION_EC2_USERNAME`      | SSH user (e.g. `ubuntu`)                     |
+| `PRODUCTION_EC2_PORT`          | SSH port (usually `22`)                      |
+| `PRODUCTION_EC2_PRIVATESSHKEY` | Full contents of the `.pem` private key file |
+| `TURBO_TOKEN`                  | _(optional)_ Turborepo remote cache token    |
+| `TURBO_TEAM`                   | _(optional)_ Turborepo team slug             |
+
+#### Step 3 — Add Variables
+
+**Settings → Secrets and variables → Actions → Variables**
+
+| Variable                        | Value                   | Required                |
+| ------------------------------- | ----------------------- | ----------------------- |
+| `DEPLOY_ENABLED`                | `true`                  | To activate auto-deploy |
+| `NEXT_PUBLIC_API_URL`           | Production API URL      | For Next.js build       |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID`  | Google OAuth client ID  | If using Google login   |
+| `NEXT_PUBLIC_FACEBOOK_APP_ID`   | Facebook App ID         | If using Facebook login |
+| `NEXT_PUBLIC_GITHUB_CLIENT_ID`  | GitHub OAuth client ID  | If using GitHub login   |
+| `NEXT_PUBLIC_TWITTER_CLIENT_ID` | Twitter OAuth client ID | If using Twitter login  |
+
+> [!IMPORTANT]
+> **`DEPLOY_ENABLED` is the on/off switch for auto-deploy.** Without it, CI (lint/test/build) runs normally on every push but the deploy step is silently skipped. This means you can use the full CI pipeline from day one without needing an EC2 server.
+
+#### Step 4 — Server setup (first time only)
+
+```bash
+# 1. SSH into EC2
+ssh -i your-key.pem ubuntu@<EC2_IP>
+
+# 2. Install Docker
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker ubuntu && newgrp docker
+
+# 3. Create a deploy key for GitHub access
+ssh-keygen -t ed25519 -C "ec2-deploy" -f ~/.ssh/github_deploy -N ""
+cat ~/.ssh/github_deploy.pub   # → add to GitHub repo → Settings → Deploy keys
+
+cat >> ~/.ssh/config << 'EOF'
+Host github.com
+  IdentityFile ~/.ssh/github_deploy
+  StrictHostKeyChecking no
+EOF
+
+# 4. Clone the repo
+git clone git@github.com:<your-org>/nest-next-starter.git ~/nest-next-starter
+
+# 5. Configure environment
+cp ~/nest-next-starter/apps/api/.env.example ~/nest-next-starter/apps/api/.env
+cp ~/nest-next-starter/apps/web/.env.example ~/nest-next-starter/apps/web/.env
+# Edit both .env files with production values
+
+# 6. First deploy
+cd ~/nest-next-starter && ./bin/deploy.sh
+```
+
+---
+
+## Git Hooks (Husky)
+
+Husky is pre-configured with two hooks to enforce quality locally before code reaches CI.
+
+### `pre-push`
+
+Runs automatically before every `git push`. If any TypeScript or JavaScript files changed, it executes the full test suite:
+
+```bash
+pnpm test   # runs jest (API) + vitest (web) via Turborepo
+```
+
+If no TS/JS files changed (e.g. only docs or config), tests are skipped and the push proceeds immediately.
+
+### `commit-msg`
+
+Validates commit messages against [Conventional Commits](https://www.conventionalcommits.org/) format via `commitlint`:
+
+```
+feat: add user profile page
+fix: correct token expiry calculation
+chore: update dependencies
+```
+
+### Skipping in CI and production
+
+The `install.mjs` script automatically skips Husky installation when `NODE_ENV=production` or `CI=true`, so hooks never interfere with server deployments or GitHub Actions runners.
 
 ---
 
