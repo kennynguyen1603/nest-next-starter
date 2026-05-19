@@ -4,6 +4,7 @@
   "globalEnv": [
     "NODE_ENV",
     "DATABASE_URL",
+    "API_URL",
     "AUTH_JWT_SECRET",
     "AUTH_REFRESH_SECRET",
     "GOOGLE_CLIENT_SECRET",
