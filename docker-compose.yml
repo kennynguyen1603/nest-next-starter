@@ -7,10 +7,9 @@ services:
       - apps/api/.env
     environment:
       NODE_ENV: production
-      DATABASE_URL: mongodb://mongo:27017/nest_starter
     command: node dist/database/seeds/document/run-seed.js
     depends_on:
-      mongo:
+      redis:
         condition: service_healthy
     restart: "no"
 
@@ -28,11 +27,8 @@ services:
       REDIS_PORT: 6379
       REDIS_PASSWORD: redispass
       REDIS_TLS: "false"
-      DATABASE_URL: mongodb://mongo:27017/nest_starter
       APP_COOKIE_SECURE: "false"
     depends_on:
-      mongo:
-        condition: service_healthy
       redis:
         condition: service_healthy
       seed:
@@ -65,19 +61,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
-    restart: unless-stopped
-
-  mongo:
-    image: mongo:7
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     restart: unless-stopped
 
   redis:
@@ -135,7 +118,7 @@ services:
     ports:
       - ${DOCKER_PG_EXPORTER:-9187}:9187
     environment:
-      DATA_SOURCE_NAME: 'postgresql://${DATABASE_USERNAME}:${DATABASE_PASSWORD}@${DATABASE_HOST}:${DATABASE_PORT}/${DATABASE_NAME}?sslmode=${DATABASE_SSL_MODE:-disable}'
+      DATA_SOURCE_NAME: 'postgresql://${DATABASE_USERNAME:-}:${DATABASE_PASSWORD:-}@${DATABASE_HOST:-localhost}:${DATABASE_PORT:-5432}/${DATABASE_NAME:-postgres}?sslmode=${DATABASE_SSL_MODE:-disable}'
     profiles:
       - monitoring-postgres
     depends_on:
@@ -148,12 +131,11 @@ services:
     ports:
       - ${DOCKER_MONGO_EXPORTER:-9216}:9216
     environment:
-      MONGODB_URI: 'mongodb://mongo:27017'
+      MONGODB_URI: '${DATABASE_URL}'
     profiles:
       - monitoring
     depends_on:
       - prometheus
-      - mongo
 
   # Solution to fix prometheus volume permission issue
   setup_prometheus:
@@ -181,11 +163,11 @@ services:
       - /bin/sh
       - -c
       - |
-        chown -R 65534:65534 /var/lib/grafana
+        chown -R 472:472 /var/lib/grafana
     volumes:
       - ./.docker/grafana-data:/var/lib/grafana
     profiles:
       - monitoring
+
 volumes:
-  mongo_data:
   redis_data:
