@@ -6,24 +6,26 @@ import { useRouter } from "@/lib/navigation";
 import { useAuthStore } from "@/lib/auth-store";
 import { api, tryRefresh } from "@/lib/api";
 import type { AuthUser } from "@repo/types";
+import Image from "next/image";
 import { LanguageSwitcher } from "./_components/language-switcher";
 
 const EditProfileDialog = lazy(() =>
   import("./_components/edit-profile-dialog").then((m) => ({
     default: m.EditProfileDialog,
-  }))
+  })),
 );
 const DeleteAccountDialog = lazy(() =>
   import("./_components/delete-account-dialog").then((m) => ({
     default: m.DeleteAccountDialog,
-  }))
+  })),
 );
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
 export default function Home() {
   const router = useRouter();
-  const { accessToken, tokenExpires, user, clearAuth, setAuth } = useAuthStore();
+  const { accessToken, tokenExpires, user, clearAuth, setAuth } =
+    useAuthStore();
   const t = useTranslations();
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
@@ -129,10 +131,12 @@ export default function Home() {
           {/* Profile identity */}
           <div className="flex items-center gap-4">
             {photoUrl ? (
-              <img
+              <Image
                 src={photoUrl}
                 alt={fullName || "Avatar"}
-                className="w-12 h-12 object-cover shrink-0"
+                width={48}
+                height={48}
+                className="object-cover shrink-0"
               />
             ) : (
               <div className="w-12 h-12 bg-black flex items-center justify-center shrink-0">
@@ -146,7 +150,9 @@ export default function Home() {
                 {fullName || user.email || "—"}
               </p>
               {fullName && (
-                <p className="text-sm text-neutral-500 truncate">{user.email}</p>
+                <p className="text-sm text-neutral-500 truncate">
+                  {user.email}
+                </p>
               )}
             </div>
           </div>
