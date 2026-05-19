@@ -60,5 +60,8 @@ export default defineConfig(
     // enable jest rules on test files
     files: ['test/**'],
     extends: [jestPlugin.configs['flat/recommended']],
+    rules: {
+      'jest/expect-expect': ['warn', { assertFunctionNames: ['expect', '**.expect'] }],
+    },
   },
 );
