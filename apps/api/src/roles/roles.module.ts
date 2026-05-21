@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import databaseConfig from '@/config/database/database.config';
 import { DatabaseConfig } from '@/config/database/database-config.type';
+import { CacheModule } from '@/shared/cache/cache.module';
 
 import { RolesController } from './roles.controller';
 import { RolesService } from './roles.service';
@@ -15,7 +16,7 @@ const infrastructurePersistenceModule = (databaseConfig() as DatabaseConfig)
 // </database-block>
 
 @Module({
-  imports: [infrastructurePersistenceModule],
+  imports: [infrastructurePersistenceModule, CacheModule],
   controllers: [RolesController],
   providers: [RolesService],
   exports: [RolesService, infrastructurePersistenceModule],
