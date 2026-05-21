@@ -8,35 +8,41 @@ Runs by default at **http://localhost:8080**.
 ## Features
 
 ### 🔐 Authentication & Authorization
+
 - **Email/Password** — Register, login, email confirmation, forgot/reset password
 - **OAuth 2.0** — Google, Facebook, GitHub, Twitter/X (Passport strategies)
 - **JWT** — Short-lived access token (15 min) + long-lived refresh token (7 days) stored in an HttpOnly cookie
 - **Session management** — Each login creates an isolated session; logout invalidates the session; changing password revokes all other active sessions
 - **RBAC** — Role-based (USER, MANAGER, ADMIN) and permission-based access control; JWT payload embeds `roles` + `permissions`
+- **Permissions caching** — Role-to-permission mappings are cached in Redis for 5 minutes, eliminating repeated JOIN queries on every login and token refresh
+- **Per-user email cooldown** — `POST /forgot/password` enforces a per-user Redis-backed cooldown (default 60 s) to prevent email flooding; returns `429` if called again before the cooldown expires
 - **Guards & Decorators** — `@ApiAuth()`, `@ApiPublic()` to distinguish public vs protected endpoints
 
 ### 🗄️ Database — Dual Adapter
+
 Select the database type via `DATABASE_TYPE` in `.env` — **no code changes required**:
 
-| `DATABASE_TYPE` | Adapter | ORM/ODM |
-|-----------------|---------|---------|
-| `mongodb` | MongoDB | Mongoose + mongoose-autopopulate |
-| `postgres` / `mysql` / `sqlite` | SQL | TypeORM |
+| `DATABASE_TYPE`                 | Adapter | ORM/ODM                          |
+| ------------------------------- | ------- | -------------------------------- |
+| `mongodb`                       | MongoDB | Mongoose + mongoose-autopopulate |
+| `postgres` / `mysql` / `sqlite` | SQL     | TypeORM                          |
 
 Each module has two separate infrastructure layers (`document/` and `relational/`).  
 Database seeders: `seed:run:document` / `seed:run:relational`.
 
 ### 📁 File Upload — Multi-driver
+
 Select the driver via `FILE_DRIVER`:
 
-| Driver | Description |
-|--------|-------------|
-| `local` | Store files on the server filesystem |
-| `s3` | AWS S3 (multipart upload) |
-| `s3-presigned` | AWS S3 with presigned URLs |
-| `cloudinary` | Cloudinary CDN |
+| Driver         | Description                          |
+| -------------- | ------------------------------------ |
+| `local`        | Store files on the server filesystem |
+| `s3`           | AWS S3 (multipart upload)            |
+| `s3-presigned` | AWS S3 with presigned URLs           |
+| `cloudinary`   | Cloudinary CDN                       |
 
 ### ⚡ Async Job Queue (BullMQ)
+
 - **BullMQ** — Reliable job queue backed by Redis; all email sending is done asynchronously
 - **Email queue** — Three job types: `email-verification`, `confirm-new-email`, `reset-password`
 - **Rate limiter** — Max 1 email job per 150 ms to avoid mail server throttling
@@ -44,18 +50,22 @@ Select the driver via `FILE_DRIVER`:
 - **Bull Board** — Queue monitoring dashboard at `/api/queues` (protected by Basic Auth)
 
 ### 📧 Mail
+
 - Nodemailer + Handlebars templates
 - Emails dispatched via the BullMQ email queue (non-blocking): registration confirmation, new email confirmation, forgot password
 
 ### 🌍 Internationalization (i18n)
+
 - `nestjs-i18n` with header-based resolver (`x-custom-lang`)
 - Fallback language: `en`
 
 ### 📄 API Docs (Swagger)
+
 - Auto-generated at `/docs`
 - Bearer Auth, URI versioning (`/api/v1/...`), global language header
 
 ### 🛡️ Security
+
 - `helmet` — HTTP security headers
 - `cookie-parser` — HttpOnly cookie for the refresh token
 - **Configurable cookie `secure` flag** — `APP_COOKIE_SECURE` env var controls whether the refresh token cookie requires HTTPS. Defaults to `true` in production; set to `false` for HTTP-only deployments (e.g. Docker without TLS termination)
@@ -64,16 +74,20 @@ Select the driver via `FILE_DRIVER`:
 - `class-validator` + `class-transformer` — Request input validation
 - **Basic Auth middleware** — Protects `/api/queues` (Bull Board) and `/docs` (Swagger) with username/password
 - **Rate Limiting** — `@nestjs/throttler` applied globally as `APP_GUARD`; tracks requests per real IP extracted from `x-forwarded-for` / `x-real-ip` headers; Redis-backed storage (shared with BullMQ); configurable limit, TTL, and on/off toggle via env vars
+- **Per-user email cooldown** — separate from the IP throttler; `POST /forgot/password` checks a Redis key scoped to the user's ID before dispatching an email, returning `429 Too Many Requests` if the cooldown has not expired; prevents a targeted account from being flooded with password-reset emails
 
 ### 🏥 Health Check
+
 - `/health` endpoint (`HealthModule`)
 
 ### 📈 Metrics (Prometheus)
+
 - `/metrics` endpoint — auto-exposed by `@willsoto/nestjs-prometheus`
 - Scraped by Prometheus every 15 seconds when the monitoring stack is running
 - No configuration required — active as long as `PrometheusModule` is registered in `AppModule`
 
 ### 📊 GraphQL (Optional)
+
 - Apollo Server pre-integrated (`@nestjs/graphql`, `@nestjs/apollo`)
 
 ---
@@ -105,6 +119,8 @@ src/
 │
 ├── session/                ← Session management (multi-device logout)
 ├── roles/                  ← RBAC: RoleEnum, PermissionEnum, RolesService
+├── shared/
+│   └── cache/              ← CacheModule: CacheService, CacheKey enum, ioredis factory
 ├── files/                  ← File upload abstraction + multi-driver adapters
 │   └── infrastructure/uploader/
 │       ├── local/
@@ -157,46 +173,210 @@ src/
 
 ### Auth (`/api/v1/auth`)
 
-| Method | Path | Description | Guard |
-|--------|------|-------------|-------|
-| `POST` | `/email/login` | Login with email & password | Public |
-| `POST` | `/email/register` | Register a new account | Public |
-| `POST` | `/email/confirm` | Confirm registration email | Public |
-| `POST` | `/email/confirm/new` | Confirm new email after change | Public |
-| `POST` | `/forgot/password` | Send a password reset link | Public |
-| `POST` | `/reset/password` | Reset password using token | Public |
-| `GET`  | `/me` | Get current user profile | JWT |
-| `PATCH`| `/me` | Update profile (name, photo, password) | JWT |
-| `DELETE`| `/me` | Delete account (soft delete) | JWT |
-| `POST` | `/refresh` | Refresh access token | Refresh cookie |
-| `POST` | `/logout` | Logout, invalidate session | JWT |
+| Method   | Path                 | Description                            | Guard          |
+| -------- | -------------------- | -------------------------------------- | -------------- |
+| `POST`   | `/email/login`       | Login with email & password            | Public         |
+| `POST`   | `/email/register`    | Register a new account                 | Public         |
+| `POST`   | `/email/confirm`     | Confirm registration email             | Public         |
+| `POST`   | `/email/confirm/new` | Confirm new email after change         | Public         |
+| `POST`   | `/forgot/password`   | Send a password reset link             | Public         |
+| `POST`   | `/reset/password`    | Reset password using token             | Public         |
+| `GET`    | `/me`                | Get current user profile               | JWT            |
+| `PATCH`  | `/me`                | Update profile (name, photo, password) | JWT            |
+| `DELETE` | `/me`                | Delete account (soft delete)           | JWT            |
+| `POST`   | `/refresh`           | Refresh access token                   | Refresh cookie |
+| `POST`   | `/logout`            | Logout, invalidate session             | JWT            |
 
 ### OAuth (`/api/v1/auth`)
 
-| Method | Path | Provider |
-|--------|------|----------|
-| `POST` | `/google/login` | Google (idToken) |
-| `POST` | `/facebook/login` | Facebook (accessToken) |
-| `POST` | `/github/login` | GitHub (accessToken) |
-| `POST` | `/twitter/login` | Twitter/X (accessToken) |
+| Method | Path              | Provider                |
+| ------ | ----------------- | ----------------------- |
+| `POST` | `/google/login`   | Google (idToken)        |
+| `POST` | `/facebook/login` | Facebook (accessToken)  |
+| `POST` | `/github/login`   | GitHub (accessToken)    |
+| `POST` | `/twitter/login`  | Twitter/X (accessToken) |
 
 ### Users (`/api/v1/users`)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET`  | `/` | List users (paginated) |
-| `POST` | `/` | Create a new user |
-| `GET`  | `/:id` | Get user by ID |
-| `PATCH`| `/:id` | Update user |
-| `DELETE`| `/:id` | Delete user |
+| Method   | Path   | Description            |
+| -------- | ------ | ---------------------- |
+| `GET`    | `/`    | List users (paginated) |
+| `POST`   | `/`    | Create a new user      |
+| `GET`    | `/:id` | Get user by ID         |
+| `PATCH`  | `/:id` | Update user            |
+| `DELETE` | `/:id` | Delete user            |
 
 ### Files (`/api/v1/files`)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/upload` | Upload a file |
-| `GET`  | `/:id/url` | Get file URL by ID |
-| `GET`  | `/:path` | Download file by path |
+| Method | Path       | Description           |
+| ------ | ---------- | --------------------- |
+| `POST` | `/upload`  | Upload a file         |
+| `GET`  | `/:id/url` | Get file URL by ID    |
+| `GET`  | `/:path`   | Download file by path |
+
+---
+
+## Authentication Flow
+
+The auth system combines **stateless JWTs** for request verification with **server-side sessions** for revocation. Two tokens are issued on every login.
+
+### Token design
+
+| Token             | Payload                                 | Transport                         | Lifetime               |
+| ----------------- | --------------------------------------- | --------------------------------- | ---------------------- |
+| **Access token**  | `{ id, roles, permissions, sessionId }` | `Authorization: Bearer` header    | Short (default 15 min) |
+| **Refresh token** | `{ sessionId, hash }`                   | `HttpOnly` cookie `refresh_token` | Long (default 7 days)  |
+
+The **session** record in the database holds `{ id, user_id, hash }`. The `hash` is a random SHA-256 value that ties the refresh token to a specific session state.
+
+### Login flow
+
+```
+POST /api/v1/auth/email/login
+  1. Verify email exists + bcrypt password match
+  2. Generate hash = SHA-256(random string)
+  3. INSERT session { user_id, hash } → DB
+  4. Sign access JWT  (secret, short TTL)  — payload: { id, roles, permissions, sessionId }
+  5. Sign refresh JWT (refreshSecret, long TTL) — payload: { sessionId, hash }
+  6. Return access token in body; set refresh JWT in HttpOnly cookie
+```
+
+### Authenticated request
+
+```
+GET /api/v1/auth/me  →  Authorization: Bearer <access_token>
+  JwtStrategy: verify signature + check payload.id exists
+  → no database query
+```
+
+The access token is verified purely by signature. No database lookup is performed because the token is short-lived — if compromised, it expires quickly. Revocation is handled by the refresh rotation below.
+
+### Refresh token rotation
+
+```
+POST /api/v1/auth/refresh  (cookie sent automatically)
+  1. JwtRefreshStrategy reads refresh_token cookie, verifies signature
+  2. Generate newHash = SHA-256(random string)
+  3. UPDATE session SET hash = newHash WHERE id = sessionId AND hash = oldHash
+     → if no row matched (hash mismatch): 401 Unauthorized
+  4. Sign new access + refresh token pair with newHash
+  5. Set new cookie, return new access token
+```
+
+Each refresh token is **single-use**: once used, the `hash` in the DB is replaced. If a stolen refresh token is used first, the legitimate user's next refresh attempt will fail (hash no longer matches), providing detection of token theft.
+
+### Session invalidation
+
+| Event           | Action                                                  |
+| --------------- | ------------------------------------------------------- |
+| Logout          | Delete session by `sessionId` from DB; clear cookie     |
+| Password change | Delete all sessions for user **except** the current one |
+| Password reset  | Delete **all** sessions for user                        |
+
+### Email rate limiting (`POST /forgot/password`)
+
+Prevents a user's inbox from being flooded by repeated password-reset requests.
+
+```
+POST /api/v1/auth/forgot/password
+  1. Look up user by email
+     → not found: return 200 success (anti-enumeration — same response either way)
+  2. Check Redis key: {prefix}:auth:reset-password-mail:{userId}:last-sent-at
+     → key exists (TTL active): throw 429 Too Many Requests
+  3. Sign reset-password JWT, enqueue email job via BullMQ
+  4. SET Redis key with TTL = AUTH_RESET_PASSWORD_COOLDOWN (default 60 s)
+```
+
+The cooldown is keyed by `userId`, not by IP or email address, so it cannot be bypassed by rotating IPs. The IP-level throttler (`@nestjs/throttler`) still applies on top of this.
+
+### Permissions caching
+
+`getPermissionsForRoles(roleNames)` is called on every login and every token refresh. Because permissions change rarely, results are cached in Redis.
+
+```
+getPermissionsForRoles(['ADMIN', 'USER'])
+  1. Sort role names → 'admin,user'
+  2. GET {prefix}:roles:admin,user:permissions from Redis
+     → cache hit:  return cached PermissionEnum[]
+     → cache miss: query DB (role ⨯ permission JOIN), SET with TTL 5 min, return result
+```
+
+- Cache key is the **sorted, comma-joined** role names — stable regardless of input order.
+- Empty permission arrays are cached (avoids repeated DB queries for roles with no permissions).
+- TTL: 5 minutes (hardcoded). Permissions are seeded data and do not change at runtime.
+
+---
+
+## Redis Application Cache
+
+Both the email cooldown and permissions caching features use a shared `CacheModule` / `CacheService` that wraps `@nestjs/cache-manager` with a typed key-naming convention.
+
+### Architecture
+
+```
+CacheModule  (shared/cache/)
+├── cache.factory.ts   ← Creates an ioredis-backed keyv store
+│                         compatible with @nestjs/cache-manager@3.x + keyv@5
+├── cache.service.ts   ← Typed get / set / delete / getTtl wrappers
+└── cache.type.ts      ← CacheParam: { key: keyof CacheKey; args?: string[] }
+```
+
+### Key naming
+
+All cache keys are defined in `src/constants/cache.constant.ts` as a `CacheKey` enum:
+
+```typescript
+export enum CacheKey {
+  EmailVerificationToken = 'auth:token:%s:email-verification',
+  UserSocketClients = 'socket:%s:clients',
+  EmailVerificationMailLastSentAt = 'auth:email-verification-mail:%s:last-sent-at',
+  ResetPasswordMailLastSentAt = 'auth:reset-password-mail:%s:last-sent-at',
+  RolePermissions = 'roles:%s:permissions',
+}
+```
+
+At runtime `CacheService._constructCacheKey` builds the full Redis key:
+
+```
+{APP_NAME}:{CacheKey[key]} with %s replaced by args
+```
+
+Example: `{ key: 'ResetPasswordMailLastSentAt', args: ['42'] }` → `nest-next-starter:auth:reset-password-mail:42:last-sent-at`
+
+### Usage
+
+Import `CacheModule` in any feature module, then inject `CacheService`:
+
+```typescript
+// my.module.ts
+import { CacheModule } from '@/shared/cache/cache.module';
+@Module({ imports: [CacheModule] })
+export class MyModule {}
+
+// my.service.ts
+constructor(private readonly cacheService: CacheService) {}
+
+// Read (returns undefined on miss)
+const value = await this.cacheService.get<MyType>({ key: 'RolePermissions', args: ['user'] });
+
+// Write with TTL (ms)
+await this.cacheService.set({ key: 'RolePermissions', args: ['user'] }, data, { ttl: 5 * 60 * 1000 });
+
+// Delete
+await this.cacheService.delete({ key: 'RolePermissions', args: ['user'] });
+```
+
+### Extending
+
+To cache a new entity:
+
+1. Add a new entry to `CacheKey` in `src/constants/cache.constant.ts` with a `%s` placeholder for each variable segment.
+2. Import `CacheModule` in the feature module.
+3. Inject `CacheService` and call `get` / `set` with the new key.
+
+### Compatibility note
+
+`@nestjs/cache-manager@3.x` uses `keyv@5` as the underlying store adapter. The older `cache-manager-ioredis-yet` package implements the `cache-manager@5` Store interface (`del` / `reset`) which fails `keyv@5`'s adapter validation (`delete` / `clear` required). `cache.factory.ts` therefore builds the keyv store directly from `ioredis` to ensure compatibility.
 
 ---
 
@@ -258,7 +438,7 @@ AUTH_JWT_SECRET=change_me_jwt_secret
 AUTH_REFRESH_SECRET=change_me_refresh_secret
 ```
 
-### Redis (required for BullMQ and rate limiting)
+### Redis (required for BullMQ, rate limiting, and application caching)
 
 ```env
 REDIS_HOST=localhost
@@ -314,6 +494,14 @@ THROTTLER_TTL=60           # TTL window in seconds
 
 > Default in `.env.example` is disabled (`THROTTLER_ENABLED=false`) — enable in production.  
 > Storage is Redis (shared with BullMQ). The tracker key is the client's real IP, resolved in order: `x-forwarded-for` → `x-real-ip` → `req.ips[0]` → `req.ip`.
+
+### Email Cooldown
+
+```env
+AUTH_RESET_PASSWORD_COOLDOWN=60s   # min wait between reset-password emails per user (optional, default 60s)
+```
+
+Controls how long a user must wait before requesting another password-reset email. Accepts any [ms](https://github.com/vercel/ms) string (`30s`, `2m`, `1h`). Acts in addition to — not instead of — the IP-level throttler.
 
 ### Grafana / Monitoring (optional)
 
@@ -386,39 +574,39 @@ docker compose --profile monitoring --profile monitoring-postgres up --build
 
 Grafana is pre-provisioned with three dashboards (no manual import needed):
 
-| Dashboard | File | What it shows |
-|-----------|------|----------------|
-| **Server** | `server.dashboard.json` | Node.js process CPU, memory, heap, event-loop lag, active handles/requests |
-| **PostgreSQL** | `postgres.dashboard.json` | Transactions, locks, cache hit rate, connection count, buffer stats |
-| **Prometheus** | `prometheus.dashboard.json` | Prometheus internals: scrape duration, WAL, memory, compaction |
+| Dashboard      | File                        | What it shows                                                              |
+| -------------- | --------------------------- | -------------------------------------------------------------------------- |
+| **Server**     | `server.dashboard.json`     | Node.js process CPU, memory, heap, event-loop lag, active handles/requests |
+| **PostgreSQL** | `postgres.dashboard.json`   | Transactions, locks, cache hit rate, connection count, buffer stats        |
+| **Prometheus** | `prometheus.dashboard.json` | Prometheus internals: scrape duration, WAL, memory, compaction             |
 
 Dashboard files live in `src/tools/grafana/dashboards/` and are auto-loaded by Grafana via the provisioning config in `src/tools/grafana/provisioning/`.
 
 ### Access URLs
 
-| Interface | URL | Auth |
-|-----------|-----|------|
-| Grafana | http://localhost:3001 | `GRAFANA_USERNAME` / `GRAFANA_PASSWORD` |
-| Prometheus | http://localhost:9090 | None |
-| API metrics | http://localhost:8080/metrics | None |
+| Interface   | URL                           | Auth                                    |
+| ----------- | ----------------------------- | --------------------------------------- |
+| Grafana     | http://localhost:3001         | `GRAFANA_USERNAME` / `GRAFANA_PASSWORD` |
+| Prometheus  | http://localhost:9090         | None                                    |
+| API metrics | http://localhost:8080/metrics | None                                    |
 
 ### Prometheus scrape targets
 
 Configured in `prometheus.config.yml` at the project root:
 
-| Job | Target | Description |
-|-----|--------|-------------|
-| `prometheus` | `localhost:9090` | Prometheus self-monitoring |
-| `server` | `api:8080` | NestJS API metrics |
-| `database` | `postgres-exporter:9187` | PostgreSQL metrics (SQL users) |
-| `mongodb` | `mongodb-exporter:9216` | MongoDB metrics (MongoDB users) |
+| Job          | Target                   | Description                     |
+| ------------ | ------------------------ | ------------------------------- |
+| `prometheus` | `localhost:9090`         | Prometheus self-monitoring      |
+| `server`     | `api:8080`               | NestJS API metrics              |
+| `database`   | `postgres-exporter:9187` | PostgreSQL metrics (SQL users)  |
+| `mongodb`    | `mongodb-exporter:9216`  | MongoDB metrics (MongoDB users) |
 
 ### Data persistence
 
-| Directory | Contents |
-|-----------|----------|
-| `.docker/prometheus-data/` | Prometheus time-series data (retained across restarts) |
-| `.docker/grafana-data/` | Grafana state: alert rules, user preferences, custom dashboard edits |
+| Directory                  | Contents                                                             |
+| -------------------------- | -------------------------------------------------------------------- |
+| `.docker/prometheus-data/` | Prometheus time-series data (retained across restarts)               |
+| `.docker/grafana-data/`    | Grafana state: alert rules, user preferences, custom dashboard edits |
 
 Directories are created automatically on first start. File ownership is fixed by `setup_prometheus` and `setup_grafana` init containers.
 
