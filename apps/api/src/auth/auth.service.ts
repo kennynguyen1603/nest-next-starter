@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import {
+  HttpException,
   HttpStatus,
   Inject,
   Injectable,
@@ -18,6 +19,7 @@ import { AllConfigType } from '@/config/config.type';
 import { FILE_UPLOAD_SERVICE } from '@/files/infrastructure/uploader/uploader.interface';
 import type { IFileUploadService } from '@/files/infrastructure/uploader/uploader.interface';
 import { EmailQueueService } from '@/worker/queues/email/email.service';
+import { CacheService } from '@/shared/cache/cache.service';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { RoleEnum } from '@/roles/roles.enum';
 import { PermissionEnum } from '@/roles/permissions.enum';
@@ -49,6 +51,7 @@ export class AuthService {
     private readonly emailQueueService: EmailQueueService,
     private readonly configService: ConfigService<AllConfigType>,
     private readonly rolesService: RolesService,
+    private readonly cacheService: CacheService,
     private readonly i18n: I18nService,
     @Inject(FILE_UPLOAD_SERVICE)
     private readonly fileUploadService: IFileUploadService,
@@ -392,6 +395,18 @@ export class AuthService {
       return { message: this.t('auth.FORGOT_PASSWORD_SUCCESS') };
     }
 
+    const cooldown = await this.cacheService.get({
+      key: 'ResetPasswordMailLastSentAt',
+      args: [String(user.id)],
+    });
+    if (cooldown !== null && cooldown !== undefined) {
+      this.logger.debug({ userId: user.id }, 'Forgot password: rate limited');
+      throw new HttpException(
+        { message: this.t('auth.EMAIL_RATE_LIMIT') },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
     const tokenExpiresIn = this.configService.getOrThrow('auth.forgotExpires', {
       infer: true,
     });
@@ -412,6 +427,19 @@ export class AuthService {
       hash,
       tokenExpires,
     });
+
+    const cooldownMs = Number(
+      ms(
+        this.configService.getOrThrow('auth.resetPasswordCooldown', {
+          infer: true,
+        }),
+      ),
+    );
+    await this.cacheService.set(
+      { key: 'ResetPasswordMailLastSentAt', args: [String(user.id)] },
+      Date.now(),
+      { ttl: cooldownMs },
+    );
 
     this.logger.info({ userId: user.id }, 'Password reset email queued');
     return { message: this.t('auth.FORGOT_PASSWORD_SUCCESS') };

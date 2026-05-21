@@ -31,6 +31,10 @@ class EnvironmentVariablesValidator {
 
   @IsString()
   @IsOptional()
+  AUTH_RESET_PASSWORD_COOLDOWN?: string;
+
+  @IsString()
+  @IsOptional()
   BASIC_AUTH_USERNAME!: string;
 
   @IsString()
@@ -49,6 +53,8 @@ export function getConfig(): AuthConfig {
     confirmEmailSecret: process.env.AUTH_CONFIRM_EMAIL_SECRET,
     confirmEmailExpires: process.env
       .AUTH_CONFIRM_EMAIL_TOKEN_EXPIRES_IN as ms.StringValue,
+    resetPasswordCooldown: (process.env.AUTH_RESET_PASSWORD_COOLDOWN ??
+      '60s') as ms.StringValue,
     basicAuth: {
       username: process.env.BASIC_AUTH_USERNAME as string,
       password: process.env.BASIC_AUTH_PASSWORD as string,

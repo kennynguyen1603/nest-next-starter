@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { UnprocessableEntityException } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { I18nService } from 'nestjs-i18n';
@@ -12,6 +16,7 @@ import { SessionService } from '@/session/session.service';
 import { RolesService } from '@/roles/roles.service';
 import { FILE_UPLOAD_SERVICE } from '@/files/infrastructure/uploader/uploader.interface';
 import { EmailQueueService } from '@/worker/queues/email/email.service';
+import { CacheService } from '@/shared/cache/cache.service';
 import { AuthProvidersEnum } from './auth-providers.enum';
 
 const mockI18n = { t: jest.fn().mockReturnValue('mocked') };
@@ -49,6 +54,10 @@ const mockConfigService = {
 const mockRolesService = {
   getPermissionsForRoles: jest.fn().mockResolvedValue([]),
 };
+const mockCacheService = {
+  get: jest.fn().mockResolvedValue(null),
+  set: jest.fn().mockResolvedValue({ key: 'cache-key' }),
+};
 const mockLogger = {
   info: jest.fn(),
   warn: jest.fn(),
@@ -72,6 +81,7 @@ describe('AuthService', () => {
         { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: RolesService, useValue: mockRolesService },
+        { provide: CacheService, useValue: mockCacheService },
         { provide: FILE_UPLOAD_SERVICE, useValue: mockFileUploadService },
         { provide: getLoggerToken(AuthService.name), useValue: mockLogger },
       ],
@@ -217,20 +227,23 @@ describe('AuthService', () => {
   });
 
   describe('forgotPassword', () => {
-    it('returns same message regardless of whether email exists (no enumeration)', async () => {
+    it('returns success message and skips cache when email does not exist', async () => {
       mockUsersService.findByEmail.mockResolvedValue(null);
 
       const result = await service.forgotPassword('notfound@x.com');
 
       expect(result).toEqual({ message: 'mocked' });
       expect(mockEmailQueueService.addResetPasswordJob).not.toHaveBeenCalled();
+      // cache must not be touched when email is unknown (anti-enumeration)
+      expect(mockCacheService.get).not.toHaveBeenCalled();
     });
 
-    it('sends reset email when user exists', async () => {
+    it('sends reset email and sets cooldown when user exists and no cooldown is active', async () => {
       mockUsersService.findByEmail.mockResolvedValue({
         id: '1',
         email: 'x@x.com',
       });
+      mockCacheService.get.mockResolvedValue(null);
       mockJwtService.signAsync.mockResolvedValue('reset-token');
       mockEmailQueueService.addResetPasswordJob.mockResolvedValue(undefined);
 
@@ -239,6 +252,78 @@ describe('AuthService', () => {
       expect(result).toEqual({ message: 'mocked' });
       expect(mockEmailQueueService.addResetPasswordJob).toHaveBeenCalledWith(
         expect.objectContaining({ email: 'x@x.com' }),
+      );
+      expect(mockCacheService.set).toHaveBeenCalledWith(
+        { key: 'ResetPasswordMailLastSentAt', args: ['1'] },
+        expect.any(Number),
+        { ttl: expect.any(Number) },
+      );
+    });
+
+    it('throws 429 when per-user cooldown is active', async () => {
+      mockUsersService.findByEmail.mockResolvedValue({
+        id: '1',
+        email: 'x@x.com',
+      });
+      mockCacheService.get.mockResolvedValue(Date.now()); // any truthy value = cooldown active
+
+      let thrown: HttpException | undefined;
+      await service.forgotPassword('x@x.com').catch((e: HttpException) => {
+        thrown = e;
+      });
+
+      expect(thrown).toBeInstanceOf(HttpException);
+      expect(thrown!.getStatus()).toBe(HttpStatus.TOO_MANY_REQUESTS);
+      expect(mockEmailQueueService.addResetPasswordJob).not.toHaveBeenCalled();
+    });
+
+    it('does not set cooldown key when rate limited', async () => {
+      mockUsersService.findByEmail.mockResolvedValue({
+        id: '1',
+        email: 'x@x.com',
+      });
+      mockCacheService.get.mockResolvedValue(Date.now());
+
+      await service.forgotPassword('x@x.com').catch(() => {});
+
+      expect(mockCacheService.set).not.toHaveBeenCalled();
+    });
+
+    it('checks and sets cooldown keyed by userId, not email', async () => {
+      const user = { id: 'user-42', email: 'x@x.com' };
+      mockUsersService.findByEmail.mockResolvedValue(user);
+      mockCacheService.get.mockResolvedValue(null);
+      mockEmailQueueService.addResetPasswordJob.mockResolvedValue(undefined);
+
+      await service.forgotPassword('x@x.com');
+
+      expect(mockCacheService.get).toHaveBeenCalledWith(
+        expect.objectContaining({ args: ['user-42'] }),
+      );
+      expect(mockCacheService.set).toHaveBeenCalledWith(
+        expect.objectContaining({ args: ['user-42'] }),
+        expect.any(Number),
+        expect.any(Object),
+      );
+    });
+
+    it('uses ResetPasswordMailLastSentAt as cache key', async () => {
+      mockUsersService.findByEmail.mockResolvedValue({
+        id: '1',
+        email: 'x@x.com',
+      });
+      mockCacheService.get.mockResolvedValue(null);
+      mockEmailQueueService.addResetPasswordJob.mockResolvedValue(undefined);
+
+      await service.forgotPassword('x@x.com');
+
+      expect(mockCacheService.get).toHaveBeenCalledWith(
+        expect.objectContaining({ key: 'ResetPasswordMailLastSentAt' }),
+      );
+      expect(mockCacheService.set).toHaveBeenCalledWith(
+        expect.objectContaining({ key: 'ResetPasswordMailLastSentAt' }),
+        expect.any(Number),
+        expect.any(Object),
       );
     });
   });
@@ -270,17 +355,23 @@ describe('AuthService', () => {
       mockSessionService.deleteByUserIdWithExclude.mockResolvedValue(undefined);
       mockUsersService.update.mockResolvedValue(undefined);
       mockUsersService.findById
-        .mockResolvedValueOnce({ id: 'user1', provider: 'google', password: null })
+        .mockResolvedValueOnce({
+          id: 'user1',
+          provider: 'google',
+          password: null,
+        })
         .mockResolvedValueOnce({ id: 'user1', provider: 'google' });
 
       await expect(
         service.update(jwtPayload as any, { password: 'newpass123' }),
       ).resolves.not.toThrow();
 
-      expect(mockSessionService.deleteByUserIdWithExclude).toHaveBeenCalledWith({
-        userId: 'user1',
-        excludeSessionId: 'session1',
-      });
+      expect(mockSessionService.deleteByUserIdWithExclude).toHaveBeenCalledWith(
+        {
+          userId: 'user1',
+          excludeSessionId: 'session1',
+        },
+      );
     });
 
     it('throws when email user omits oldPassword', async () => {
@@ -304,26 +395,38 @@ describe('AuthService', () => {
       });
 
       await expect(
-        service.update(jwtPayload as any, { password: 'newpass123', oldPassword: 'wrongpass' }),
+        service.update(jwtPayload as any, {
+          password: 'newpass123',
+          oldPassword: 'wrongpass',
+        }),
       ).rejects.toThrow(UnprocessableEntityException);
     });
 
     it('allows email user to change password with correct oldPassword', async () => {
       const hash = await bcrypt.hash('correctpass', 10);
       mockUsersService.findById
-        .mockResolvedValueOnce({ id: 'user1', provider: 'email', password: hash })
+        .mockResolvedValueOnce({
+          id: 'user1',
+          provider: 'email',
+          password: hash,
+        })
         .mockResolvedValueOnce({ id: 'user1', provider: 'email' });
       mockSessionService.deleteByUserIdWithExclude.mockResolvedValue(undefined);
       mockUsersService.update.mockResolvedValue(undefined);
 
       await expect(
-        service.update(jwtPayload as any, { password: 'newpass123', oldPassword: 'correctpass' }),
+        service.update(jwtPayload as any, {
+          password: 'newpass123',
+          oldPassword: 'correctpass',
+        }),
       ).resolves.not.toThrow();
 
-      expect(mockSessionService.deleteByUserIdWithExclude).toHaveBeenCalledWith({
-        userId: 'user1',
-        excludeSessionId: 'session1',
-      });
+      expect(mockSessionService.deleteByUserIdWithExclude).toHaveBeenCalledWith(
+        {
+          userId: 'user1',
+          excludeSessionId: 'session1',
+        },
+      );
     });
   });
 

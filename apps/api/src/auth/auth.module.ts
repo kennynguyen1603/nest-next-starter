@@ -11,6 +11,7 @@ import { SessionModule } from '@/session/session.module';
 import { UsersModule } from '@/users/users.module';
 import { RolesModule } from '@/roles/roles.module';
 import { EmailQueueModule } from '@/worker/queues/email/email.module';
+import { CacheModule } from '@/shared/cache/cache.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { EmailQueueModule } from '@/worker/queues/email/email.module';
     RolesModule,
     PassportModule,
     EmailQueueModule,
+    CacheModule,
     JwtModule.register({}),
   ],
   controllers: [AuthController],
