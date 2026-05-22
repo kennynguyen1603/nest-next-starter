@@ -9,9 +9,11 @@
 ```
 nest-next-starter/                  ← Turborepo monorepo (pnpm workspaces)
 ├── apps/
-│   ├── api/                        ← Backend  — NestJS 11, port 8080
-│   └── web/                        ← Frontend — Next.js 16, port 3000
+│   ├── api/                        ← Backend     — NestJS 11, port 8080
+│   ├── web/                        ← Frontend    — Next.js 16, port 3000
+│   └── admin/                      ← Admin panel — Next.js 16, port 3002
 └── packages/
+    ├── types/                      ← Shared TypeScript types (AdminUser, etc.)
     ├── ui/                         ← Shared React component library
     ├── eslint-config/              ← Shared ESLint rules
     └── typescript-config/          ← Shared tsconfig
@@ -24,6 +26,7 @@ nest-next-starter/                  ← Turborepo monorepo (pnpm workspaces)
 | Monorepo      | [Turborepo](https://turborepo.dev) + pnpm workspaces                           |
 | Backend       | NestJS 11, TypeScript, Passport, Swagger                                       |
 | Frontend      | Next.js 16, React 19, TailwindCSS v4, Zustand                                  |
+| Admin Panel   | Next.js 16, React 19, TailwindCSS v4, Zustand — role-gated admin interface     |
 | Database      | **MongoDB** (Mongoose) or **SQL** (TypeORM) — switched via `DATABASE_TYPE`     |
 | Auth          | JWT (Access + Refresh token), OAuth 2.0 (Google / Facebook / GitHub / Twitter) |
 | File Storage  | Local / AWS S3 / S3 Presigned / Cloudinary — switched via `FILE_DRIVER`        |
@@ -68,6 +71,7 @@ docker compose up --build
 | Frontend     | http://localhost:3000        |
 | Backend API  | http://localhost:8080/api/v1 |
 | Swagger Docs | http://localhost:8080/docs   |
+| Admin Panel  | http://localhost:3002        |
 
 > [!NOTE]
 > The `seed` service runs automatically before the API starts. It detects `DATABASE_TYPE` and runs the correct seed — MongoDB (`document`) or SQL (`relational`) — automatically. Seeds are idempotent and safe to re-run. To wipe all data: `docker compose down -v && docker compose up --build`.
@@ -122,6 +126,7 @@ pnpm dev --filter=web
 | Backend API  | http://localhost:8080/api/v1 |
 | Swagger Docs | http://localhost:8080/docs   |
 | Frontend     | http://localhost:3000        |
+| Admin Panel  | http://localhost:3002        |
 
 ---
 
@@ -208,6 +213,14 @@ pnpm --filter=web start   # Run production
 pnpm --filter=web test    # Unit tests (Vitest)
 ```
 
+### Admin Panel (`apps/admin`)
+
+```bash
+pnpm --filter=admin dev    # Dev server on port 3002
+pnpm --filter=admin build  # Production build
+pnpm --filter=admin start  # Run production
+```
+
 ### Docker
 
 ```bash
@@ -217,6 +230,7 @@ docker compose down                # Stop all services
 docker compose down -v             # Stop and remove volumes (wipes database)
 docker compose logs -f api         # Tail API logs
 docker compose logs -f web         # Tail web logs
+docker compose logs -f admin       # Tail admin logs
 ```
 
 ### Monitoring
@@ -464,6 +478,7 @@ The `install.mjs` script automatically skips Husky installation when `NODE_ENV=p
 
 - [`apps/api/README.md`](./apps/api/README.md) — Backend details (NestJS)
 - [`apps/web/README.md`](./apps/web/README.md) — Frontend details (Next.js)
+- [`apps/admin/README.md`](./apps/admin/README.md) — Admin panel details (Next.js)
 
 ---
 

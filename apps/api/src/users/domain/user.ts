@@ -9,6 +9,7 @@ export class User {
   @ApiProperty({
     type: String,
   })
+  @Expose()
   id!: string;
 
   @ApiProperty({
@@ -39,34 +40,42 @@ export class User {
     type: String,
     example: 'John',
   })
+  @Expose()
   firstName!: string | null;
 
   @ApiProperty({
     type: String,
     example: 'Doe',
   })
+  @Expose()
   lastName!: string | null;
 
   @ApiProperty({
     type: () => FileType,
   })
+  @Expose()
   photo?: FileType | null;
 
   @ApiProperty({
     type: () => Role,
     isArray: true,
   })
+  @Expose()
   roles?: Role[];
 
   @ApiProperty({ enum: UserStatus })
+  @Expose()
   status?: UserStatus;
 
   @ApiProperty()
+  @Expose()
   createdAt!: Date;
 
   @ApiProperty()
+  @Expose()
   updatedAt!: Date;
 
   @ApiProperty({ nullable: true })
+  @Expose()
   deletedAt?: Date;
 }

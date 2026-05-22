@@ -33,6 +33,7 @@ import githubConfig from './config/auth-github/github.config';
 import twitterConfig from './config/auth-twitter/twitter.config';
 
 import { UsersModule } from './users/users.module';
+import { AdminModule } from './admin/admin.module';
 import { AuthGoogleModule } from './auth-google/auth-google.module';
 import { AuthFacebookModule } from './auth-facebook/auth-facebook.module';
 import { AuthGithubModule } from './auth-github/auth-github.module';
@@ -164,6 +165,7 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
     }),
     WorkerModule,
     UsersModule,
+    AdminModule,
     FilesModule,
     fileUploaderModule,
     AuthModule,
