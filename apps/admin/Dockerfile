@@ -18,7 +18,7 @@ COPY --from=deps /app/apps/admin/node_modules ./apps/admin/node_modules
 COPY . .
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-RUN pnpm --filter @repo/admin build
+RUN pnpm --filter admin build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
