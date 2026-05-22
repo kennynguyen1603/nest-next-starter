@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+@theme {
+  --color-sidebar: #0f1117;
+  --color-sidebar-foreground: #e5e7eb;
+  --color-sidebar-muted: #6b7280;
+  --color-sidebar-border: #1f2937;
+  --color-primary: #4f46e5;
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
