@@ -74,7 +74,7 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     ports:
-      - "3001:3001"
+      - "3002:3002"
     environment:
       NODE_ENV: production
     depends_on:
