@@ -11,10 +11,13 @@ export default function RecentActivity({ items }: { items: AdminActivity[] }) {
   }
 
   return (
-    <div className="space-y-3">
+    <ul className="space-y-3">
       {items.map((item) => (
-        <div key={item.id} className="flex items-start gap-3">
-          <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600 flex-shrink-0">
+        <li key={item.id} className="flex items-start gap-3">
+          <div
+            aria-hidden="true"
+            className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600 shrink-0"
+          >
             {item.userName[0]?.toUpperCase() ?? "?"}
           </div>
           <div className="flex-1 min-w-0">
@@ -29,8 +32,8 @@ export default function RecentActivity({ items }: { items: AdminActivity[] }) {
               })}
             </p>
           </div>
-        </div>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }

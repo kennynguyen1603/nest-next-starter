@@ -79,13 +79,17 @@ export default function LoginPage() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="email"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Email
           </label>
           <input
+            id="email"
             type="email"
             {...register("email")}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:border-transparent"
             placeholder="admin@example.com"
             autoComplete="email"
           />
@@ -95,15 +99,21 @@ export default function LoginPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="password"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Password
           </label>
           <input
+            id="password"
             type="password"
             {...register("password")}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:border-transparent"
             placeholder="••••••••"
             autoComplete="current-password"
+            spellCheck={false}
+            autoCorrect="off"
           />
           {errors.password && (
             <p className="mt-1 text-xs text-red-600">
@@ -113,7 +123,10 @@ export default function LoginPage() {
         </div>
 
         {serverError && (
-          <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+          <div
+            role="alert"
+            className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"
+          >
             {serverError}
           </div>
         )}

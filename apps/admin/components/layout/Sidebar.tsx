@@ -53,11 +53,11 @@ export default function Sidebar() {
 
   return (
     <aside
-      className={`${collapsed ? "w-16" : "w-60"} flex-shrink-0 bg-[#0f1117] text-gray-300 flex flex-col transition-[width] duration-200 ease-in-out overflow-hidden`}
+      className={`${collapsed ? "w-16" : "w-60"} shrink-0 bg-sidebar text-gray-300 flex flex-col transition-[width] duration-200 ease-in-out overflow-hidden`}
     >
       {/* Logo */}
-      <div className="flex items-center gap-3 px-4 h-16 border-b border-gray-800 flex-shrink-0">
-        <div className="w-8 h-8 bg-indigo-600 rounded-lg flex-shrink-0" />
+      <div className="flex items-center gap-3 px-4 h-16 border-b border-gray-800 shrink-0">
+        <div className="w-8 h-8 bg-indigo-600 rounded-lg shrink-0" />
         {!collapsed && (
           <span className="font-semibold text-white text-sm truncate">
             Admin Panel
@@ -73,14 +73,15 @@ export default function Sidebar() {
             <Link
               key={href}
               href={href}
+              aria-label={collapsed ? label : undefined}
               title={collapsed ? label : undefined}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
                 active
                   ? "bg-indigo-600 text-white"
                   : "text-gray-400 hover:bg-gray-800 hover:text-white"
               }`}
             >
-              <Icon size={18} className="flex-shrink-0" />
+              <Icon size={18} className="shrink-0" />
               {!collapsed && <span className="truncate">{label}</span>}
             </Link>
           );
@@ -96,16 +97,18 @@ export default function Sidebar() {
         )}
         <button
           onClick={logout}
+          aria-label="Logout"
           title="Logout"
-          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
+          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
         >
-          <LogOut size={18} className="flex-shrink-0" />
+          <LogOut size={18} className="shrink-0" />
           {!collapsed && <span>Logout</span>}
         </button>
         <button
           onClick={toggle}
-          className="flex items-center justify-center w-full py-2 rounded-lg text-gray-600 hover:bg-gray-800 hover:text-gray-400 transition-colors"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="flex items-center justify-center w-full py-2 rounded-lg text-gray-600 hover:bg-gray-800 hover:text-gray-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
         >
           {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
         </button>

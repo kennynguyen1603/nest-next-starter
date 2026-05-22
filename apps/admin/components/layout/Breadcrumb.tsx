@@ -22,7 +22,7 @@ export default function Breadcrumb() {
     <nav className="flex items-center gap-1 text-sm" aria-label="Breadcrumb">
       <Link
         href="/"
-        className="text-gray-500 hover:text-gray-900 transition-colors"
+        className="text-gray-500 hover:text-gray-900 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded"
       >
         Dashboard
       </Link>
@@ -32,13 +32,19 @@ export default function Breadcrumb() {
         const label = LABELS[seg] ?? seg;
         return (
           <span key={href} className="flex items-center gap-1">
-            <ChevronRight size={14} className="text-gray-400" />
+            <ChevronRight
+              size={14}
+              className="text-gray-400"
+              aria-hidden="true"
+            />
             {isLast ? (
-              <span className="font-medium text-gray-900">{label}</span>
+              <span aria-current="page" className="font-medium text-gray-900">
+                {label}
+              </span>
             ) : (
               <Link
                 href={href}
-                className="text-gray-500 hover:text-gray-900 transition-colors"
+                className="text-gray-500 hover:text-gray-900 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded"
               >
                 {label}
               </Link>
