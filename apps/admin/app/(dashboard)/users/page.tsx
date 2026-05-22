@@ -8,9 +8,12 @@ import type { AdminUser } from "@repo/types";
 
 interface UsersApiResponse {
   data: AdminUser[];
-  total: number;
-  page: number;
-  totalPages: number;
+  pagination: {
+    currentPage: number;
+    totalRecords: number;
+    totalPages: number;
+    limit: number;
+  };
 }
 
 const LIMIT = 20;
@@ -34,7 +37,7 @@ export default function UsersPage() {
         `/api/v1/users?${params.toString()}`,
       );
       setUsers(data.data);
-      setTotal(data.total);
+      setTotal(data.pagination.totalRecords);
     } catch {
       // 401 handled by api.ts
     } finally {
