@@ -41,13 +41,20 @@ async function request<T>(
   return res.json() as Promise<T>;
 }
 
+async function clearSession(): Promise<void> {
+  await fetch("/api/auth/clear-session", { method: "POST" }).catch(() => {});
+}
+
 export async function tryRefresh(): Promise<boolean> {
   try {
     const res = await fetch(`${BASE_URL}/api/v1/auth/refresh`, {
       method: "POST",
       credentials: "include",
     });
-    if (!res.ok) return false;
+    if (!res.ok) {
+      await clearSession();
+      return false;
+    }
     const { token, tokenExpires } = (await res.json()) as {
       token: string;
       tokenExpires: number;
@@ -60,6 +67,7 @@ export async function tryRefresh(): Promise<boolean> {
     useAuthStore.getState().setAuth(token, tokenExpires, user);
     return true;
   } catch {
+    await clearSession();
     return false;
   }
 }
