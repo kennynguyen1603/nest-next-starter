@@ -99,6 +99,7 @@ src/
 ├── app.module.ts           ← Root module (auto-selects DB & file driver)
 ├── main.ts                 ← Bootstrap: CORS, Helmet, Swagger, Versioning
 │
+├── admin/                  ← Admin dashboard endpoints (stats, activity, charts)
 ├── auth/                   ← Email/password auth + JWT strategies
 │   ├── auth.controller.ts
 │   ├── auth.service.ts
@@ -205,6 +206,16 @@ src/
 | `GET`    | `/:id` | Get user by ID         |
 | `PATCH`  | `/:id` | Update user            |
 | `DELETE` | `/:id` | Delete user            |
+
+### Admin (`/api/v1/admin`)
+
+Requires `admin` role (`Authorization: Bearer <admin_token>`).
+
+| Method | Path                   | Description                                     |
+| ------ | ---------------------- | ----------------------------------------------- |
+| `GET`  | `/stats`               | Dashboard statistics (total users, new today)   |
+| `GET`  | `/recent-activity`     | Last 10 user activity entries                   |
+| `GET`  | `/charts/users-growth` | Daily user registration counts for last 30 days |
 
 ### Files (`/api/v1/files`)
 
@@ -432,6 +443,7 @@ See the full reference at [`apps/api/.env.example`](./.env.example).
 NODE_ENV=development
 APP_PORT=8080
 FRONTEND_DOMAIN=http://localhost:3000
+ADMIN_DOMAIN=http://localhost:3002   # admin panel origin — added to CORS allow-list
 DATABASE_TYPE=mongodb          # mongodb | postgres | mysql | sqlite
 DATABASE_URL=mongodb://localhost:27017/nest_starter
 AUTH_JWT_SECRET=change_me_jwt_secret
