@@ -49,7 +49,7 @@ export default function UserDetailPage() {
           {(
             [
               ["Role", user.roles?.[0]?.name ?? "user"],
-              ["Status", user.status?.name ?? "unknown"],
+              ["Status", user.status ?? "unknown"],
               ["Joined", new Date(user.createdAt).toLocaleDateString()],
               ["Updated", new Date(user.updatedAt).toLocaleDateString()],
             ] as [string, string][]

@@ -34,7 +34,7 @@ export interface AdminUser {
   lastName: string | null;
   photo?: { id: string; path: string } | null;
   roles: { id: number; name: string }[];
-  status: { id: number; name: string } | null;
+  status: string | null;
   createdAt: string;
   updatedAt: string;
 }

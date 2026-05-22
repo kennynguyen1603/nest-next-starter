@@ -70,12 +70,12 @@ export default function UserTable({ users, onRefresh }: Props) {
                 <td className="px-4 py-3">
                   <span
                     className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
-                      user.status?.name === "active"
+                      user.status === "active"
                         ? "bg-green-100 text-green-700"
                         : "bg-red-100 text-red-700"
                     }`}
                   >
-                    {user.status?.name ?? "unknown"}
+                    {user.status ?? "unknown"}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-gray-500">
