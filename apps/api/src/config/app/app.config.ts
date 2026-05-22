@@ -36,6 +36,10 @@ class EnvironmentVariablesValidator {
 
   @IsUrl({ require_tld: false })
   @IsOptional()
+  ADMIN_DOMAIN?: string;
+
+  @IsUrl({ require_tld: false })
+  @IsOptional()
   BACKEND_DOMAIN?: string;
 
   @IsString()
@@ -86,7 +90,9 @@ export function getConfig(): AppConfig {
         : 8080,
     apiPrefix: process.env.API_PREFIX || 'api',
     appPrefix: process.env.APP_PREFIX || process.env.APP_NAME || 'app',
-    corsOrigin: process.env.FRONTEND_DOMAIN,
+    corsOrigin: [process.env.FRONTEND_DOMAIN, process.env.ADMIN_DOMAIN].filter(
+      Boolean,
+    ) as string[],
     fallbackLanguage: process.env.APP_FALLBACK_LANGUAGE || 'en',
     headerLanguage: process.env.APP_HEADER_LANGUAGE || 'x-custom-lang',
     debug: process.env.APP_DEBUG === 'true',

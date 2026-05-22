@@ -32,10 +32,11 @@ async function bootstrap() {
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
   const configService = app.get(ConfigService<AllConfigType>);
 
-  const frontendDomain = configService.get('app.frontendDomain', {
-    infer: true,
+  const corsOrigin = configService.get('app.corsOrigin', { infer: true });
+  app.enableCors({
+    origin: corsOrigin?.length ? corsOrigin : true,
+    credentials: true,
   });
-  app.enableCors({ origin: frontendDomain ?? true, credentials: true });
   app.use(cookieParser());
 
   app.enableShutdownHooks();
