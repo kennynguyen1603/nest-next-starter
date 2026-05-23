@@ -16,6 +16,8 @@ import { GracefulShutdownModule } from 'nestjs-graceful-shutdown';
 import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 
 import { WorkerModule } from './worker/queues/worker.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { NotificationQueueModule } from './worker/queues/notification/notification.module';
 
 import { AllConfigType } from './config/config.type';
 import databaseConfig from './config/database/database.config';
@@ -74,6 +76,13 @@ const fileUploaderModule = (() => {
   }
 })();
 // </file-block>
+
+// <notification-block>
+const notificationModules =
+  process.env.NOTIFICATIONS_ENABLED === 'true'
+    ? [NotificationsModule, NotificationQueueModule]
+    : [];
+// </notification-block>
 
 // <database-block>
 const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
@@ -177,6 +186,7 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
     AuthFacebookModule,
     AuthGithubModule,
     AuthTwitterModule,
+    ...notificationModules,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
