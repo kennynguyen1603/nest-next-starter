@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { NotificationRepository } from '../../notification.repository';
 import { Notification } from '@/notifications/domain/notification';
 import { NotificationSchemaClass } from '../entities/notification.schema';
@@ -49,6 +49,7 @@ export class NotificationsDocumentRepository implements NotificationRepository {
   }
 
   async findById(id: string): Promise<NullableType<Notification>> {
+    if (!Types.ObjectId.isValid(id)) return null;
     const doc = await this.model.findById(id).lean({ virtuals: true });
     return doc
       ? NotificationDocumentMapper.toDomain(
@@ -58,6 +59,7 @@ export class NotificationsDocumentRepository implements NotificationRepository {
   }
 
   async markAsRead(id: string): Promise<NullableType<Notification>> {
+    if (!Types.ObjectId.isValid(id)) return null;
     const doc = await this.model
       .findByIdAndUpdate(
         id,
@@ -73,6 +75,7 @@ export class NotificationsDocumentRepository implements NotificationRepository {
   }
 
   async remove(id: string): Promise<void> {
+    if (!Types.ObjectId.isValid(id)) return;
     await this.model.findByIdAndDelete(id);
   }
 

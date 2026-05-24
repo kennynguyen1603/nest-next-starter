@@ -47,8 +47,12 @@ export class NotificationsRelationalRepository implements NotificationRepository
   }
 
   async markAsRead(id: string): Promise<NullableType<Notification>> {
-    await this.repo.update(id, { isRead: true, readAt: new Date() });
-    return this.findById(id);
+    const entity = await this.repo.findOne({ where: { id } });
+    if (!entity) return null;
+    entity.isRead = true;
+    entity.readAt = new Date();
+    const saved = await this.repo.save(entity);
+    return NotificationMapper.toDomain(saved);
   }
 
   async remove(id: string): Promise<void> {
