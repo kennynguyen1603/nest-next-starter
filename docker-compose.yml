@@ -134,7 +134,7 @@ services:
     ports:
       - ${DOCKER_PG_EXPORTER:-9187}:9187
     environment:
-      DATA_SOURCE_NAME: 'postgresql://${DATABASE_USERNAME:-}:${DATABASE_PASSWORD:-}@${DATABASE_HOST:-localhost}:${DATABASE_PORT:-5432}/${DATABASE_NAME:-postgres}?sslmode=${DATABASE_SSL_MODE:-disable}'
+      DATA_SOURCE_NAME: 'postgresql://${DATABASE_USERNAME:-}:${DATABASE_PASSWORD:-}@${DATABASE_HOST:-localhost}:${DATABASE_PORT:-5432}/${DATABASE_NAME:-nest_next_starter_db}?sslmode=${DATABASE_SSL_MODE:-disable}'
     profiles:
       - monitoring-postgres
     depends_on:

@@ -133,8 +133,17 @@
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
+      "^.+\\.(t|j)s$": "ts-jest",
+      "^.+\\.js$": [
+        "ts-jest",
+        {
+          "useESM": false
+        }
+      ]
     },
+    "transformIgnorePatterns": [
+      "node_modules/.pnpm/(?!(uuid)@)"
+    ],
     "collectCoverageFrom": [
       "**/*.(t|j)s"
     ],

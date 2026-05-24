@@ -45,9 +45,119 @@ Select the driver via `FILE_DRIVER`:
 
 - **BullMQ** — Reliable job queue backed by Redis; all email sending is done asynchronously
 - **Email queue** — Three job types: `email-verification`, `confirm-new-email`, `reset-password`
+- **Notification queue** — `create-notification` job type; persists in-app notifications asynchronously (opt-in — see below)
 - **Rate limiter** — Max 1 email job per 150 ms to avoid mail server throttling
 - **Auto-cleanup** — Completed jobs kept for 1 000 entries; failed jobs kept for 5 000 entries
 - **Bull Board** — Queue monitoring dashboard at `/api/queues` (protected by Basic Auth)
+
+### 🔔 In-App Notifications (opt-in)
+
+Disabled by default. Set `NOTIFICATIONS_ENABLED=true` to activate the full notification pipeline.
+
+- **Asynchronous persistence** — Callers enqueue a `create-notification` BullMQ job; the worker persists it to the database without blocking the caller
+- **Dual database** — Follows the same relational / document split as every other module; no code changes needed when switching databases
+- **REST API** — Three authenticated endpoints for the currently logged-in user: list (paginated, filterable by read status), mark as read, delete
+- **Unread counter** — `NotificationsService.countUnread(userId)` is available for any feature that needs a badge count
+- **Bull Board** — The notification queue appears in the dashboard alongside the email queue when the feature is enabled
+
+#### How to enable
+
+Set the environment variable in `apps/api/.env` (or `.env.example`):
+
+```env
+NOTIFICATIONS_ENABLED=true
+```
+
+When `false` (the default), **neither** `NotificationsModule` nor `NotificationQueueModule` is loaded into `AppModule`. No routes are registered, no queues are created, and no database tables are queried. Setting it to `true` loads both modules at startup.
+
+#### Architecture & request flow
+
+```
+Any service / feature
+       │
+       │  NotificationQueueService.addCreateNotificationJob({ userId, type, title, message, data? })
+       ▼
+  BullMQ queue: "notification"
+       │
+       │  (async, Redis-backed)
+       ▼
+  NotificationProcessor  (@Processor, concurrency 5)
+       │
+       │  createNotification()  →  NotificationRepository.create()
+       ▼
+  Database (relational or document)
+       │
+  ─────┼──────────────────────────────────────────────────────
+       │  REST API (JWT-protected)
+       ▼
+  POST   /api/v1/notifications            ← create (admin only)
+  GET    /api/v1/notifications            ← paginated list (filterable by isRead)
+  PATCH  /api/v1/notifications/:id/read  ← mark one notification as read
+  DELETE /api/v1/notifications/:id       ← delete one notification
+```
+
+1. **Producer** — Any NestJS module that imports `NotificationQueueModule` (or `NotificationsModule` which exports `NotificationsService`) can inject `NotificationQueueService` and call `addCreateNotificationJob()`. The call returns immediately after enqueuing.
+2. **Queue** — BullMQ stores the job payload in Redis under the `notification` queue name.
+3. **Processor** (`NotificationProcessor`) — Runs in the worker process (or main process in development). Picks up jobs with up to 5 concurrent workers. On `CreateNotification` jobs it calls `NotificationsService.create()`.
+4. **Repository** — `NotificationsService` delegates to the injected `NotificationRepository`. In relational mode this is `NotificationsRelationalRepository` (TypeORM); in document mode it is `NotificationsDocumentRepository` (Mongoose). No other code changes.
+5. **Consumer** — Clients poll `GET /api/v1/notifications` with optional `?isRead=false` to get unread notifications. `PATCH /:id/read` marks a single notification read; `DELETE /:id` removes it.
+
+#### Producing a notification from another module
+
+```typescript
+// 1. Import the queue module wherever you need to fire notifications
+@Module({
+  imports: [NotificationQueueModule],
+})
+export class MyFeatureModule {}
+
+// 2. Inject the queue service
+constructor(private readonly notificationQueue: NotificationQueueService) {}
+
+// 3. Enqueue (non-blocking)
+await this.notificationQueue.addCreateNotificationJob({
+  userId: user.id,
+  type: NotificationType.SYSTEM,   // extend NotificationType enum for custom types
+  title: 'Welcome!',
+  message: 'Your account has been set up.',
+  data: { customKey: 'value' },    // optional arbitrary JSON payload
+});
+```
+
+If you don't need the queue layer (e.g. admin back-fills), you can inject `NotificationsService` directly and call `create()` — but this is synchronous and skips the queue.
+
+#### Notification domain model
+
+| Field       | Type                          | Description                                      |
+| ----------- | ----------------------------- | ------------------------------------------------ |
+| `id`        | `string` (UUID v7)            | Unique identifier (time-sortable)                |
+| `userId`    | `string`                      | Recipient user ID                                |
+| `type`      | `NotificationType` (`system`) | Category; extend enum to add custom types        |
+| `title`     | `string`                      | Short heading (max 255 chars)                    |
+| `message`   | `string`                      | Full notification body                           |
+| `data`      | `Record<string, unknown>`     | Arbitrary JSON payload — attach links, IDs, etc. |
+| `isRead`    | `boolean`                     | Whether the user has read this notification      |
+| `readAt`    | `Date \| null`                | Timestamp of when it was marked read             |
+| `createdAt` | `Date`                        | Creation timestamp                               |
+| `updatedAt` | `Date`                        | Last update timestamp                            |
+
+#### Extending notification types
+
+Add new values to `NotificationType` in `apps/api/src/notifications/notifications.enum.ts`:
+
+```typescript
+export enum NotificationType {
+  SYSTEM = 'system',
+  ORDER_SHIPPED = 'order_shipped', // add as needed
+  COMMENT_REPLY = 'comment_reply',
+}
+```
+
+The `type` column is a `varchar(50)` so any string fits without a migration.
+
+#### Queue events & monitoring
+
+`NotificationQueueEvents` (a `QueueEventsHost`) logs `completed` and `failed` events using Pino structured logging. Failed jobs are visible in Bull Board at `/api/queues` alongside the email queue.
 
 ### 📧 Mail
 
@@ -137,10 +247,25 @@ src/
 ├── social/                 ← Shared social profile interface
 ├── middlewares/            ← Express middlewares (Basic Auth)
 │
+├── notifications/          ← In-app notification module (opt-in, NOTIFICATIONS_ENABLED)
+│   ├── domain/
+│   │   └── notification.ts ← Domain entity (id, userId, type, title, message, isRead, …)
+│   ├── dto/
+│   │   └── query-notification.dto.ts
+│   ├── infrastructure/persistence/
+│   │   ├── notification.repository.ts  ← Abstract repository interface
+│   │   ├── relational/     ← TypeORM entity, mapper, repository
+│   │   └── document/       ← Mongoose schema, mapper, repository
+│   ├── notifications.controller.ts
+│   ├── notifications.service.ts
+│   ├── notifications.module.ts
+│   └── notifications.enum.ts  ← NotificationType enum
+│
 ├── worker/                 ← BullMQ async job queues
 │   └── queues/
 │       ├── worker.module.ts
-│       └── email/          ← Email queue (processor, service, events, types)
+│       ├── email/          ← Email queue (processor, service, events, types)
+│       └── notification/   ← Notification queue (processor, service, events, types)
 │
 ├── config/                 ← Typed config with @nestjs/config
 │   ├── app/, auth/, database/
@@ -224,6 +349,54 @@ Requires `admin` role (`Authorization: Bearer <admin_token>`).
 | `POST` | `/upload`  | Upload a file         |
 | `GET`  | `/:id/url` | Get file URL by ID    |
 | `GET`  | `/:path`   | Download file by path |
+
+### Notifications (`/api/v1/notifications`) — opt-in (`NOTIFICATIONS_ENABLED=true`)
+
+All endpoints require a valid JWT (`Authorization: Bearer <access_token>`).
+
+| Method   | Path        | Auth        | Query params               | Description                                                 |
+| -------- | ----------- | ----------- | -------------------------- | ----------------------------------------------------------- |
+| `POST`   | `/`         | JWT + Admin | —                          | Create a notification for any user                          |
+| `GET`    | `/`         | JWT         | `page`, `limit`, `isRead?` | Paginated list of the current user's notifications          |
+| `PATCH`  | `/:id/read` | JWT         | —                          | Mark a notification as read (sets `isRead=true`, `readAt`)  |
+| `DELETE` | `/:id`      | JWT         | —                          | Delete a notification (only the owner can delete their own) |
+
+**Query parameters for `GET /`:**
+
+| Param    | Type      | Default | Description                                                                 |
+| -------- | --------- | ------- | --------------------------------------------------------------------------- |
+| `page`   | `number`  | `1`     | Page number (1-based)                                                       |
+| `limit`  | `number`  | `10`    | Items per page                                                              |
+| `isRead` | `boolean` | —       | Filter by read status (`true` = read, `false` = unread). Omit to return all |
+
+**Response shape for `GET /` (paginated):**
+
+```jsonc
+{
+  "data": [
+    {
+      "id": "019602ab-…",
+      "userId": "user-uuid",
+      "type": "system",
+      "title": "Welcome!",
+      "message": "Your account has been set up.",
+      "data": {},
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2026-05-23T10:00:00.000Z",
+      "updatedAt": "2026-05-23T10:00:00.000Z",
+    },
+  ],
+  "meta": {
+    "page": 1,
+    "limit": 10,
+    "total": 42,
+    "totalPages": 5,
+    "hasNextPage": true,
+    "hasPreviousPage": false,
+  },
+}
+```
 
 ---
 
@@ -527,6 +700,18 @@ DOCKER_MONGO_EXPORTER=9216     # host port for mongodb-exporter (MongoDB users o
 ```
 
 These variables are only required when running the monitoring Docker Compose profile. See the [Monitoring section in the root README](../../README.md#monitoring-prometheus--grafana) for the full setup guide.
+
+### In-App Notifications (opt-in)
+
+```env
+# Set to true to enable the notification module.
+# When false (default), NotificationsModule and NotificationQueueModule are NOT loaded —
+# no routes, no queue, and no database access for notifications.
+NOTIFICATIONS_ENABLED=false
+```
+
+> [!NOTE]
+> Requires Redis (same connection as BullMQ) and the database to be running. No additional infrastructure is needed beyond what the API already uses.
 
 ### OAuth (Optional)
 

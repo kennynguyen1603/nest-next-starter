@@ -30,7 +30,7 @@ nest-next-starter/                  ← Turborepo monorepo (pnpm workspaces)
 | Database      | **MongoDB** (Mongoose) or **SQL** (TypeORM) — switched via `DATABASE_TYPE`     |
 | Auth          | JWT (Access + Refresh token), OAuth 2.0 (Google / Facebook / GitHub / Twitter) |
 | File Storage  | Local / AWS S3 / S3 Presigned / Cloudinary — switched via `FILE_DRIVER`        |
-| Queue         | BullMQ + Redis — async job processing (email delivery)                         |
+| Queue         | BullMQ + Redis — async job processing (email delivery, in-app notifications)   |
 | Rate Limiting | `@nestjs/throttler` + Redis storage — per-IP, globally applied                 |
 | Mail          | Nodemailer + Handlebars templates, dispatched via job queue                    |
 | i18n          | nestjs-i18n (header-based) + next-intl (locale routing)                        |
@@ -137,7 +137,7 @@ Select the database type using the `DATABASE_TYPE` variable in `apps/api/.env`:
 ```env
 # MongoDB
 DATABASE_TYPE=mongodb
-DATABASE_URL=mongodb://localhost:27017/nest_starter
+DATABASE_URL=mongodb://localhost:27017/nest_next_starter
 
 # PostgreSQL / MySQL (TypeORM)
 DATABASE_TYPE=postgres
@@ -145,7 +145,7 @@ DATABASE_HOST=localhost
 DATABASE_PORT=5432
 DATABASE_USERNAME=postgres
 DATABASE_PASSWORD=secret
-DATABASE_NAME=nest_starter
+DATABASE_NAME=nest_next_starter
 DATABASE_SYNCHRONIZE=false
 ```
 
