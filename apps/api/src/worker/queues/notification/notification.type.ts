@@ -5,10 +5,8 @@ import {
 import { NotificationType } from '@/notifications/notifications.enum';
 import { Job } from 'bullmq';
 
-const NotificationJob = JobConstants.Notification;
-
 export interface CreateNotificationJob {
-  name: typeof NotificationJob.CreateNotification;
+  name: typeof JobConstants.Notification.CreateNotification;
   data: {
     userId: string;
     type: NotificationType;
@@ -21,7 +19,7 @@ export interface CreateNotificationJob {
 export type NotificationJobUnion = Job<
   CreateNotificationJob['data'],
   void,
-  typeof NotificationJob.CreateNotification
+  typeof JobConstants.Notification.CreateNotification
 >;
 
 export { QueueName };

@@ -137,7 +137,7 @@ Select the database type using the `DATABASE_TYPE` variable in `apps/api/.env`:
 ```env
 # MongoDB
 DATABASE_TYPE=mongodb
-DATABASE_URL=mongodb://localhost:27017/nest_starter
+DATABASE_URL=mongodb://localhost:27017/nest_next_starter
 
 # PostgreSQL / MySQL (TypeORM)
 DATABASE_TYPE=postgres
@@ -145,7 +145,7 @@ DATABASE_HOST=localhost
 DATABASE_PORT=5432
 DATABASE_USERNAME=postgres
 DATABASE_PASSWORD=secret
-DATABASE_NAME=nest_starter
+DATABASE_NAME=nest_next_starter
 DATABASE_SYNCHRONIZE=false
 ```
 

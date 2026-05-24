@@ -90,9 +90,10 @@ Any service / feature
   ─────┼──────────────────────────────────────────────────────
        │  REST API (JWT-protected)
        ▼
-  GET  /api/v1/notifications          ← paginated list (filterable by isRead)
-  PATCH /api/v1/notifications/:id/read ← mark one notification as read
-  DELETE /api/v1/notifications/:id     ← delete one notification
+  POST   /api/v1/notifications            ← create (admin only)
+  GET    /api/v1/notifications            ← paginated list (filterable by isRead)
+  PATCH  /api/v1/notifications/:id/read  ← mark one notification as read
+  DELETE /api/v1/notifications/:id       ← delete one notification
 ```
 
 1. **Producer** — Any NestJS module that imports `NotificationQueueModule` (or `NotificationsModule` which exports `NotificationsService`) can inject `NotificationQueueService` and call `addCreateNotificationJob()`. The call returns immediately after enqueuing.
@@ -351,13 +352,14 @@ Requires `admin` role (`Authorization: Bearer <admin_token>`).
 
 ### Notifications (`/api/v1/notifications`) — opt-in (`NOTIFICATIONS_ENABLED=true`)
 
-All endpoints require a valid JWT (`Authorization: Bearer <access_token>`). Results are scoped to the currently authenticated user.
+All endpoints require a valid JWT (`Authorization: Bearer <access_token>`).
 
-| Method   | Path        | Query params               | Description                                                 |
-| -------- | ----------- | -------------------------- | ----------------------------------------------------------- |
-| `GET`    | `/`         | `page`, `limit`, `isRead?` | Paginated list of the current user's notifications          |
-| `PATCH`  | `/:id/read` | —                          | Mark a notification as read (sets `isRead=true`, `readAt`)  |
-| `DELETE` | `/:id`      | —                          | Delete a notification (only the owner can delete their own) |
+| Method   | Path        | Auth        | Query params               | Description                                                 |
+| -------- | ----------- | ----------- | -------------------------- | ----------------------------------------------------------- |
+| `POST`   | `/`         | JWT + Admin | —                          | Create a notification for any user                          |
+| `GET`    | `/`         | JWT         | `page`, `limit`, `isRead?` | Paginated list of the current user's notifications          |
+| `PATCH`  | `/:id/read` | JWT         | —                          | Mark a notification as read (sets `isRead=true`, `readAt`)  |
+| `DELETE` | `/:id`      | JWT         | —                          | Delete a notification (only the owner can delete their own) |
 
 **Query parameters for `GET /`:**
 
