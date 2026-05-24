@@ -6,6 +6,7 @@ import { OffsetPaginatedDto } from '@/common/dto/offset-pagination/paginated.dto
 import { OffsetPaginationDto } from '@/common/dto/offset-pagination/offset-pagination.dto';
 import { Notification } from './domain/notification';
 import { NotificationType } from './notifications.enum';
+import { CreateNotificationDto } from './dto/create-notification.dto';
 
 function makeNotification(): Notification {
   const n = new Notification();
@@ -23,6 +24,7 @@ function makeNotification(): Notification {
 }
 
 const mockService = {
+  create: jest.fn(),
   findAll: jest.fn(),
   markAsRead: jest.fn(),
   remove: jest.fn(),
@@ -43,6 +45,20 @@ describe('NotificationsController', () => {
       providers: [{ provide: NotificationsService, useValue: mockService }],
     }).compile();
     controller = module.get(NotificationsController);
+  });
+
+  it('create delegates to service and returns notification', async () => {
+    const created = makeNotification();
+    mockService.create.mockResolvedValue(created);
+    const dto: CreateNotificationDto = {
+      userId: 'user-id',
+      type: NotificationType.SYSTEM,
+      title: 'Test',
+      message: 'Body',
+    };
+    const result = await controller.create(dto);
+    expect(mockService.create).toHaveBeenCalledWith(dto);
+    expect(result.id).toBe('notif-id');
   });
 
   it('findAll delegates to service with userId from JWT', async () => {

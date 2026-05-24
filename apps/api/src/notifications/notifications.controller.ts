@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Delete,
   Get,
@@ -6,6 +7,7 @@ import {
   HttpStatus,
   Param,
   Patch,
+  Post,
   Query,
   Request,
   UseGuards,
@@ -13,10 +15,14 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiAuth } from '@/decorators/http.decorators';
+import { Roles } from '@/decorators/roles.decorator';
+import { RoleEnum } from '@/roles/roles.enum';
+import { RbacGuard } from '@/roles/rbac.guard';
 import { JwtPayloadType } from '@/auth/strategies/types/jwt-payload.type';
 import { Notification } from './domain/notification';
 import { NotificationsService } from './notifications.service';
 import { QueryNotificationDto } from './dto/query-notification.dto';
+import { CreateNotificationDto } from './dto/create-notification.dto';
 import { OffsetPaginatedDto } from '@/common/dto/offset-pagination/paginated.dto';
 
 @ApiTags('Notifications')
@@ -24,6 +30,17 @@ import { OffsetPaginatedDto } from '@/common/dto/offset-pagination/paginated.dto
 @Controller({ path: 'notifications', version: '1' })
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
+
+  @Post()
+  @Roles(RoleEnum.ADMIN)
+  @UseGuards(RbacGuard)
+  @ApiAuth({
+    type: Notification,
+    summary: 'Create a notification (admin only)',
+  })
+  create(@Body() body: CreateNotificationDto): Promise<Notification> {
+    return this.notificationsService.create(body);
+  }
 
   @Get()
   @ApiAuth({
