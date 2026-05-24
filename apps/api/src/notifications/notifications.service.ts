@@ -59,11 +59,12 @@ export class NotificationsService {
   }
 
   async markAsRead(id: string, userId: string): Promise<Notification> {
-    const notification = await this.notificationRepo.markAsRead(id);
-    if (!notification || notification.userId !== userId) {
+    const existing = await this.notificationRepo.findById(id);
+    if (!existing || existing.userId !== userId) {
       throw new NotFoundException('Notification not found');
     }
-    return notification;
+    const updated = await this.notificationRepo.markAsRead(id);
+    return updated!;
   }
 
   async remove(id: string, userId: string): Promise<void> {

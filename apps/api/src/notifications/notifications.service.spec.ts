@@ -74,17 +74,31 @@ describe('NotificationsService', () => {
 
   describe('markAsRead', () => {
     it('returns updated notification', async () => {
+      mockRepo.findById.mockResolvedValue(makeNotification());
       const updated = makeNotification({ isRead: true });
       mockRepo.markAsRead.mockResolvedValue(updated);
       const result = await service.markAsRead('notif-id', 'user-id');
       expect(result.isRead).toBe(true);
+      expect(mockRepo.findById).toHaveBeenCalledWith('notif-id');
+      expect(mockRepo.markAsRead).toHaveBeenCalledWith('notif-id');
     });
 
     it('throws NotFoundException when notification not found', async () => {
-      mockRepo.markAsRead.mockResolvedValue(null);
+      mockRepo.findById.mockResolvedValue(null);
       await expect(service.markAsRead('bad-id', 'user-id')).rejects.toThrow(
         NotFoundException,
       );
+      expect(mockRepo.markAsRead).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when notification belongs to different user', async () => {
+      mockRepo.findById.mockResolvedValue(
+        makeNotification({ userId: 'other-user' }),
+      );
+      await expect(service.markAsRead('notif-id', 'user-id')).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(mockRepo.markAsRead).not.toHaveBeenCalled();
     });
   });
 
