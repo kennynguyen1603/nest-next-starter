@@ -1,9 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
+
 import { JwtPayloadType } from '@/auth/strategies/types/jwt-payload.type';
 import { OffsetPaginatedDto } from '@/common/dto/offset-pagination/paginated.dto';
 import { OffsetPaginationDto } from '@/common/dto/offset-pagination/offset-pagination.dto';
+import { UsersService } from '@/users/users.service';
 import { Notification } from './domain/notification';
 import { NotificationType } from './notifications.enum';
 import { CreateNotificationDto } from './dto/create-notification.dto';
@@ -29,6 +31,11 @@ const mockService = {
   markAsRead: jest.fn(),
   remove: jest.fn(),
   countUnread: jest.fn(),
+  broadcastToUsers: jest.fn(),
+};
+
+const mockUsersService = {
+  findAllIds: jest.fn(),
 };
 
 const jwtUser = {
@@ -42,7 +49,10 @@ describe('NotificationsController', () => {
     jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
       controllers: [NotificationsController],
-      providers: [{ provide: NotificationsService, useValue: mockService }],
+      providers: [
+        { provide: NotificationsService, useValue: mockService },
+        { provide: UsersService, useValue: mockUsersService },
+      ],
     }).compile();
     controller = module.get(NotificationsController);
   });
