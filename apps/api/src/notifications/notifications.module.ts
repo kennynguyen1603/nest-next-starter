@@ -5,6 +5,7 @@ import { RelationalNotificationPersistenceModule } from './infrastructure/persis
 import { DocumentNotificationPersistenceModule } from './infrastructure/persistence/document/document-persistence.module';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
+import { UsersModule } from '@/users/users.module';
 
 // <database-block>
 const infrastructurePersistenceModule = (databaseConfig() as DatabaseConfig)
@@ -14,7 +15,7 @@ const infrastructurePersistenceModule = (databaseConfig() as DatabaseConfig)
 // </database-block>
 
 @Module({
-  imports: [infrastructurePersistenceModule],
+  imports: [infrastructurePersistenceModule, UsersModule],
   controllers: [NotificationsController],
   providers: [NotificationsService],
   exports: [NotificationsService],

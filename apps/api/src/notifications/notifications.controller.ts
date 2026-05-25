@@ -23,13 +23,18 @@ import { Notification } from './domain/notification';
 import { NotificationsService } from './notifications.service';
 import { QueryNotificationDto } from './dto/query-notification.dto';
 import { CreateNotificationDto } from './dto/create-notification.dto';
+import { BroadcastNotificationDto } from './dto/broadcast-notification.dto';
 import { OffsetPaginatedDto } from '@/common/dto/offset-pagination/paginated.dto';
+import { UsersService } from '@/users/users.service';
 
 @ApiTags('Notifications')
 @UseGuards(AuthGuard('jwt'))
 @Controller({ path: 'notifications', version: '1' })
 export class NotificationsController {
-  constructor(private readonly notificationsService: NotificationsService) {}
+  constructor(
+    private readonly notificationsService: NotificationsService,
+    private readonly usersService: UsersService,
+  ) {}
 
   @Post()
   @Roles(RoleEnum.ADMIN)
@@ -40,6 +45,17 @@ export class NotificationsController {
   })
   create(@Body() body: CreateNotificationDto): Promise<Notification> {
     return this.notificationsService.create(body);
+  }
+
+  @Post('broadcast')
+  @Roles(RoleEnum.ADMIN)
+  @UseGuards(RbacGuard)
+  @ApiAuth({ summary: 'Broadcast a notification to all users (admin only)' })
+  async broadcast(
+    @Body() body: BroadcastNotificationDto,
+  ): Promise<{ count: number }> {
+    const userIds = await this.usersService.findAllIds();
+    return this.notificationsService.broadcastToUsers(userIds, body);
   }
 
   @Get()
