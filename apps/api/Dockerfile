@@ -23,10 +23,9 @@ RUN pnpm --filter ./apps/api build
 RUN --mount=type=cache,id=pnpm-api,target=/pnpm/store pnpm --filter ./apps/api deploy --prod /standalone
 
 FROM node:22-alpine AS production
-RUN apk update && apk upgrade --no-cache && npm install -g npm@latest
+RUN apk update && apk upgrade --no-cache && npm install -g pm2
 WORKDIR /app
 ENV NODE_ENV=production
-RUN npm install -g pm2
 COPY --chown=node:node --from=builder /standalone/node_modules ./node_modules
 COPY --chown=node:node --from=builder /repo/apps/api/dist ./dist
 COPY --chown=node:node --from=builder /standalone/package.json ./
