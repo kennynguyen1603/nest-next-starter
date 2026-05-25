@@ -7,6 +7,8 @@ import { NotificationRepository } from './infrastructure/persistence/notificatio
 import { NotificationType } from './notifications.enum';
 import { Notification } from './domain/notification';
 import { OffsetPaginationDto } from '@/common/dto/offset-pagination/offset-pagination.dto';
+import { SocketService } from '@/socket/socket.service';
+import { SocketEvent } from '@/socket/types/socket-event.enum';
 
 function makeNotification(overrides: Partial<Notification> = {}): Notification {
   const n = new Notification();
@@ -39,6 +41,8 @@ const mockLogger = {
   debug: jest.fn(),
 } as unknown as PinoLogger;
 
+const mockSocketService = { emitToUser: jest.fn() };
+
 describe('NotificationsService', () => {
   let service: NotificationsService;
 
@@ -48,6 +52,7 @@ describe('NotificationsService', () => {
       providers: [
         NotificationsService,
         { provide: NotificationRepository, useValue: mockRepo },
+        { provide: SocketService, useValue: mockSocketService },
         {
           provide: getLoggerToken(NotificationsService.name),
           useValue: mockLogger,
@@ -55,6 +60,26 @@ describe('NotificationsService', () => {
       ],
     }).compile();
     service = module.get(NotificationsService);
+  });
+
+  describe('create', () => {
+    it('persists notification and emits socket event', async () => {
+      const notification = makeNotification();
+      mockRepo.create.mockResolvedValue(notification);
+      const result = await service.create({
+        userId: 'user-id',
+        type: NotificationType.SYSTEM,
+        title: 'Test',
+        message: 'Body',
+      });
+      expect(mockRepo.create).toHaveBeenCalled();
+      expect(mockSocketService.emitToUser).toHaveBeenCalledWith(
+        'user-id',
+        SocketEvent.NotificationNew,
+        notification,
+      );
+      expect(result).toBe(notification);
+    });
   });
 
   describe('findAll', () => {

@@ -83,9 +83,14 @@ Any service / feature
        ▼
   NotificationProcessor  (@Processor, concurrency 5)
        │
-       │  createNotification()  →  NotificationRepository.create()
+       │  notificationsService.create()  →  NotificationRepository.create()
        ▼
   Database (relational or document)
+       │
+       │  (if WEBSOCKET_ENABLED=true)
+       │  socketService.emitToUser(userId, 'notification:new', notification)
+       ▼
+  Socket.io → user:{userId} room → connected clients
        │
   ─────┼──────────────────────────────────────────────────────
        │  REST API (JWT-protected)
@@ -158,6 +163,160 @@ The `type` column is a `varchar(50)` so any string fits without a migration.
 #### Queue events & monitoring
 
 `NotificationQueueEvents` (a `QueueEventsHost`) logs `completed` and `failed` events using Pino structured logging. Failed jobs are visible in Bull Board at `/api/queues` alongside the email queue.
+
+---
+
+### 🔌 Real-Time Push (WebSocket / Socket.io, opt-in)
+
+Disabled by default. Set `WEBSOCKET_ENABLED=true` to activate the WebSocket gateway.
+
+- **JWT authentication at connect time** — Clients must send a valid access token in the Socket.io handshake. Connections without a valid token receive an `error` event and are immediately disconnected.
+- **User rooms** — Each authenticated connection automatically joins the `user:{userId}` Socket.io room. Any server-side push to `user:{userId}` reaches all of that user's open tabs and devices.
+- **Notification push** — When a `CreateNotification` BullMQ job completes, the processor emits `notification:new` directly to the user's room. Clients receive the notification in real time without polling.
+- **Redis pub/sub adapter** — When enabled, the gateway attaches `@socket.io/redis-adapter`. Every `emit()` is broadcast through Redis pub/sub, so events reach the correct socket even when the user is connected to a different API replica. Horizontal scaling works without sticky sessions (WebSocket transport only; see [Multi-instance note](#multi-instance--production) below).
+- **Socket ID tracking** — Active socket IDs per user are tracked in Redis (`socket:{userId}:clients`, TTL 24 h). On disconnect the ID is removed; the key is deleted when the user has no remaining connections.
+
+#### How to enable
+
+```env
+# apps/api/.env
+WEBSOCKET_ENABLED=true
+```
+
+Requires Redis (same connection already used by BullMQ). No additional infrastructure is needed.
+
+#### Architecture & connection lifecycle
+
+```
+Client                       API (NestJS)                     Redis
+  │                               │                              │
+  │── socket.io connect ─────────▶│                              │
+  │   handshake.auth.token        │                              │
+  │                               │── jwtService.verifyAsync() ──┤
+  │                               │◀─ JwtPayloadType ────────────┤
+  │                               │── socket.join('user:{id}')   │
+  │                               │── SET socket:{id}:clients ──▶│
+  │◀─ connected ─────────────────│                              │
+  │                               │                              │
+  │   (notification created)      │                              │
+  │                               │── PUBLISH notification:new ─▶│
+  │◀─ event: notification:new ───│◀─ SUBSCRIBE broadcast ───────│
+  │                               │                              │
+  │── disconnect ────────────────▶│                              │
+  │                               │── DEL / update clients ─────▶│
+```
+
+1. **Handshake** — Client passes `auth.token` (JWT access token). The gateway verifies it with `JwtService.verifyAsync`. On failure: `error` event → `disconnect(true)`.
+2. **Room join** — On success, `socket.data.user` is populated and the socket joins `user:{userId}`.
+3. **Push** — `SocketService.emitToUser(userId, event, payload)` targets the `user:{userId}` room. Redis adapter broadcasts to all instances.
+4. **Disconnect** — The gateway removes the socket ID from Redis. If no IDs remain, the key is deleted.
+
+#### Event reference
+
+All events are defined in `src/socket/types/socket-event.enum.ts`. The payload types are declared in `ServerToClientEvents` in `src/socket/types/authenticated-socket.type.ts`.
+
+| Event              | Direction       | Payload                      | Description                                             |
+| ------------------ | --------------- | ---------------------------- | ------------------------------------------------------- |
+| `error`            | Server → Client | `{ message: string }`        | Sent before disconnect when auth fails                  |
+| `notification:new` | Server → Client | `Notification` domain object | Emitted when a new notification is created for the user |
+
+#### Emitting to a user from any service
+
+`SocketModule` is `@Global()` — `SocketService` is automatically available to every module without an explicit import. Modules that might run when WebSocket is disabled should use `@Optional()` to avoid DI errors.
+
+```typescript
+import { Optional } from '@nestjs/common';
+import { SocketService } from '@/socket/socket.service';
+import { SocketEvent } from '@/socket/types/socket-event.enum';
+
+constructor(
+  @Optional() private readonly socketService: SocketService | null,
+) {}
+
+// Push an event to a specific user (all their connected sockets)
+this.socketService?.emitToUser(userId, SocketEvent.NotificationNew, payload);
+
+// Push to an arbitrary named room
+this.socketService?.emitToRoom('room-name', 'custom:event', payload);
+```
+
+> [!IMPORTANT]
+> `emitToUser` and `emitToRoom` are **synchronous** — Socket.io's `emit()` is fire-and-forget. Do not `await` them.
+
+#### Client-side connection example
+
+```typescript
+import { io } from 'socket.io-client';
+
+const socket = io('http://localhost:8080', {
+  auth: {
+    token: accessToken, // JWT access token from POST /auth/email/login
+  },
+  transports: ['websocket', 'polling'],
+});
+
+socket.on('connect', () => {
+  console.log('Connected:', socket.id);
+});
+
+socket.on('error', ({ message }: { message: string }) => {
+  // Fired when the token is missing or invalid; the socket is disconnected immediately after
+  console.error('Auth error:', message);
+});
+
+socket.on('notification:new', (notification) => {
+  // notification matches the Notification domain model
+  console.log('New notification:', notification.title);
+  // update UI badge, show toast, etc.
+});
+
+socket.on('disconnect', (reason) => {
+  console.log('Disconnected:', reason);
+  // reason === 'io server disconnect' means the server closed it (e.g. token expired mid-session)
+});
+```
+
+#### Adding new events
+
+**Step 1** — Add the event name to `SocketEvent` in `src/socket/types/socket-event.enum.ts`:
+
+```typescript
+export enum SocketEvent {
+  Error = 'error',
+  NotificationNew = 'notification:new',
+  OrderShipped = 'order:shipped', // ← new
+}
+```
+
+**Step 2** — Add the payload type to `ServerToClientEvents` in `src/socket/types/authenticated-socket.type.ts`:
+
+```typescript
+export interface ServerToClientEvents {
+  [SocketEvent.Error]: (data: { message: string }) => void;
+  [SocketEvent.NotificationNew]: (data: Notification) => void;
+  [SocketEvent.OrderShipped]: (data: OrderShippedDto) => void; // ← new
+}
+```
+
+**Step 3** — Emit from any service:
+
+```typescript
+this.socketService?.emitToUser(userId, SocketEvent.OrderShipped, {
+  orderId,
+  trackingUrl,
+});
+```
+
+#### Multi-instance / production
+
+When multiple API replicas are running, a `user:{userId}` socket may be connected to a different instance than the one handling a request. The Redis adapter broadcasts every `emit()` through pub/sub, so the message is always delivered to the correct replica.
+
+**Polling transport & sticky sessions** — The `polling` transport requires all HTTP requests during the WebSocket upgrade to hit the same server. Configure your load balancer to use **sticky sessions** if `polling` transport is enabled. The `websocket` transport (pure WebSocket after the initial handshake) does not require this. To disable polling entirely:
+
+```typescript
+// src/socket/socket.gateway.ts — decorator options
+transports: ['websocket'],
+```
 
 ### 📧 Mail
 
@@ -260,6 +419,15 @@ src/
 │   ├── notifications.service.ts
 │   ├── notifications.module.ts
 │   └── notifications.enum.ts  ← NotificationType enum
+│
+├── socket/                 ← WebSocket module (opt-in, WEBSOCKET_ENABLED)
+│   ├── types/
+│   │   ├── socket-event.enum.ts        ← SocketEvent enum (all event names)
+│   │   └── authenticated-socket.type.ts← AuthenticatedSocket type + ServerToClientEvents
+│   ├── socket.adapter.ts   ← Factory: creates Redis pub/sub ioredis clients for the adapter
+│   ├── socket.gateway.ts   ← @WebSocketGateway: JWT auth on connect, user room management
+│   ├── socket.service.ts   ← emitToUser(userId, event, payload) / emitToRoom(room, ...)
+│   └── socket.module.ts    ← @Global() module, exports SocketService + SocketGateway
 │
 ├── worker/                 ← BullMQ async job queues
 │   └── queues/
@@ -712,6 +880,29 @@ NOTIFICATIONS_ENABLED=false
 
 > [!NOTE]
 > Requires Redis (same connection as BullMQ) and the database to be running. No additional infrastructure is needed beyond what the API already uses.
+
+### WebSocket (opt-in)
+
+```env
+# Set to true to enable the WebSocket gateway (Socket.io).
+# When false (default), SocketModule is NOT loaded — no WebSocket port, no Redis pub/sub
+# connections, and SocketService is not registered in the DI container.
+WEBSOCKET_ENABLED=false
+```
+
+When `WEBSOCKET_ENABLED=true`, the gateway is available on the **same port** as the HTTP API (8080). Socket.io handles protocol negotiation automatically — no separate port is required.
+
+**CORS** — The gateway reads `FRONTEND_DOMAIN` directly from `process.env` (decorator constraints prevent DI at that stage). Ensure `FRONTEND_DOMAIN` is set correctly in production.
+
+```env
+FRONTEND_DOMAIN=http://localhost:3000   # used for both HTTP CORS and WebSocket CORS
+```
+
+> [!NOTE]
+> Requires Redis. The Redis adapter uses the same `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` / `REDIS_TLS` values already configured for BullMQ — no additional Redis settings are needed.
+
+> [!TIP]
+> `WEBSOCKET_ENABLED` and `NOTIFICATIONS_ENABLED` are independent flags. Enabling WebSocket without notifications is valid (the gateway runs but no `notification:new` events are emitted). Enabling notifications without WebSocket is also valid (notifications are persisted and available via REST, but no real-time push occurs).
 
 ### OAuth (Optional)
 

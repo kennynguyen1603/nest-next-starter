@@ -73,6 +73,7 @@ services:
       dockerfile: apps/admin/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_NOTIFICATIONS_ENABLED: ${NEXT_PUBLIC_NOTIFICATIONS_ENABLED:-false}
     ports:
       - "3002:3002"
     environment:

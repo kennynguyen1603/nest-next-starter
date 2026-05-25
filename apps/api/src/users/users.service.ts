@@ -227,6 +227,21 @@ export class UsersService {
     this.logger.debug({ userId: id }, 'User removed');
   }
 
+  async findAllIds(): Promise<string[]> {
+    const ids: string[] = [];
+    let page = 1;
+    const limit = 200;
+    while (true) {
+      const [users] = await this.usersRepository.findManyWithPagination({
+        paginationOptions: { page, limit },
+      });
+      ids.push(...users.map((u) => u.id));
+      if (users.length < limit) break;
+      page++;
+    }
+    return ids;
+  }
+
   private resolveRoles(roleDtos: RoleDto[]): Role[] {
     const validRoleNames = new Set<string>(Object.values(RoleEnum));
     const hasInvalidRole = roleDtos.some(

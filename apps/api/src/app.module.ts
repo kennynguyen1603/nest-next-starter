@@ -18,6 +18,7 @@ import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 import { WorkerModule } from './worker/queues/worker.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { NotificationQueueModule } from './worker/queues/notification/notification.module';
+import { SocketModule } from './socket/socket.module';
 
 import { AllConfigType } from './config/config.type';
 import databaseConfig from './config/database/database.config';
@@ -83,6 +84,11 @@ const notificationModules =
     ? [NotificationsModule, NotificationQueueModule]
     : [];
 // </notification-block>
+
+// <socket-block>
+const socketModules =
+  process.env.WEBSOCKET_ENABLED === 'true' ? [SocketModule] : [];
+// </socket-block>
 
 // <database-block>
 const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
@@ -186,6 +192,7 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
     AuthFacebookModule,
     AuthGithubModule,
     AuthTwitterModule,
+    ...socketModules,
     ...notificationModules,
   ],
   providers: [

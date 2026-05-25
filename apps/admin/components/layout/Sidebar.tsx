@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   Users,
+  Bell,
   BarChart2,
   Settings,
   ChevronLeft,
@@ -18,6 +19,16 @@ import { api } from "@/lib/api";
 const NAV = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/users", label: "Users", icon: Users, exact: false },
+  ...(process.env.NEXT_PUBLIC_NOTIFICATIONS_ENABLED === "true"
+    ? [
+        {
+          href: "/notifications",
+          label: "Notifications",
+          icon: Bell,
+          exact: false,
+        },
+      ]
+    : []),
   { href: "/reports", label: "Reports", icon: BarChart2, exact: false },
   { href: "/settings", label: "Settings", icon: Settings, exact: false },
 ];
