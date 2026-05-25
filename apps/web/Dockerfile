@@ -23,7 +23,7 @@ ARG NEXT_PUBLIC_TWITTER_CLIENT_ID
 RUN pnpm --filter ./apps/web build
 
 FROM node:22-alpine AS runner
-RUN apk update && apk upgrade --no-cache && npm install -g npm@latest
+RUN apk update && apk upgrade --no-cache
 WORKDIR /app
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
