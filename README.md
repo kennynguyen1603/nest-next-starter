@@ -31,6 +31,7 @@ nest-next-starter/                  ← Turborepo monorepo (pnpm workspaces)
 | Auth          | JWT (Access + Refresh token), OAuth 2.0 (Google / Facebook / GitHub / Twitter) |
 | File Storage  | Local / AWS S3 / S3 Presigned / Cloudinary — switched via `FILE_DRIVER`        |
 | Queue         | BullMQ + Redis — async job processing (email delivery, in-app notifications)   |
+| WebSocket     | Socket.io + Redis adapter — real-time push, JWT auth at connect, opt-in        |
 | Rate Limiting | `@nestjs/throttler` + Redis storage — per-IP, globally applied                 |
 | Mail          | Nodemailer + Handlebars templates, dispatched via job queue                    |
 | i18n          | nestjs-i18n (header-based) + next-intl (locale routing)                        |
