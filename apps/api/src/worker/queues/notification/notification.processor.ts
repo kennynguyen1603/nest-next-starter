@@ -32,9 +32,10 @@ export class NotificationProcessor extends WorkerHost {
     );
 
     switch (job.name) {
-      case NotificationJob.CreateNotification:
+      case NotificationJob.CreateNotification: {
         await this.notificationsService.create(job.data);
         return;
+      }
       default: {
         const _exhaustive: never = job as never;
         throw new Error(
