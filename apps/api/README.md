@@ -522,12 +522,13 @@ Requires `admin` role (`Authorization: Bearer <admin_token>`).
 
 All endpoints require a valid JWT (`Authorization: Bearer <access_token>`).
 
-| Method   | Path        | Auth        | Query params               | Description                                                 |
-| -------- | ----------- | ----------- | -------------------------- | ----------------------------------------------------------- |
-| `POST`   | `/`         | JWT + Admin | —                          | Create a notification for any user                          |
-| `GET`    | `/`         | JWT         | `page`, `limit`, `isRead?` | Paginated list of the current user's notifications          |
-| `PATCH`  | `/:id/read` | JWT         | —                          | Mark a notification as read (sets `isRead=true`, `readAt`)  |
-| `DELETE` | `/:id`      | JWT         | —                          | Delete a notification (only the owner can delete their own) |
+| Method   | Path         | Auth        | Query params               | Description                                                           |
+| -------- | ------------ | ----------- | -------------------------- | --------------------------------------------------------------------- |
+| `POST`   | `/`          | JWT + Admin | —                          | Create a notification for any user                                    |
+| `POST`   | `/broadcast` | JWT + Admin | —                          | Send the same notification to every user; returns `{ count: number }` |
+| `GET`    | `/`          | JWT         | `page`, `limit`, `isRead?` | Paginated list of the current user's notifications                    |
+| `PATCH`  | `/:id/read`  | JWT         | —                          | Mark a notification as read (sets `isRead=true`, `readAt`)            |
+| `DELETE` | `/:id`       | JWT         | —                          | Delete a notification (only the owner can delete their own)           |
 
 **Query parameters for `GET /`:**
 
@@ -782,13 +783,24 @@ See the full reference at [`apps/api/.env.example`](./.env.example).
 
 ```env
 NODE_ENV=development
+APP_NAME=nest-next-starter         # used as Redis key prefix and app identifier
 APP_PORT=8080
+API_PREFIX=api                     # URL prefix — routes become /api/v1/...
 FRONTEND_DOMAIN=http://localhost:3000
+BACKEND_DOMAIN=http://localhost:8080
 ADMIN_DOMAIN=http://localhost:3002   # admin panel origin — added to CORS allow-list
-DATABASE_TYPE=mongodb          # mongodb | postgres | mysql | sqlite
+APP_FALLBACK_LANGUAGE=en           # default language when Accept-Language header is absent
+APP_HEADER_LANGUAGE=x-custom-lang  # request header used by nestjs-i18n
+DATABASE_TYPE=mongodb              # mongodb | postgres | mysql | sqlite
 DATABASE_URL=mongodb://localhost:27017/nest_starter
 AUTH_JWT_SECRET=change_me_jwt_secret
+AUTH_JWT_TOKEN_EXPIRES_IN=15m
 AUTH_REFRESH_SECRET=change_me_refresh_secret
+AUTH_REFRESH_TOKEN_EXPIRES_IN=7d
+AUTH_FORGOT_SECRET=change_me_forgot_secret
+AUTH_FORGOT_TOKEN_EXPIRES_IN=30m
+AUTH_CONFIRM_EMAIL_SECRET=change_me_confirm_secret
+AUTH_CONFIRM_EMAIL_TOKEN_EXPIRES_IN=1d
 ```
 
 ### Redis (required for BullMQ, rate limiting, and application caching)
@@ -796,8 +808,13 @@ AUTH_REFRESH_SECRET=change_me_refresh_secret
 ```env
 REDIS_HOST=localhost
 REDIS_PORT=6379
-REDIS_PASSWORD=                # optional
-REDIS_TLS=false                # set true if your Redis requires TLS
+REDIS_PASSWORD=                    # optional
+REDIS_TLS=false                    # set true if your Redis requires TLS
+REDIS_REJECT_UNAUTHORIZED=false    # set true to enforce TLS certificate verification
+# Mutual TLS (only needed when REDIS_TLS=true and the server requires client certs):
+REDIS_CA=                          # path or PEM string for the CA certificate
+REDIS_KEY=                         # path or PEM string for the client private key
+REDIS_CERT=                        # path or PEM string for the client certificate
 ```
 
 ### Cookie Security
@@ -812,8 +829,8 @@ APP_COOKIE_SECURE=false
 ### Basic Auth (protects /queues and /docs)
 
 ```env
-AUTH_BASIC_USERNAME=admin
-AUTH_BASIC_PASSWORD=change_me
+BASIC_AUTH_USERNAME=admin
+BASIC_AUTH_PASSWORD=change_me
 ```
 
 ### Mail
@@ -824,17 +841,41 @@ MAIL_PORT=587
 MAIL_USER=
 MAIL_PASSWORD=
 MAIL_DEFAULT_EMAIL=noreply@example.com
+MAIL_DEFAULT_NAME=App          # display name shown in the From header
+MAIL_IGNORE_TLS=false          # skip STARTTLS upgrade (use for local/dev SMTP)
+MAIL_SECURE=false              # force TLS from the first connection (port 465)
+MAIL_REQUIRE_TLS=true          # reject connections that cannot upgrade to TLS
 ```
 
 ### File Storage
 
 ```env
 FILE_DRIVER=local              # local | s3 | s3-presigned | cloudinary
-# If using S3:
+# If using S3 or s3-presigned:
 ACCESS_KEY_ID=
 SECRET_ACCESS_KEY=
 AWS_DEFAULT_S3_BUCKET=
 AWS_S3_REGION=ap-southeast-1
+# If using Cloudinary:
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+```
+
+### Job Queue
+
+```env
+QUEUE_REMOVE_ON_COMPLETE=true   # auto-remove completed jobs from Redis (saves memory)
+QUEUE_REMOVE_ON_FAIL=true       # auto-remove failed jobs (set to false to keep for inspection)
+QUEUE_FAILED_RETRY_ATTEMPTS=3   # number of automatic retries before marking a job as failed
+```
+
+### Database (additional options)
+
+```env
+DATABASE_MAX_CONNECTIONS=100        # TypeORM connection pool size (SQL only)
+DATABASE_SSL_ENABLED=false          # enable SSL/TLS for the database connection
+DATABASE_REJECT_UNAUTHORIZED=false  # reject connections with unverifiable certificates
 ```
 
 ### Rate Limiting (Throttler)
@@ -927,7 +968,7 @@ Once running, visit: **http://localhost:8080/docs**
 
 ## Queue Dashboard (Bull Board)
 
-Visit **http://localhost:8080/api/queues** — protected by Basic Auth (`AUTH_BASIC_USERNAME` / `AUTH_BASIC_PASSWORD`).
+Visit **http://localhost:8080/api/queues** — protected by Basic Auth (`BASIC_AUTH_USERNAME` / `BASIC_AUTH_PASSWORD`).
 
 Displays active, completed, failed, delayed, and waiting jobs for every registered queue.
 

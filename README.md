@@ -399,14 +399,15 @@ docker compose run --rm seed
 
 **Settings → Secrets and variables → Actions → Variables**
 
-| Variable                        | Value                   | Required                |
-| ------------------------------- | ----------------------- | ----------------------- |
-| `DEPLOY_ENABLED`                | `true`                  | To activate auto-deploy |
-| `NEXT_PUBLIC_API_URL`           | Production API URL      | For Next.js build       |
-| `NEXT_PUBLIC_GOOGLE_CLIENT_ID`  | Google OAuth client ID  | If using Google login   |
-| `NEXT_PUBLIC_FACEBOOK_APP_ID`   | Facebook App ID         | If using Facebook login |
-| `NEXT_PUBLIC_GITHUB_CLIENT_ID`  | GitHub OAuth client ID  | If using GitHub login   |
-| `NEXT_PUBLIC_TWITTER_CLIENT_ID` | Twitter OAuth client ID | If using Twitter login  |
+| Variable                            | Value                   | Required                           |
+| ----------------------------------- | ----------------------- | ---------------------------------- |
+| `DEPLOY_ENABLED`                    | `true`                  | To activate auto-deploy            |
+| `NEXT_PUBLIC_API_URL`               | Production API URL      | For Next.js build                  |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID`      | Google OAuth client ID  | If using Google login              |
+| `NEXT_PUBLIC_FACEBOOK_APP_ID`       | Facebook App ID         | If using Facebook login            |
+| `NEXT_PUBLIC_GITHUB_CLIENT_ID`      | GitHub OAuth client ID  | If using GitHub login              |
+| `NEXT_PUBLIC_TWITTER_CLIENT_ID`     | Twitter OAuth client ID | If using Twitter login             |
+| `NEXT_PUBLIC_NOTIFICATIONS_ENABLED` | `true`                  | To enable admin Notifications page |
 
 > [!IMPORTANT]
 > **`DEPLOY_ENABLED` is the on/off switch for auto-deploy.** Without it, CI (lint/test/build) runs normally on every push but the deploy step is silently skipped. This means you can use the full CI pipeline from day one without needing an EC2 server.
