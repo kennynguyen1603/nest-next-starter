@@ -43,16 +43,29 @@ Runs by default at **http://localhost:3002**.
 - **Delete user** — Confirmation modal with Escape key support; inline error display
 - **User detail** — Full profile view at `/users/[id]` with all fields
 
+### 🔔 Notifications (opt-in)
+
+Disabled by default. Set `NEXT_PUBLIC_NOTIFICATIONS_ENABLED=true` to show the Notifications page in the sidebar and enable the UI.
+
+- **Send to a single user** — Enter a user ID, fill in type / title / message / optional JSON metadata, and submit. The admin panel calls `POST /api/v1/notifications` with the `ADMIN` role.
+- **Broadcast to all users** — Sends the same notification to every user via `POST /api/v1/notifications/broadcast`. A two-step confirmation banner appears before the request is sent to prevent accidental mass sends.
+- **Sent history** — A session-scoped list of all notifications dispatched during the current visit (cleared on page reload).
+- **Feature-disabled screen** — When `NEXT_PUBLIC_NOTIFICATIONS_ENABLED` is `false`, the page shows a banner with the exact environment variables to set instead of a broken UI.
+
+> [!NOTE]
+> The API must also have `NOTIFICATIONS_ENABLED=true` set in `apps/api/.env`. Both flags must be `true` for the feature to work end-to-end.
+
 ### 📄 Pages & Routes
 
-| Route         | Description                              |
-| ------------- | ---------------------------------------- |
-| `/login`      | Admin login page                         |
-| `/`           | Dashboard with stats and recent activity |
-| `/users`      | Paginated user list with search          |
-| `/users/[id]` | User detail view                         |
-| `/reports`    | Placeholder (future)                     |
-| `/settings`   | Placeholder (future)                     |
+| Route            | Description                                     |
+| ---------------- | ----------------------------------------------- |
+| `/login`         | Admin login page                                |
+| `/`              | Dashboard with stats and recent activity        |
+| `/users`         | Paginated user list with search                 |
+| `/users/[id]`    | User detail view                                |
+| `/notifications` | Send notifications to users (opt-in, see above) |
+| `/reports`       | Placeholder (future)                            |
+| `/settings`      | Placeholder (future)                            |
 
 ---
 
@@ -74,6 +87,8 @@ apps/admin/
 │   │   ├── users/
 │   │   │   ├── page.tsx                ← User list
 │   │   │   └── [id]/page.tsx           ← User detail
+│   │   ├── notifications/
+│   │   │   └── page.tsx                ← Send notifications (opt-in, NEXT_PUBLIC_NOTIFICATIONS_ENABLED)
 │   │   ├── reports/page.tsx
 │   │   └── settings/page.tsx
 │   │
@@ -168,9 +183,14 @@ The `NEXT_PUBLIC_API_URL` build arg is **baked into the bundle** at build time. 
 ```env
 # URL of the NestJS backend API — baked into the client bundle at build time
 NEXT_PUBLIC_API_URL=http://localhost:8080
+
+# Set to "true" to enable the Notifications page in the admin panel (opt-in).
+# Must be paired with NOTIFICATIONS_ENABLED=true in apps/api/.env.
+# Default: false (page shows a "feature disabled" banner instead of the form)
+NEXT_PUBLIC_NOTIFICATIONS_ENABLED=false
 ```
 
-There is no `.env.example` for the admin panel because only `NEXT_PUBLIC_API_URL` is needed, and it is already passed as a Docker build arg via `docker-compose.yml`.
+Copy [`apps/admin/.env.example`](./.env.example) to `apps/admin/.env.local` for local development. In Docker, these variables are passed as build args via `docker-compose.yml` — the `.env.local` file is not used in containers.
 
 ---
 
@@ -210,16 +230,18 @@ When any API call returns `401`:
 
 ## API Endpoints Used
 
-| Method   | Path                            | Description          |
-| -------- | ------------------------------- | -------------------- |
-| `POST`   | `/api/v1/auth/email/login`      | Login                |
-| `POST`   | `/api/v1/auth/refresh`          | Refresh access token |
-| `POST`   | `/api/v1/auth/logout`           | Logout               |
-| `GET`    | `/api/v1/admin/stats`           | Dashboard statistics |
-| `GET`    | `/api/v1/admin/recent-activity` | Recent activity list |
-| `GET`    | `/api/v1/users?q=...&page=...`  | Paginated user list  |
-| `GET`    | `/api/v1/users/:id`             | User detail          |
-| `DELETE` | `/api/v1/users/:id`             | Delete user          |
+| Method   | Path                              | Description                                                  |
+| -------- | --------------------------------- | ------------------------------------------------------------ |
+| `POST`   | `/api/v1/auth/email/login`        | Login                                                        |
+| `POST`   | `/api/v1/auth/refresh`            | Refresh access token                                         |
+| `POST`   | `/api/v1/auth/logout`             | Logout                                                       |
+| `GET`    | `/api/v1/admin/stats`             | Dashboard statistics                                         |
+| `GET`    | `/api/v1/admin/recent-activity`   | Recent activity list                                         |
+| `GET`    | `/api/v1/users?q=...&page=...`    | Paginated user list                                          |
+| `GET`    | `/api/v1/users/:id`               | User detail                                                  |
+| `DELETE` | `/api/v1/users/:id`               | Delete user                                                  |
+| `POST`   | `/api/v1/notifications`           | Create notification for a specific user (admin only, opt-in) |
+| `POST`   | `/api/v1/notifications/broadcast` | Broadcast notification to all users (admin only, opt-in)     |
 
 All endpoints except login/refresh require a valid `Authorization: Bearer <token>` header. Admin endpoints additionally require the `admin` role (`@Roles(RoleEnum.ADMIN)` guard on the API).
 
