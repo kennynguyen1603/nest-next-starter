@@ -62,4 +62,15 @@ export class NotificationsRelationalRepository implements NotificationRepository
   async countUnread(userId: string): Promise<number> {
     return this.repo.count({ where: { userId, isRead: false } });
   }
+
+  async markAllAsRead(userId: string): Promise<void> {
+    await this.repo.update(
+      { userId, isRead: false },
+      { isRead: true, readAt: new Date() },
+    );
+  }
+
+  async removeAll(userId: string): Promise<void> {
+    await this.repo.delete({ userId });
+  }
 }

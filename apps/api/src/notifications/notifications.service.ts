@@ -117,4 +117,12 @@ export class NotificationsService {
   async countUnread(userId: string): Promise<number> {
     return this.notificationRepo.countUnread(userId);
   }
+
+  async markAllAsRead(userId: string): Promise<void> {
+    await this.notificationRepo.markAllAsRead(userId);
+  }
+
+  async removeAll(userId: string): Promise<void> {
+    await this.notificationRepo.removeAll(userId);
+  }
 }

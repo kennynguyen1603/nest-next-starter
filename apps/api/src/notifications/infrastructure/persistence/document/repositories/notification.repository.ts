@@ -82,4 +82,15 @@ export class NotificationsDocumentRepository implements NotificationRepository {
   async countUnread(userId: string): Promise<number> {
     return this.model.countDocuments({ userId, isRead: false });
   }
+
+  async markAllAsRead(userId: string): Promise<void> {
+    await this.model.updateMany(
+      { userId, isRead: false },
+      { isRead: true, readAt: new Date() },
+    );
+  }
+
+  async removeAll(userId: string): Promise<void> {
+    await this.model.deleteMany({ userId });
+  }
 }
