@@ -8,6 +8,7 @@ import { AdminService } from './admin.service';
 import { AdminStatsDto } from './dto/admin-stats.dto';
 import { ActivityDto } from './dto/activity.dto';
 import { UserGrowthDto } from './dto/user-growth.dto';
+import { UserSummaryReportDto } from './dto/user-summary-report.dto';
 
 @ApiTags('Admin')
 @ApiBearerAuth()
@@ -33,5 +34,11 @@ export class AdminController {
   @Get('charts/users-growth')
   getUserGrowth(): Promise<UserGrowthDto[]> {
     return this.adminService.getUserGrowth();
+  }
+
+  @ApiOkResponse({ type: UserSummaryReportDto })
+  @Get('reports/user-summary')
+  getUserStatusSummary(): Promise<UserSummaryReportDto> {
+    return this.adminService.getUserStatusSummary();
   }
 }

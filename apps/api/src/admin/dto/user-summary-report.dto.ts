@@ -1,8 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-export class AdminStatsDto {
+export class UserSummaryReportDto {
   @ApiProperty() totalUsers: number;
-  @ApiProperty() newUsersToday: number;
   @ApiProperty() activeUsers: number;
   @ApiProperty() inactiveUsers: number;
   @ApiProperty() userGrowthPercent: number;
