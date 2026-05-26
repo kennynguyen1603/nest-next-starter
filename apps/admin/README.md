@@ -31,7 +31,7 @@ Runs by default at **http://localhost:3002**.
 
 ### 📊 Dashboard
 
-- **Stats cards** — Total users, new users today, and trend indicators (↑/↓ vs last month)
+- **Stats cards** — Total users, new users today, active users, inactive users (all from the database — no hardcoded values)
 - **Recent activity** — Last 10 user actions, relative timestamps via `date-fns`
 - Data fetched client-side from `GET /api/v1/admin/stats` and `GET /api/v1/admin/recent-activity`
 
@@ -40,19 +40,34 @@ Runs by default at **http://localhost:3002**.
 - **Paginated user table** — Lists all users with name, email, role badge, status badge, and join date
 - **Search** — Filter by name/email using the `q` query parameter (`GET /api/v1/users?q=...`)
 - **Pagination** — Previous/Next controls; page state in the URL via `page` query parameter
-- **Delete user** — Confirmation modal with Escape key support; inline error display
-- **User detail** — Full profile view at `/users/[id]` with all fields
+- **Create user** — `/users/new`: form with first name, last name, email, password, role, and status
+- **Edit user** — `/users/[id]/edit`: pre-filled form; update name, email, role, status, or password
+- **Role assignment** — Role dropdown (user / manager / admin) in both create and edit forms
+- **Bulk selection** — Checkboxes on each row + select-all header checkbox (with indeterminate state); a contextual action bar appears above the table when ≥1 user is selected
+  - **Set status** — Change status of all selected users at once (active / inactive / pending / banned)
+  - **Set role** — Reassign role for all selected users at once (user / manager / admin)
+  - **Delete selected** — Delete all selected users after confirmation (shows count in modal)
+- **Delete user** — Per-row confirmation modal with Escape key support; inline error display
+- **User detail** — Full profile view at `/users/[id]` with Edit and Back buttons
+
+### 📈 Reports
+
+- **Summary cards** — Total, active, inactive users and growth percentage from `GET /admin/reports/user-summary`
+- **User growth chart** — SVG line chart (no external library) showing daily registrations over the last 30 days
+- **Daily registrations table** — Per-day breakdown for the last 30 days, most recent first
 
 ### 📄 Pages & Routes
 
-| Route         | Description                              |
-| ------------- | ---------------------------------------- |
-| `/login`      | Admin login page                         |
-| `/`           | Dashboard with stats and recent activity |
-| `/users`      | Paginated user list with search          |
-| `/users/[id]` | User detail view                         |
-| `/reports`    | Placeholder (future)                     |
-| `/settings`   | Placeholder (future)                     |
+| Route              | Description                                |
+| ------------------ | ------------------------------------------ |
+| `/login`           | Admin login page                           |
+| `/`                | Dashboard with stats and recent activity   |
+| `/users`           | Paginated user list with search            |
+| `/users/new`       | Create a new user                          |
+| `/users/[id]`      | User detail view                           |
+| `/users/[id]/edit` | Edit user (name, email, role, status)      |
+| `/reports`         | User analytics: growth chart + daily table |
+| `/settings`        | Placeholder (future)                       |
 
 ---
 
@@ -72,9 +87,12 @@ apps/admin/
 │   │   ├── layout.tsx
 │   │   ├── page.tsx                    ← Dashboard home
 │   │   ├── users/
-│   │   │   ├── page.tsx                ← User list
-│   │   │   └── [id]/page.tsx           ← User detail
-│   │   ├── reports/page.tsx
+│   │   │   ├── page.tsx                ← User list (+ New User button)
+│   │   │   ├── new/page.tsx            ← Create user form
+│   │   │   └── [id]/
+│   │   │       ├── page.tsx            ← User detail (+ Edit button)
+│   │   │       └── edit/page.tsx       ← Edit user form
+│   │   ├── reports/page.tsx            ← User analytics (chart + table)
 │   │   └── settings/page.tsx
 │   │
 │   └── api/
@@ -210,16 +228,20 @@ When any API call returns `401`:
 
 ## API Endpoints Used
 
-| Method   | Path                            | Description          |
-| -------- | ------------------------------- | -------------------- |
-| `POST`   | `/api/v1/auth/email/login`      | Login                |
-| `POST`   | `/api/v1/auth/refresh`          | Refresh access token |
-| `POST`   | `/api/v1/auth/logout`           | Logout               |
-| `GET`    | `/api/v1/admin/stats`           | Dashboard statistics |
-| `GET`    | `/api/v1/admin/recent-activity` | Recent activity list |
-| `GET`    | `/api/v1/users?q=...&page=...`  | Paginated user list  |
-| `GET`    | `/api/v1/users/:id`             | User detail          |
-| `DELETE` | `/api/v1/users/:id`             | Delete user          |
+| Method   | Path                                 | Description                   |
+| -------- | ------------------------------------ | ----------------------------- |
+| `POST`   | `/api/v1/auth/email/login`           | Login                         |
+| `POST`   | `/api/v1/auth/refresh`               | Refresh access token          |
+| `POST`   | `/api/v1/auth/logout`                | Logout                        |
+| `GET`    | `/api/v1/admin/stats`                | Dashboard statistics          |
+| `GET`    | `/api/v1/admin/recent-activity`      | Recent activity list          |
+| `GET`    | `/api/v1/admin/charts/users-growth`  | Daily user registration data  |
+| `GET`    | `/api/v1/admin/reports/user-summary` | User status summary           |
+| `GET`    | `/api/v1/users?q=...&page=...`       | Paginated user list           |
+| `POST`   | `/api/v1/users`                      | Create user                   |
+| `GET`    | `/api/v1/users/:id`                  | User detail                   |
+| `PATCH`  | `/api/v1/users/:id`                  | Update user (role, status, …) |
+| `DELETE` | `/api/v1/users/:id`                  | Delete user                   |
 
 All endpoints except login/refresh require a valid `Authorization: Bearer <token>` header. Admin endpoints additionally require the `admin` role (`@Roles(RoleEnum.ADMIN)` guard on the API).
 

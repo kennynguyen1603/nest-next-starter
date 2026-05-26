@@ -8,8 +8,10 @@ Runs by default at **http://localhost:3000**.
 ## Features
 
 ### 🔐 Authentication
+
 - **Email/Password login** — Form validation with `react-hook-form` + `zod`; field-level API errors (e.g. duplicate email on register) are shown under the relevant input
 - **Account registration** — Sends a confirmation email after successful signup
+- **Email confirmation** — `/confirm-email?hash=…` reads the hash from the URL, calls `POST /auth/email/confirm`, shows success/error state, and redirects to `/login` after 3 seconds
 - **OAuth Social Login** — Google, Facebook, GitHub, Twitter/X
   - Standard Authorization Code Flow (PKCE for Twitter/X)
   - Next.js Route Handler (`/api/auth/[provider]/exchange`) acts as a **server-side proxy** to securely exchange tokens without exposing client secrets to the browser
@@ -20,11 +22,13 @@ Runs by default at **http://localhost:3000**.
 > **Profile loading**: After any login (email or OAuth), the app always calls `GET /auth/me` to load the canonical user profile. This ensures all user fields are complete regardless of what the login response includes.
 
 ### 🗄️ State Management
+
 - **Zustand** (`lib/auth-store.ts`) — Stores `accessToken`, `tokenExpires`, and `user` in memory
 - The refresh token is stored server-side in an **HttpOnly cookie**
 - `localStorage` is used temporarily during the OAuth flow to pass the result from the callback page to the home page (`_oauth_result` key); it is cleared immediately after being read
 
 ### 🌐 API Client
+
 - `lib/api.ts` — Fetch wrapper with:
   - Automatic `Authorization: Bearer <token>` header injection
   - `credentials: 'include'` for cookie support
@@ -33,19 +37,30 @@ Runs by default at **http://localhost:3000**.
   - Attaches `details` from API 422 responses to the thrown error, enabling field-level error display in forms
 
 ### ✏️ Profile Management
+
 - **Edit profile** — Update first name, last name, and avatar photo
 - **Change password** — Only available for accounts registered with email/password; hidden for OAuth users (Google, GitHub, etc.) since they authenticate through their provider
 - **Delete account** — Requires confirmation before soft-deleting the account
 
+### 🔔 Notifications Inbox
+
+- **Notifications page** — `/[locale]/notifications`: lists all notifications with unread/read indicator
+- **Mark as read** — Single (✓ button) or all at once ("Mark all read" header button)
+- **Delete** — Single (✕ button) or all ("Clear all" with confirm dialog)
+- **Pagination** — Previous/Next with page info
+- Data fetched from `GET /api/v1/notifications`; mutations via `PATCH /read-all`, `DELETE /`, `PATCH /:id/read`, `DELETE /:id`
+
 ### 📄 Pages & Routes
 
-| Route | Description |
-|-------|-------------|
-| `/[locale]/` | Dashboard — displays account info, requires authentication |
-| `/[locale]/login` | Sign-in page (email form + OAuth buttons) |
-| `/[locale]/register` | Account registration page |
-| `/[locale]/forgot-password` | Request a password reset email |
-| `/[locale]/reset-password` | Reset password using the token from email |
+| Route                       | Description                                                |
+| --------------------------- | ---------------------------------------------------------- |
+| `/[locale]/`                | Dashboard — displays account info, requires authentication |
+| `/[locale]/login`           | Sign-in page (email form + OAuth buttons)                  |
+| `/[locale]/register`        | Account registration page                                  |
+| `/[locale]/forgot-password` | Request a password reset email                             |
+| `/[locale]/reset-password`  | Reset password using the token from email                  |
+| `/[locale]/confirm-email`   | Email confirmation handler (reads `?hash=` from URL)       |
+| `/[locale]/notifications`   | Notifications inbox with bulk and single operations        |
 | `/auth/[provider]/callback` | OAuth callback handler (Google, Facebook, GitHub, Twitter) |
 
 > Route `/[locale]/` automatically redirects to `/[locale]/login` if the user is not authenticated.
@@ -66,10 +81,13 @@ apps/web/
 │   │   │
 │   │   ├── (auth)/                 ← Auth layout group (centered card)
 │   │   │   ├── layout.tsx
-│   │   │   ├── login/page.tsx          ← Sign-in page
-│   │   │   ├── register/page.tsx       ← Registration page
-│   │   │   ├── forgot-password/page.tsx ← Request password reset
-│   │   │   └── reset-password/page.tsx  ← Reset password with token
+│   │   │   ├── login/page.tsx              ← Sign-in page
+│   │   │   ├── register/page.tsx           ← Registration page
+│   │   │   ├── forgot-password/page.tsx    ← Request password reset
+│   │   │   ├── reset-password/page.tsx     ← Reset password with token
+│   │   │   └── confirm-email/page.tsx      ← Email confirmation handler
+│   │   │
+│   │   ├── notifications/page.tsx      ← Notifications inbox
 │   │   │
 │   │   └── _components/
 │   │       ├── edit-profile-dialog.tsx    ← Edit name, photo, password (email users only)
@@ -208,14 +226,14 @@ TWITTER_CLIENT_SECRET=         # Server-only
 
 ## Key Dependencies
 
-| Package | Purpose |
-|---------|---------|
-| `next` 16 | Framework |
-| `react` 19 | UI library |
-| `tailwindcss` v4 | Styling |
-| `zustand` | Auth state management |
-| `react-hook-form` | Form handling |
-| `zod` | Schema validation |
-| `@hookform/resolvers` | Connects zod with react-hook-form |
-| `next-intl` | Internationalization and locale routing |
-| `vitest` | Unit test runner |
+| Package               | Purpose                                 |
+| --------------------- | --------------------------------------- |
+| `next` 16             | Framework                               |
+| `react` 19            | UI library                              |
+| `tailwindcss` v4      | Styling                                 |
+| `zustand`             | Auth state management                   |
+| `react-hook-form`     | Form handling                           |
+| `zod`                 | Schema validation                       |
+| `@hookform/resolvers` | Connects zod with react-hook-form       |
+| `next-intl`           | Internationalization and locale routing |
+| `vitest`              | Unit test runner                        |

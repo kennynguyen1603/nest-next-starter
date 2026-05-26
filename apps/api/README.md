@@ -56,7 +56,7 @@ Disabled by default. Set `NOTIFICATIONS_ENABLED=true` to activate the full notif
 
 - **Asynchronous persistence** — Callers enqueue a `create-notification` BullMQ job; the worker persists it to the database without blocking the caller
 - **Dual database** — Follows the same relational / document split as every other module; no code changes needed when switching databases
-- **REST API** — Three authenticated endpoints for the currently logged-in user: list (paginated, filterable by read status), mark as read, delete
+- **REST API** — Authenticated endpoints for the currently logged-in user: list (paginated, filterable by read status), mark single/all as read, delete single/all
 - **Unread counter** — `NotificationsService.countUnread(userId)` is available for any feature that needs a badge count
 - **Bull Board** — The notification queue appears in the dashboard alongside the email queue when the feature is enabled
 
@@ -95,17 +95,20 @@ Any service / feature
   ─────┼──────────────────────────────────────────────────────
        │  REST API (JWT-protected)
        ▼
-  POST   /api/v1/notifications            ← create (admin only)
-  GET    /api/v1/notifications            ← paginated list (filterable by isRead)
-  PATCH  /api/v1/notifications/:id/read  ← mark one notification as read
-  DELETE /api/v1/notifications/:id       ← delete one notification
+  POST   /api/v1/notifications              ← create (admin only)
+  POST   /api/v1/notifications/broadcast    ← broadcast to all users (admin only)
+  GET    /api/v1/notifications              ← paginated list (filterable by isRead)
+  PATCH  /api/v1/notifications/read-all    ← mark all notifications as read
+  PATCH  /api/v1/notifications/:id/read    ← mark one notification as read
+  DELETE /api/v1/notifications             ← delete all notifications of the current user
+  DELETE /api/v1/notifications/:id         ← delete one notification
 ```
 
 1. **Producer** — Any NestJS module that imports `NotificationQueueModule` (or `NotificationsModule` which exports `NotificationsService`) can inject `NotificationQueueService` and call `addCreateNotificationJob()`. The call returns immediately after enqueuing.
 2. **Queue** — BullMQ stores the job payload in Redis under the `notification` queue name.
 3. **Processor** (`NotificationProcessor`) — Runs in the worker process (or main process in development). Picks up jobs with up to 5 concurrent workers. On `CreateNotification` jobs it calls `NotificationsService.create()`.
 4. **Repository** — `NotificationsService` delegates to the injected `NotificationRepository`. In relational mode this is `NotificationsRelationalRepository` (TypeORM); in document mode it is `NotificationsDocumentRepository` (Mongoose). No other code changes.
-5. **Consumer** — Clients poll `GET /api/v1/notifications` with optional `?isRead=false` to get unread notifications. `PATCH /:id/read` marks a single notification read; `DELETE /:id` removes it.
+5. **Consumer** — Clients poll `GET /api/v1/notifications` with optional `?isRead=false` to get unread notifications. `PATCH /read-all` marks all as read; `PATCH /:id/read` marks one; `DELETE /` clears all; `DELETE /:id` removes one.
 
 #### Producing a notification from another module
 
@@ -504,11 +507,12 @@ src/
 
 Requires `admin` role (`Authorization: Bearer <admin_token>`).
 
-| Method | Path                   | Description                                     |
-| ------ | ---------------------- | ----------------------------------------------- |
-| `GET`  | `/stats`               | Dashboard statistics (total users, new today)   |
-| `GET`  | `/recent-activity`     | Last 10 user activity entries                   |
-| `GET`  | `/charts/users-growth` | Daily user registration counts for last 30 days |
+| Method | Path                    | Description                                                                                     |
+| ------ | ----------------------- | ----------------------------------------------------------------------------------------------- |
+| `GET`  | `/stats`                | Dashboard statistics (totalUsers, newUsersToday, activeUsers, inactiveUsers, userGrowthPercent) |
+| `GET`  | `/recent-activity`      | Last 10 user activity entries                                                                   |
+| `GET`  | `/charts/users-growth`  | Daily user registration counts for last 30 days                                                 |
+| `GET`  | `/reports/user-summary` | User status summary (total, active, inactive, growth %)                                         |
 
 ### Files (`/api/v1/files`)
 
@@ -522,12 +526,15 @@ Requires `admin` role (`Authorization: Bearer <admin_token>`).
 
 All endpoints require a valid JWT (`Authorization: Bearer <access_token>`).
 
-| Method   | Path        | Auth        | Query params               | Description                                                 |
-| -------- | ----------- | ----------- | -------------------------- | ----------------------------------------------------------- |
-| `POST`   | `/`         | JWT + Admin | —                          | Create a notification for any user                          |
-| `GET`    | `/`         | JWT         | `page`, `limit`, `isRead?` | Paginated list of the current user's notifications          |
-| `PATCH`  | `/:id/read` | JWT         | —                          | Mark a notification as read (sets `isRead=true`, `readAt`)  |
-| `DELETE` | `/:id`      | JWT         | —                          | Delete a notification (only the owner can delete their own) |
+| Method   | Path         | Auth        | Query params               | Description                                                 |
+| -------- | ------------ | ----------- | -------------------------- | ----------------------------------------------------------- |
+| `POST`   | `/`          | JWT + Admin | —                          | Create a notification for any user                          |
+| `POST`   | `/broadcast` | JWT + Admin | —                          | Broadcast a notification to all users                       |
+| `GET`    | `/`          | JWT         | `page`, `limit`, `isRead?` | Paginated list of the current user's notifications          |
+| `PATCH`  | `/read-all`  | JWT         | —                          | Mark all of the current user's notifications as read        |
+| `PATCH`  | `/:id/read`  | JWT         | —                          | Mark a notification as read (sets `isRead=true`, `readAt`)  |
+| `DELETE` | `/`          | JWT         | —                          | Delete all notifications of the current user                |
+| `DELETE` | `/:id`       | JWT         | —                          | Delete a notification (only the owner can delete their own) |
 
 **Query parameters for `GET /`:**
 
