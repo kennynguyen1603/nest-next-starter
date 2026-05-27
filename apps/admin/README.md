@@ -56,6 +56,18 @@ Runs by default at **http://localhost:3002**.
 - **User growth chart** — SVG line chart (no external library) showing daily registrations over the last 30 days
 - **Daily registrations table** — Per-day breakdown for the last 30 days, most recent first
 
+### 🔔 Notifications (opt-in)
+
+Disabled by default. Set `NEXT_PUBLIC_NOTIFICATIONS_ENABLED=true` to show the Notifications page in the sidebar and enable the UI.
+
+- **Send to a single user** — Enter a user ID, fill in type / title / message / optional JSON metadata, and submit. The admin panel calls `POST /api/v1/notifications` with the `ADMIN` role.
+- **Broadcast to all users** — Sends the same notification to every user via `POST /api/v1/notifications/broadcast`. A two-step confirmation banner appears before the request is sent to prevent accidental mass sends.
+- **Sent history** — A session-scoped list of all notifications dispatched during the current visit (cleared on page reload).
+- **Feature-disabled screen** — When `NEXT_PUBLIC_NOTIFICATIONS_ENABLED` is `false`, the page shows a banner with the exact environment variables to set instead of a broken UI.
+
+> [!NOTE]
+> The API must also have `NOTIFICATIONS_ENABLED=true` set in `apps/api/.env`. Both flags must be `true` for the feature to work end-to-end.
+
 ### 📄 Pages & Routes
 
 | Route              | Description                                |
@@ -87,7 +99,7 @@ apps/admin/
 │   │   ├── layout.tsx
 │   │   ├── page.tsx                    ← Dashboard home
 │   │   ├── users/
-│   │   │   ├── page.tsx                ← User list (+ New User button)
+    │   │   │   ├── page.tsx                ← User list (+ New User button)
 │   │   │   ├── new/page.tsx            ← Create user form
 │   │   │   └── [id]/
 │   │   │       ├── page.tsx            ← User detail (+ Edit button)
@@ -186,9 +198,14 @@ The `NEXT_PUBLIC_API_URL` build arg is **baked into the bundle** at build time. 
 ```env
 # URL of the NestJS backend API — baked into the client bundle at build time
 NEXT_PUBLIC_API_URL=http://localhost:8080
+
+# Set to "true" to enable the Notifications page in the admin panel (opt-in).
+# Must be paired with NOTIFICATIONS_ENABLED=true in apps/api/.env.
+# Default: false (page shows a "feature disabled" banner instead of the form)
+NEXT_PUBLIC_NOTIFICATIONS_ENABLED=false
 ```
 
-There is no `.env.example` for the admin panel because only `NEXT_PUBLIC_API_URL` is needed, and it is already passed as a Docker build arg via `docker-compose.yml`.
+Copy [`apps/admin/.env.example`](./.env.example) to `apps/admin/.env.local` for local development. In Docker, these variables are passed as build args via `docker-compose.yml` — the `.env.local` file is not used in containers.
 
 ---
 
