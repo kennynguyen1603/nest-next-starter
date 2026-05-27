@@ -62,15 +62,18 @@ export class UserEntity extends EntityRelationalHelper {
   })
   roles?: RoleEntity[];
 
+  @Index()
   @Column({ type: 'varchar', length: 20, nullable: true })
   status?: UserStatus;
 
+  @Index()
   @CreateDateColumn()
   createdAt!: Date;
 
   @UpdateDateColumn()
   updatedAt!: Date;
 
+  @Index()
   @DeleteDateColumn()
   deletedAt?: Date | null;
 }
