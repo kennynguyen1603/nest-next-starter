@@ -2,9 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { UserSchemaClass } from '@/users/infrastructure/persistence/document/entities/user.schema';
+import { UserStatus } from '@/users/user-status.enum';
 import { AdminStatsDto } from './dto/admin-stats.dto';
 import { ActivityDto } from './dto/activity.dto';
 import { UserGrowthDto } from './dto/user-growth.dto';
+import { UserSummaryReportDto } from './dto/user-summary-report.dto';
 
 @Injectable()
 export class AdminService {
@@ -17,20 +19,40 @@ export class AdminService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const [totalUsers, newUsersToday] = await Promise.all([
-      this.userModel.countDocuments({ deletedAt: { $exists: false } }),
-      this.userModel.countDocuments({
-        deletedAt: { $exists: false },
-        createdAt: { $gte: today },
-      }),
-    ]);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const [totalUsers, newUsersToday, activeUsers, usersThirtyDaysAgo] =
+      await Promise.all([
+        this.userModel.countDocuments({ deletedAt: { $exists: false } }),
+        this.userModel.countDocuments({
+          deletedAt: { $exists: false },
+          createdAt: { $gte: today },
+        }),
+        this.userModel.countDocuments({
+          deletedAt: { $exists: false },
+          status: UserStatus.ACTIVE,
+        }),
+        this.userModel.countDocuments({
+          deletedAt: { $exists: false },
+          createdAt: { $lt: thirtyDaysAgo },
+        }),
+      ]);
+
+    const inactiveUsers = totalUsers - activeUsers;
+    const userGrowthPercent =
+      usersThirtyDaysAgo > 0
+        ? Math.round(
+            ((totalUsers - usersThirtyDaysAgo) / usersThirtyDaysAgo) * 100,
+          )
+        : 0;
 
     return {
       totalUsers,
       newUsersToday,
-      totalRevenue: 0,
-      activeOrders: 0,
-      userGrowthPercent: 0,
+      activeUsers,
+      inactiveUsers,
+      userGrowthPercent,
     };
   }
 
@@ -51,6 +73,33 @@ export class AdminService {
       target: 'account',
       createdAt: (u.createdAt as Date).toISOString(),
     }));
+  }
+
+  async getUserStatusSummary(): Promise<UserSummaryReportDto> {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const [totalUsers, activeUsers, usersThirtyDaysAgo] = await Promise.all([
+      this.userModel.countDocuments({ deletedAt: { $exists: false } }),
+      this.userModel.countDocuments({
+        deletedAt: { $exists: false },
+        status: UserStatus.ACTIVE,
+      }),
+      this.userModel.countDocuments({
+        deletedAt: { $exists: false },
+        createdAt: { $lt: thirtyDaysAgo },
+      }),
+    ]);
+
+    const inactiveUsers = totalUsers - activeUsers;
+    const userGrowthPercent =
+      usersThirtyDaysAgo > 0
+        ? Math.round(
+            ((totalUsers - usersThirtyDaysAgo) / usersThirtyDaysAgo) * 100,
+          )
+        : 0;
+
+    return { totalUsers, activeUsers, inactiveUsers, userGrowthPercent };
   }
 
   async getUserGrowth(): Promise<UserGrowthDto[]> {

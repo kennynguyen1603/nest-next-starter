@@ -12,7 +12,14 @@
     "accountInfo": "Account Information",
     "fullName": "Full Name",
     "email": "Email",
-    "provider": "Provider"
+    "provider": "Provider",
+    "status": "Status",
+    "role": "Role",
+    "memberSince": "Member Since",
+    "statusActive": "Active",
+    "statusInactive": "Inactive",
+    "statusPending": "Pending",
+    "statusBanned": "Banned"
   },
   "auth": {
     "layout": {
@@ -80,6 +87,15 @@
       "errorPasswordLength": "Password must be at least 8 characters",
       "errorDefault": "Invalid or expired link. Please request a new one.",
       "errorMissingHash": "Invalid reset link."
+    },
+    "confirmEmail": {
+      "title": "Email confirmation",
+      "loading": "Verifying your email address…",
+      "successTitle": "Email confirmed!",
+      "successMessage": "Your email has been verified. Redirecting you to sign in…",
+      "backToSignIn": "← Back to sign in",
+      "errorDefault": "This confirmation link is invalid or has expired.",
+      "errorMissingHash": "Invalid confirmation link."
     }
   },
   "user": {
@@ -104,6 +120,26 @@
     "errorPasswordLength": "Password must be at least 8 characters",
     "oldPasswordRequired": "Current password is required to set a new password",
     "errorDefault": "Something went wrong. Please try again."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markAllRead": "Mark all read",
+    "clearAll": "Clear all",
+    "markRead": "Mark as read",
+    "delete": "Delete",
+    "empty": "No notifications",
+    "errorLoad": "Failed to load notifications.",
+    "clearAllConfirm": "Clear all notifications?",
+    "clearAllWarning": "This cannot be undone.",
+    "cancel": "Cancel",
+    "confirmDelete": "Clear all",
+    "previous": "← Previous",
+    "next": "Next →",
+    "pageOf": "Page {current} of {total}",
+    "timeJustNow": "Just now",
+    "timeHoursAgo": "{count}h ago",
+    "timeYesterday": "Yesterday",
+    "timeDaysAgo": "{count}d ago"
   },
   "locale": {
     "switchLanguage": "Language",

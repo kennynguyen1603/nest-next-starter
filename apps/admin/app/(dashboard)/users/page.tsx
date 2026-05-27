@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Search } from "lucide-react";
+import { Search, UserPlus } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import UserTable from "@/components/users/UserTable";
 import type { AdminUser } from "@repo/types";
@@ -19,6 +20,7 @@ interface UsersApiResponse {
 const LIMIT = 20;
 
 export default function UsersPage() {
+  const router = useRouter();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -56,7 +58,16 @@ export default function UsersPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-900">Users</h1>
-        <span className="text-sm text-gray-500">{total} total</span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-500">{total} total</span>
+          <button
+            onClick={() => router.push("/users/new")}
+            className="flex items-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          >
+            <UserPlus size={15} />
+            New User
+          </button>
+        </div>
       </div>
 
       <div className="relative max-w-xs">

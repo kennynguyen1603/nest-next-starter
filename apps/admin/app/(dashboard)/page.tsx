@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users, UserPlus, DollarSign, ShoppingCart } from "lucide-react";
+import { Users, UserPlus, UserCheck, UserX } from "lucide-react";
 import { api, tryRefresh } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth-store";
 import StatsCard from "@/components/dashboard/StatsCard";
@@ -67,14 +67,14 @@ export default function DashboardPage() {
           icon={UserPlus}
         />
         <StatsCard
-          label="Revenue"
-          value={`$${(stats?.totalRevenue ?? 0).toLocaleString()}`}
-          icon={DollarSign}
+          label="Active Users"
+          value={stats?.activeUsers ?? 0}
+          icon={UserCheck}
         />
         <StatsCard
-          label="Active Orders"
-          value={stats?.activeOrders ?? 0}
-          icon={ShoppingCart}
+          label="Inactive Users"
+          value={stats?.inactiveUsers ?? 0}
+          icon={UserX}
         />
       </div>
 

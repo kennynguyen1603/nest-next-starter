@@ -24,4 +24,8 @@ export abstract class NotificationRepository {
   abstract remove(id: Notification['id']): Promise<void>;
 
   abstract countUnread(userId: string): Promise<number>;
+
+  abstract markAllAsRead(userId: string): Promise<void>;
+
+  abstract removeAll(userId: string): Promise<void>;
 }

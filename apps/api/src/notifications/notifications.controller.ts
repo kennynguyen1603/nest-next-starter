@@ -75,6 +75,15 @@ export class NotificationsController {
     );
   }
 
+  @Patch('read-all')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiAuth({ summary: 'Mark all notifications as read' })
+  async markAllAsRead(
+    @Request() request: { user: JwtPayloadType },
+  ): Promise<void> {
+    await this.notificationsService.markAllAsRead(request.user.id);
+  }
+
   @Patch(':id/read')
   @ApiAuth({ type: Notification, summary: 'Mark notification as read' })
   markAsRead(
@@ -82,6 +91,13 @@ export class NotificationsController {
     @Request() request: { user: JwtPayloadType },
   ): Promise<Notification> {
     return this.notificationsService.markAsRead(id, request.user.id);
+  }
+
+  @Delete()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiAuth({ summary: 'Delete all notifications of the current user' })
+  async removeAll(@Request() request: { user: JwtPayloadType }): Promise<void> {
+    await this.notificationsService.removeAll(request.user.id);
   }
 
   @Delete(':id')

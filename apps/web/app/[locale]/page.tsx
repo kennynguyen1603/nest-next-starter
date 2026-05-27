@@ -178,6 +178,27 @@ export default function Home() {
                 value={user.provider}
                 capitalize
               />
+              {user.status && (
+                <div className="flex items-center px-6 py-4 gap-6">
+                  <span className="w-28 shrink-0 text-xs font-medium text-neutral-400 uppercase tracking-wide">
+                    {t("home.status")}
+                  </span>
+                  <StatusBadge status={user.status} t={t} />
+                </div>
+              )}
+              {user.roles && user.roles.length > 0 && (
+                <InfoRow
+                  label={t("home.role")}
+                  value={user.roles.map((r) => r.name).join(", ")}
+                  capitalize
+                />
+              )}
+              {user.createdAt && (
+                <InfoRow
+                  label={t("home.memberSince")}
+                  value={new Date(user.createdAt).toLocaleDateString()}
+                />
+              )}
             </div>
           </div>
 
@@ -208,6 +229,37 @@ export default function Home() {
         </Suspense>
       )}
     </div>
+  );
+}
+
+const STATUS_STYLES: Record<string, string> = {
+  active: "bg-green-50 text-green-700 border border-green-200",
+  inactive: "bg-neutral-100 text-neutral-500 border border-neutral-200",
+  pending: "bg-yellow-50 text-yellow-700 border border-yellow-200",
+  banned: "bg-red-50 text-red-600 border border-red-200",
+};
+
+function StatusBadge({
+  status,
+  t,
+}: {
+  status: string;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const key =
+    `home.status${status.charAt(0).toUpperCase()}${status.slice(1)}` as Parameters<
+      typeof t
+    >[0];
+  const label = t(key);
+  const style =
+    STATUS_STYLES[status] ??
+    "bg-neutral-100 text-neutral-500 border border-neutral-200";
+  return (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 text-xs font-medium ${style}`}
+    >
+      {label}
+    </span>
   );
 }
 

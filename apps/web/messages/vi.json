@@ -12,7 +12,14 @@
     "accountInfo": "Thông tin tài khoản",
     "fullName": "Họ và tên",
     "email": "Email",
-    "provider": "Nhà cung cấp"
+    "provider": "Nhà cung cấp",
+    "status": "Trạng thái",
+    "role": "Vai trò",
+    "memberSince": "Thành viên từ",
+    "statusActive": "Hoạt động",
+    "statusInactive": "Không hoạt động",
+    "statusPending": "Chờ xác nhận",
+    "statusBanned": "Bị cấm"
   },
   "auth": {
     "layout": {
@@ -80,6 +87,15 @@
       "errorPasswordLength": "Mật khẩu phải có ít nhất 8 ký tự",
       "errorDefault": "Link không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu link mới.",
       "errorMissingHash": "Link đặt lại không hợp lệ."
+    },
+    "confirmEmail": {
+      "title": "Xác nhận email",
+      "loading": "Đang xác minh địa chỉ email của bạn…",
+      "successTitle": "Email đã được xác nhận!",
+      "successMessage": "Email của bạn đã được xác minh. Đang chuyển hướng đến trang đăng nhập…",
+      "backToSignIn": "← Quay lại đăng nhập",
+      "errorDefault": "Link xác nhận này không hợp lệ hoặc đã hết hạn.",
+      "errorMissingHash": "Link xác nhận không hợp lệ."
     }
   },
   "user": {
@@ -104,6 +120,26 @@
     "errorPasswordLength": "Mật khẩu phải có ít nhất 8 ký tự",
     "oldPasswordRequired": "Cần nhập mật khẩu hiện tại để đặt mật khẩu mới",
     "errorDefault": "Đã xảy ra lỗi. Vui lòng thử lại."
+  },
+  "notifications": {
+    "title": "Thông báo",
+    "markAllRead": "Đánh dấu đã đọc",
+    "clearAll": "Xóa tất cả",
+    "markRead": "Đánh dấu đã đọc",
+    "delete": "Xóa",
+    "empty": "Không có thông báo",
+    "errorLoad": "Không thể tải thông báo.",
+    "clearAllConfirm": "Xóa tất cả thông báo?",
+    "clearAllWarning": "Hành động này không thể hoàn tác.",
+    "cancel": "Hủy",
+    "confirmDelete": "Xóa tất cả",
+    "previous": "← Trước",
+    "next": "Tiếp →",
+    "pageOf": "Trang {current} / {total}",
+    "timeJustNow": "Vừa xong",
+    "timeHoursAgo": "{count} giờ trước",
+    "timeYesterday": "Hôm qua",
+    "timeDaysAgo": "{count} ngày trước"
   },
   "locale": {
     "switchLanguage": "Ngôn ngữ",

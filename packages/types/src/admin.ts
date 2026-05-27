@@ -1,8 +1,8 @@
 export interface AdminStats {
   totalUsers: number;
   newUsersToday: number;
-  totalRevenue: number;
-  activeOrders: number;
+  activeUsers: number;
+  inactiveUsers: number;
   userGrowthPercent: number;
 }
 
