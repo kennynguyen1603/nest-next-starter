@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import {
   HttpException,
   HttpStatus,
+  NotFoundException,
+  UnauthorizedException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -18,6 +20,7 @@ import { FILE_UPLOAD_SERVICE } from '@/files/infrastructure/uploader/uploader.in
 import { EmailQueueService } from '@/worker/queues/email/email.service';
 import { CacheService } from '@/shared/cache/cache.service';
 import { AuthProvidersEnum } from './auth-providers.enum';
+import { UserStatus } from '@/users/user-status.enum';
 
 const mockI18n = { t: jest.fn().mockReturnValue('mocked') };
 const mockUsersService = {
@@ -34,6 +37,7 @@ const mockSessionService = {
   deleteByUserId: jest.fn(),
   deleteByUserIdWithExclude: jest.fn(),
   updateByHash: jest.fn(),
+  enforceSessionLimit: jest.fn().mockResolvedValue(undefined),
 };
 const mockEmailQueueService = {
   addEmailVerificationJob: jest.fn(),
@@ -335,7 +339,10 @@ describe('AuthService', () => {
       const result = await service.logout({ sessionId: 'session1' });
 
       expect(result).toEqual({ message: 'mocked' });
-      expect(mockSessionService.deleteById).toHaveBeenCalledWith('session1');
+      expect(mockSessionService.deleteById).toHaveBeenCalledWith(
+        'session1',
+        'logout',
+      );
       expect(mockI18n.t).toHaveBeenCalledWith(
         'auth.LOGOUT_SUCCESS',
         expect.any(Object),
@@ -371,6 +378,7 @@ describe('AuthService', () => {
           userId: 'user1',
           excludeSessionId: 'session1',
         },
+        'logout',
       );
     });
 
@@ -426,6 +434,7 @@ describe('AuthService', () => {
           userId: 'user1',
           excludeSessionId: 'session1',
         },
+        'logout',
       );
     });
   });
@@ -441,6 +450,261 @@ describe('AuthService', () => {
       expect(mockI18n.t).toHaveBeenCalledWith(
         'auth.DELETE_SUCCESS',
         expect.any(Object),
+      );
+    });
+  });
+
+  describe('validateLogin — session limit', () => {
+    it('calls enforceSessionLimit before creating session', async () => {
+      const hash = await bcrypt.hash('pass', 10);
+      mockUsersService.findByEmail.mockResolvedValue({
+        id: 'user1',
+        email: 'x@x.com',
+        provider: AuthProvidersEnum.EMAIL,
+        password: hash,
+        roles: [{ name: 'user' }],
+      });
+      mockSessionService.create.mockResolvedValue({
+        id: 'session1',
+        hash: 'h',
+      });
+
+      await service.validateLogin({ email: 'x@x.com', password: 'pass' });
+
+      const enforceOrder =
+        mockSessionService.enforceSessionLimit.mock.invocationCallOrder[0];
+      const createOrder = mockSessionService.create.mock.invocationCallOrder[0];
+      expect(enforceOrder).toBeLessThan(createOrder);
+      expect(mockSessionService.enforceSessionLimit).toHaveBeenCalledWith(
+        'user1',
+        10,
+      );
+    });
+  });
+
+  describe('confirmNewEmail', () => {
+    const validPayload = { confirmEmailUserId: 'user1', newEmail: 'new@x.com' };
+
+    it('throws UnprocessableEntityException when hash is invalid', async () => {
+      mockJwtService.verifyAsync.mockRejectedValue(new Error('expired'));
+
+      await expect(service.confirmNewEmail('bad-hash')).rejects.toThrow(
+        UnprocessableEntityException,
+      );
+    });
+
+    it('throws NotFoundException when user does not exist', async () => {
+      mockJwtService.verifyAsync.mockResolvedValue(validPayload);
+      mockUsersService.findById.mockResolvedValue(null);
+
+      await expect(service.confirmNewEmail('valid-hash')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('updates email without changing user status', async () => {
+      mockJwtService.verifyAsync.mockResolvedValue(validPayload);
+      const user = {
+        id: 'user1',
+        email: 'old@x.com',
+        status: UserStatus.ACTIVE,
+      };
+      mockUsersService.findById.mockResolvedValue(user);
+      mockUsersService.update.mockResolvedValue(undefined);
+
+      await service.confirmNewEmail('valid-hash');
+
+      const updatedUser = mockUsersService.update.mock
+        .calls[0][1] as typeof user;
+      expect(updatedUser.email).toBe('new@x.com');
+      expect(updatedUser.status).toBe(UserStatus.ACTIVE);
+    });
+
+    it('does not reactivate a suspended user', async () => {
+      mockJwtService.verifyAsync.mockResolvedValue(validPayload);
+      const user = {
+        id: 'user1',
+        email: 'old@x.com',
+        status: UserStatus.INACTIVE,
+      };
+      mockUsersService.findById.mockResolvedValue(user);
+      mockUsersService.update.mockResolvedValue(undefined);
+
+      await service.confirmNewEmail('valid-hash');
+
+      const updatedUser = mockUsersService.update.mock
+        .calls[0][1] as typeof user;
+      expect(updatedUser.status).toBe(UserStatus.INACTIVE);
+    });
+
+    it('returns success message', async () => {
+      mockJwtService.verifyAsync.mockResolvedValue(validPayload);
+      mockUsersService.findById.mockResolvedValue({
+        id: 'user1',
+        email: 'old@x.com',
+        status: UserStatus.ACTIVE,
+      });
+      mockUsersService.update.mockResolvedValue(undefined);
+
+      const result = await service.confirmNewEmail('valid-hash');
+
+      expect(result).toEqual({ message: 'mocked' });
+      expect(mockI18n.t).toHaveBeenCalledWith(
+        'auth.NEW_EMAIL_CONFIRM_SUCCESS',
+        expect.any(Object),
+      );
+    });
+  });
+
+  describe('validateSocialLogin — conditional update', () => {
+    const baseUser = {
+      id: 'social1',
+      email: 'old@x.com',
+      roles: [{ name: 'user' }],
+    };
+
+    beforeEach(() => {
+      mockSessionService.create.mockResolvedValue({
+        id: 'session1',
+        hash: 'h',
+      });
+    });
+
+    it('does NOT call update when found user email already matches social email', async () => {
+      mockUsersService.findBySocialIdAndProvider.mockResolvedValue({
+        ...baseUser,
+        email: 'same@x.com',
+      });
+      mockUsersService.findByEmail.mockResolvedValue({
+        ...baseUser,
+        email: 'same@x.com',
+      });
+
+      await service.validateSocialLogin('google', {
+        id: 'gid1',
+        email: 'same@x.com',
+        firstName: 'A',
+        lastName: 'B',
+        provider: 'google',
+      });
+
+      expect(mockUsersService.update).not.toHaveBeenCalled();
+    });
+
+    it('calls update when social email differs from stored email', async () => {
+      mockUsersService.findBySocialIdAndProvider.mockResolvedValue(baseUser);
+      mockUsersService.findByEmail.mockResolvedValue(null);
+
+      await service.validateSocialLogin('google', {
+        id: 'gid1',
+        email: 'new@x.com',
+        firstName: 'A',
+        lastName: 'B',
+        provider: 'google',
+      });
+
+      expect(mockUsersService.update).toHaveBeenCalledWith(
+        'social1',
+        expect.objectContaining({ email: 'new@x.com' }),
+      );
+    });
+
+    it('does NOT call update when social has no email', async () => {
+      mockUsersService.findBySocialIdAndProvider.mockResolvedValue(baseUser);
+      mockUsersService.findByEmail.mockResolvedValue(null);
+
+      await service.validateSocialLogin('google', {
+        id: 'gid1',
+        email: undefined,
+        firstName: 'A',
+        lastName: 'B',
+        provider: 'google',
+      });
+
+      expect(mockUsersService.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('refreshToken', () => {
+    it('throws UnauthorizedException when session not found or hash mismatch', async () => {
+      mockSessionService.updateByHash.mockResolvedValue(null);
+
+      await expect(
+        service.refreshToken({ sessionId: 'session1', hash: 'badhash' }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('throws UnauthorizedException when user has no roles', async () => {
+      mockSessionService.updateByHash.mockResolvedValue({
+        id: 'session1',
+        user: { id: 'user1' },
+      });
+      mockUsersService.findById.mockResolvedValue({ id: 'user1', roles: [] });
+
+      await expect(
+        service.refreshToken({ sessionId: 'session1', hash: 'hash1' }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('returns token data on success', async () => {
+      mockSessionService.updateByHash.mockResolvedValue({
+        id: 'session1',
+        user: { id: 'user1' },
+      });
+      mockUsersService.findById.mockResolvedValue({
+        id: 'user1',
+        roles: [{ name: 'user' }],
+      });
+      mockCacheService.get.mockResolvedValue(null);
+      mockRolesService.getPermissionsForRoles.mockResolvedValue([]);
+      mockJwtService.signAsync.mockResolvedValue('new-token');
+
+      const result = await service.refreshToken({
+        sessionId: 'session1',
+        hash: 'hash1',
+      });
+
+      expect(result).toHaveProperty('token');
+      expect(result).toHaveProperty('refreshToken');
+      expect(result).toHaveProperty('tokenExpires');
+    });
+
+    it('uses cached permissions and skips getPermissionsForRoles on cache hit', async () => {
+      mockSessionService.updateByHash.mockResolvedValue({
+        id: 'session1',
+        user: { id: 'user1' },
+      });
+      mockUsersService.findById.mockResolvedValue({
+        id: 'user1',
+        roles: [{ name: 'user' }],
+      });
+      mockCacheService.get.mockResolvedValue(['read:task']);
+
+      await service.refreshToken({ sessionId: 'session1', hash: 'hash1' });
+
+      expect(mockRolesService.getPermissionsForRoles).not.toHaveBeenCalled();
+      expect(mockCacheService.set).not.toHaveBeenCalled();
+    });
+
+    it('fetches and caches permissions on cache miss', async () => {
+      mockSessionService.updateByHash.mockResolvedValue({
+        id: 'session1',
+        user: { id: 'user1' },
+      });
+      mockUsersService.findById.mockResolvedValue({
+        id: 'user1',
+        roles: [{ name: 'user' }],
+      });
+      mockCacheService.get.mockResolvedValue(null);
+      mockRolesService.getPermissionsForRoles.mockResolvedValue(['read:task']);
+
+      await service.refreshToken({ sessionId: 'session1', hash: 'hash1' });
+
+      expect(mockRolesService.getPermissionsForRoles).toHaveBeenCalledTimes(1);
+      expect(mockCacheService.set).toHaveBeenCalledWith(
+        expect.objectContaining({ key: 'RolePermissions' }),
+        ['read:task'],
+        { ttl: 300_000 },
       );
     });
   });

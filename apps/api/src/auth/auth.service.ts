@@ -33,6 +33,11 @@ import { UserStatus } from '@/users/user-status.enum';
 import { User } from '@/users/domain/user';
 import { UsersService } from '@/users/users.service';
 import { NullableType } from '@/utils/types/nullable.type';
+import {
+  SecurityContext,
+  generateDeviceId,
+  formatDeviceName,
+} from '@/utils/security';
 
 import { AuthProvidersEnum } from './auth-providers.enum';
 import { AuthEmailLoginDto } from './dto/auth-email-login.dto';
@@ -41,6 +46,8 @@ import { AuthUpdateDto } from './dto/auth-update.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
 import { JwtPayloadType } from './strategies/types/jwt-payload.type';
 import { JwtRefreshPayloadType } from './strategies/types/jwt-refresh-payload.type';
+
+const MAX_SESSIONS_PER_USER = 10;
 
 @Injectable()
 export class AuthService {
@@ -69,6 +76,7 @@ export class AuthService {
 
   async validateLogin(
     loginDto: AuthEmailLoginDto,
+    securityContext?: SecurityContext,
   ): Promise<LoginResponseDto & { refreshToken: string; message: string }> {
     const user = await this.usersService.findByEmail(loginDto.email);
 
@@ -120,7 +128,22 @@ export class AuthService {
       .update(randomStringGenerator())
       .digest('hex');
 
-    const session = await this.sessionService.create({ user, hash });
+    await this.sessionService.enforceSessionLimit(
+      user.id,
+      MAX_SESSIONS_PER_USER,
+    );
+    const session = await this.sessionService.create({
+      user,
+      hash,
+      deviceId: generateDeviceId(securityContext?.userAgent),
+      deviceName: securityContext
+        ? formatDeviceName(securityContext.deviceInfo)
+        : undefined,
+      ipAddress: securityContext?.ip,
+      userAgent: securityContext?.userAgent,
+      platform: securityContext?.deviceInfo.platform,
+      lastUsedAt: new Date(),
+    });
 
     const roleNames = (user.roles ?? []).map((r) => r.name);
     const permissions =
@@ -151,6 +174,7 @@ export class AuthService {
   async validateSocialLogin(
     authProvider: string,
     socialData: SocialInterface,
+    securityContext?: SecurityContext,
   ): Promise<LoginResponseDto & { refreshToken: string; message: string }> {
     let user: NullableType<User> = null;
     const socialEmail = socialData.email?.toLowerCase();
@@ -170,8 +194,8 @@ export class AuthService {
     if (user) {
       if (socialEmail && !userByEmail) {
         user.email = socialEmail;
+        await this.usersService.update(user.id, user);
       }
-      await this.usersService.update(user.id, user);
     } else if (userByEmail) {
       user = userByEmail;
     } else if (socialData.id) {
@@ -232,7 +256,34 @@ export class AuthService {
       .update(randomStringGenerator())
       .digest('hex');
 
-    const session = await this.sessionService.create({ user, hash });
+    this.logger.debug(
+      {
+        userAgent: securityContext?.userAgent,
+        ip: securityContext?.ip,
+        deviceInfo: securityContext?.deviceInfo,
+        deviceName: securityContext
+          ? formatDeviceName(securityContext.deviceInfo)
+          : undefined,
+      },
+      '[social login] security context',
+    );
+
+    await this.sessionService.enforceSessionLimit(
+      user.id,
+      MAX_SESSIONS_PER_USER,
+    );
+    const session = await this.sessionService.create({
+      user,
+      hash,
+      deviceId: generateDeviceId(securityContext?.userAgent),
+      deviceName: securityContext
+        ? formatDeviceName(securityContext.deviceInfo)
+        : undefined,
+      ipAddress: securityContext?.ip,
+      userAgent: securityContext?.userAgent,
+      platform: securityContext?.deviceInfo.platform,
+      lastUsedAt: new Date(),
+    });
 
     const roleNames = (user.roles ?? []).map((r) => r.name);
     const permissions =
@@ -377,7 +428,6 @@ export class AuthService {
     }
 
     user.email = newEmail;
-    user.status = UserStatus.ACTIVE;
     await this.usersService.update(user.id, user);
 
     return { message: this.t('auth.NEW_EMAIL_CONFIRM_SUCCESS') };
@@ -477,7 +527,7 @@ export class AuthService {
     }
 
     user.password = password;
-    await this.sessionService.deleteByUserId({ userId: user.id });
+    await this.sessionService.deleteByUserId({ userId: user.id }, 'logout');
     await this.usersService.update(user.id, user);
 
     this.logger.info(
@@ -528,10 +578,13 @@ export class AuthService {
       }
       // OAuth users (no password) are allowed to set a first password without oldPassword.
       // Invalidate other sessions whenever the password changes.
-      await this.sessionService.deleteByUserIdWithExclude({
-        userId: currentUser.id,
-        excludeSessionId: userJwtPayload.sessionId,
-      });
+      await this.sessionService.deleteByUserIdWithExclude(
+        {
+          userId: currentUser.id,
+          excludeSessionId: userJwtPayload.sessionId,
+        },
+        'logout',
+      );
     }
 
     if (userDto.email && userDto.email !== currentUser.email) {
@@ -601,8 +654,19 @@ export class AuthService {
     }
 
     const roleNames = user.roles.map((r) => r.name);
-    const permissions =
-      await this.rolesService.getPermissionsForRoles(roleNames);
+    const permissionsCacheKey = roleNames.slice().sort().join(',');
+    let permissions = await this.cacheService.get<PermissionEnum[]>({
+      key: 'RolePermissions',
+      args: [permissionsCacheKey],
+    });
+    if (permissions === null || permissions === undefined) {
+      permissions = await this.rolesService.getPermissionsForRoles(roleNames);
+      await this.cacheService.set(
+        { key: 'RolePermissions', args: [permissionsCacheKey] },
+        permissions,
+        { ttl: 5 * 60 * 1000 },
+      );
+    }
 
     const { token, refreshToken, tokenExpires } = await this.getTokensData({
       id: session.user.id,
@@ -628,8 +692,45 @@ export class AuthService {
   async logout(
     data: Pick<JwtRefreshPayloadType, 'sessionId'>,
   ): Promise<{ message: string }> {
-    await this.sessionService.deleteById(data.sessionId);
+    await this.sessionService.deleteById(data.sessionId, 'logout');
     this.logger.info({ sessionId: data.sessionId }, 'User logged out');
+    return { message: this.t('auth.LOGOUT_SUCCESS') };
+  }
+
+  async getSessions(
+    userId: User['id'],
+    currentSessionId: Session['id'],
+  ): Promise<Array<Session & { isCurrent: boolean }>> {
+    const sessions = await this.sessionService.findByUserId(userId);
+    return sessions.map((s) => ({
+      ...s,
+      isCurrent: String(s.id) === String(currentSessionId),
+    }));
+  }
+
+  async revokeSession(
+    userId: User['id'],
+    sessionId: Session['id'],
+  ): Promise<{ message: string }> {
+    const session = await this.sessionService.findById(sessionId);
+    if (!session || String(session.user.id) !== String(userId)) {
+      throw new NotFoundException({
+        status: HttpStatus.NOT_FOUND,
+        error: this.t('auth.SESSION_NOT_FOUND'),
+      });
+    }
+    await this.sessionService.deleteById(sessionId, 'logout');
+    return { message: this.t('auth.LOGOUT_SUCCESS') };
+  }
+
+  async revokeAllOtherSessions(
+    userId: User['id'],
+    currentSessionId: Session['id'],
+  ): Promise<{ message: string }> {
+    await this.sessionService.deleteByUserIdWithExclude(
+      { userId, excludeSessionId: currentSessionId },
+      'logout',
+    );
     return { message: this.t('auth.LOGOUT_SUCCESS') };
   }
 
