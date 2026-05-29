@@ -21,23 +21,23 @@ nest-next-starter/                  ← Turborepo monorepo (pnpm workspaces)
 
 ### Tech Stack
 
-| Layer         | Technology                                                                     |
-| ------------- | ------------------------------------------------------------------------------ |
-| Monorepo      | [Turborepo](https://turborepo.dev) + pnpm workspaces                           |
-| Backend       | NestJS 11, TypeScript, Passport, Swagger                                       |
-| Frontend      | Next.js 16, React 19, TailwindCSS v4, Zustand                                  |
-| Admin Panel   | Next.js 16, React 19, TailwindCSS v4, Zustand — role-gated admin interface     |
-| Database      | **MongoDB** (Mongoose) or **SQL** (TypeORM) — switched via `DATABASE_TYPE`     |
-| Auth          | JWT (Access + Refresh token), OAuth 2.0 (Google / Facebook / GitHub / Twitter) |
-| File Storage  | Local / AWS S3 / S3 Presigned / Cloudinary — switched via `FILE_DRIVER`        |
-| Queue         | BullMQ + Redis — async job processing (email delivery, in-app notifications)   |
-| WebSocket     | Socket.io + Redis adapter — real-time push, JWT auth at connect, opt-in        |
-| Rate Limiting | `@nestjs/throttler` + Redis storage — per-IP, globally applied                 |
-| Mail          | Nodemailer + Handlebars templates, dispatched via job queue                    |
-| i18n          | nestjs-i18n (header-based) + next-intl (locale routing)                        |
-| Containers    | Docker + Docker Compose — full stack in one command                            |
-| Monitoring    | Prometheus + Grafana — metrics, dashboards, alerting (optional profile)        |
-| Linting       | ESLint + Prettier + Husky pre-commit hooks                                     |
+| Layer         | Technology                                                                                                                        |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Monorepo      | [Turborepo](https://turborepo.dev) + pnpm workspaces                                                                              |
+| Backend       | NestJS 11, TypeScript, Passport, Swagger                                                                                          |
+| Frontend      | Next.js 16, React 19, TailwindCSS v4, Zustand                                                                                     |
+| Admin Panel   | Next.js 16, React 19, TailwindCSS v4, Zustand — role-gated admin interface                                                        |
+| Database      | **MongoDB** (Mongoose) or **SQL** (TypeORM) — switched via `DATABASE_TYPE`                                                        |
+| Auth          | JWT (Access + Refresh token), OAuth 2.0 (Google / Facebook / GitHub / Twitter), device-aware sessions with revocation audit trail |
+| File Storage  | Local / AWS S3 / S3 Presigned / Cloudinary — switched via `FILE_DRIVER`                                                           |
+| Queue         | BullMQ + Redis — async job processing (email delivery, in-app notifications)                                                      |
+| WebSocket     | Socket.io + Redis adapter — real-time push, JWT auth at connect, opt-in                                                           |
+| Rate Limiting | `@nestjs/throttler` + Redis storage — per-IP, globally applied                                                                    |
+| Mail          | Nodemailer + Handlebars templates, dispatched via job queue                                                                       |
+| i18n          | nestjs-i18n (header-based) + next-intl (locale routing)                                                                           |
+| Containers    | Docker + Docker Compose — full stack in one command                                                                               |
+| Monitoring    | Prometheus + Grafana — metrics, dashboards, alerting (optional profile)                                                           |
+| Linting       | ESLint + Prettier + Husky pre-commit hooks                                                                                        |
 
 ---
 

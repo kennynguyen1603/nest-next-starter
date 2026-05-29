@@ -12,6 +12,7 @@ Shared helpers, interceptors, types, and pagination utilities used across the en
 4. [Transformers](#4-transformers)
 5. [Validation](#5-validation)
 6. [Interceptors](#6-interceptors)
+7. [Security](#7-security)
 
 ---
 
@@ -97,10 +98,10 @@ const [items, meta] = await paginate(qb, pageOptionsDto);
 
 **Options:**
 
-| Option | Description |
-|---|---|
+| Option      | Description                                                                       |
+| ----------- | --------------------------------------------------------------------------------- |
 | `skipCount` | Skip the `getCount()` query when total count is not needed (improves performance) |
-| `takeAll` | Ignore `skip/take` and return all results |
+| `takeAll`   | Ignore `skip/take` and return all results                                         |
 
 ```typescript
 // Without total count (faster):
@@ -118,12 +119,12 @@ const [items] = await paginate(qb, pageOptionsDto, { skipCount: true });
 ```typescript
 const paginator = buildPaginator({
   entity: UserEntity,
-  alias: 'user',                        // QueryBuilder alias (defaults to entity name in lowercase)
-  paginationKeys: ['createdAt', 'id'],  // columns used to build the cursor (defaults to ['id'])
+  alias: 'user', // QueryBuilder alias (defaults to entity name in lowercase)
+  paginationKeys: ['createdAt', 'id'], // columns used to build the cursor (defaults to ['id'])
   query: {
     limit: 20,
-    order: 'DESC',                      // 'ASC' | 'DESC'
-    afterCursor: req.query.afterCursor,   // cursor for the next page
+    order: 'DESC', // 'ASC' | 'DESC'
+    afterCursor: req.query.afterCursor, // cursor for the next page
     beforeCursor: req.query.beforeCursor, // cursor for the previous page
   },
 });
@@ -146,13 +147,13 @@ const { data, cursor } = await paginator.paginate(qb);
 
 Small utility types that replace `any` or common unions:
 
-| File | Type | Description |
-|---|---|---|
-| `types/maybe.type.ts` | `MaybeType<T>` | `T \| undefined` — value that may not exist |
-| `types/nullable.type.ts` | `NullableType<T>` | `T \| null` — value that may be null |
-| `types/or-never.type.ts` | `OrNeverType<T>` | `T` — explicit alias used when the value is always T |
-| `types/deep-partial.type.ts` | `DeepPartial<T>` | All properties (including nested) made optional |
-| `types/pagination-options.ts` | `IPaginationOptions` | `{ page, limit }` interface for infinity pagination |
+| File                          | Type                 | Description                                          |
+| ----------------------------- | -------------------- | ---------------------------------------------------- |
+| `types/maybe.type.ts`         | `MaybeType<T>`       | `T \| undefined` — value that may not exist          |
+| `types/nullable.type.ts`      | `NullableType<T>`    | `T \| null` — value that may be null                 |
+| `types/or-never.type.ts`      | `OrNeverType<T>`     | `T` — explicit alias used when the value is always T |
+| `types/deep-partial.type.ts`  | `DeepPartial<T>`     | All properties (including nested) made optional      |
+| `types/pagination-options.ts` | `IPaginationOptions` | `{ page, limit }` interface for infinity pagination  |
 
 **Examples:**
 
@@ -226,11 +227,11 @@ Error in DATABASE_PORT:
 
 Default configuration for the global `ValidationPipe`:
 
-| Option | Value | Description |
-|---|---|---|
-| `transform` | `true` | Automatically transform types (string → number, etc.) |
-| `whitelist` | `true` | Strip properties not declared in the DTO |
-| `errorHttpStatusCode` | `422` | Validation errors return `422 Unprocessable Entity` |
+| Option                | Value  | Description                                           |
+| --------------------- | ------ | ----------------------------------------------------- |
+| `transform`           | `true` | Automatically transform types (string → number, etc.) |
+| `whitelist`           | `true` | Strip properties not declared in the DTO              |
+| `errorHttpStatusCode` | `422`  | Validation errors return `422 Unprocessable Entity`   |
 
 **Setup in `main.ts`:**
 
@@ -278,3 +279,61 @@ async findOne(@Param('id') id: string) { ... }
 ```
 
 Internally uses `deepResolvePromises()` from `deep-resolver.ts` to traverse the entire object tree and resolve each Promise found.
+
+---
+
+## 7. Security
+
+### `security.ts`
+
+Request context extraction and device fingerprinting helpers, used by the auth layer to record device metadata on every login.
+
+#### Interfaces
+
+```typescript
+interface DeviceInfo {
+  browser?: string; // e.g. "Chrome"
+  browserVersion?: string; // e.g. "124.0.0"
+  os?: string; // e.g. "macOS"
+  platform?: string; // e.g. "desktop" | "mobile" | "tablet"
+  device?: string; // model name or OS fallback
+}
+
+interface SecurityContext {
+  ip: string;
+  userAgent: string;
+  deviceInfo: DeviceInfo;
+}
+```
+
+#### Functions
+
+| Function             | Signature                            | Description                                                                                                                                                                           |
+| -------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `getClientIp`        | `(req: Request) => string`           | Extracts the real client IP by checking `x-client-ip`, `x-forwarded-for`, `cf-connecting-ip`, `x-real-ip`, and other proxy headers in order; falls back to `req.socket.remoteAddress` |
+| `parseUserAgent`     | `(userAgent: string) => DeviceInfo`  | Parses a `User-Agent` string via `ua-parser-js`; returns browser name/version, OS, platform, and device model                                                                         |
+| `formatDeviceName`   | `(deviceInfo: DeviceInfo) => string` | Produces a human-readable label: `"Chrome 124 on macOS"`. Returns `"Unknown Device"` if no info is available                                                                          |
+| `getSecurityContext` | `(req: Request) => SecurityContext`  | Convenience wrapper — calls `getClientIp` + `parseUserAgent` and returns a `SecurityContext`                                                                                          |
+| `generateDeviceId`   | `(userAgent?: string) => string`     | SHA-256 hash of the User-Agent string, truncated to 32 hex chars. Stable per browser/UA — not tied to IP so it survives network changes                                               |
+
+#### Usage
+
+```typescript
+import {
+  getSecurityContext,
+  generateDeviceId,
+  formatDeviceName,
+} from '@/utils/security';
+
+// In a controller:
+const ctx = getSecurityContext(req);
+// ctx.ip        → "203.0.113.42"
+// ctx.userAgent → "Mozilla/5.0 ..."
+// ctx.deviceInfo.browser → "Chrome"
+
+// Build a stable device fingerprint:
+const deviceId = generateDeviceId(ctx.userAgent); // "a3f7c2..."
+const deviceName = formatDeviceName(ctx.deviceInfo); // "Chrome 124 on macOS"
+```
+
+The `getSecurityContext` helper is called in every login handler (`POST /auth/email/login` and all four OAuth controllers). The resulting `SecurityContext` is forwarded to `AuthService.validateLogin` / `validateSocialLogin`, which stores the device fields on the session record.

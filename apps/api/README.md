@@ -12,7 +12,9 @@ Runs by default at **http://localhost:8080**.
 - **Email/Password** — Register, login, email confirmation, forgot/reset password
 - **OAuth 2.0** — Google, Facebook, GitHub, Twitter/X (Passport strategies)
 - **JWT** — Short-lived access token (15 min) + long-lived refresh token (7 days) stored in an HttpOnly cookie
-- **Session management** — Each login creates an isolated session; logout invalidates the session; changing password revokes all other active sessions
+- **Session management** — Each login creates an isolated session with full device context (IP, user agent, browser, OS, platform); logout sets `revokeAt + revokeReason`; max 10 concurrent sessions per user (oldest evicted automatically)
+- **Device tracking** — `ua-parser-js` parses the `User-Agent` on every login; `deviceId` (SHA-256 of UA), `deviceName` (e.g. "Chrome 124 on macOS"), `ipAddress`, `platform`, and `lastUsedAt` are stored per session
+- **Session listing & revocation** — Authenticated users can list all active sessions (with `isCurrent` flag), revoke a specific session, or revoke all other sessions in one call
 - **RBAC** — Role-based (USER, MANAGER, ADMIN) and permission-based access control; JWT payload embeds `roles` + `permissions`
 - **Permissions caching** — Role-to-permission mappings are cached in Redis for 5 minutes, eliminating repeated JOIN queries on every login and token refresh
 - **Per-user email cooldown** — `POST /forgot/password` enforces a per-user Redis-backed cooldown (default 60 s) to prevent email flooding; returns `429` if called again before the cooldown expires
@@ -470,19 +472,22 @@ src/
 
 ### Auth (`/api/v1/auth`)
 
-| Method   | Path                 | Description                            | Guard          |
-| -------- | -------------------- | -------------------------------------- | -------------- |
-| `POST`   | `/email/login`       | Login with email & password            | Public         |
-| `POST`   | `/email/register`    | Register a new account                 | Public         |
-| `POST`   | `/email/confirm`     | Confirm registration email             | Public         |
-| `POST`   | `/email/confirm/new` | Confirm new email after change         | Public         |
-| `POST`   | `/forgot/password`   | Send a password reset link             | Public         |
-| `POST`   | `/reset/password`    | Reset password using token             | Public         |
-| `GET`    | `/me`                | Get current user profile               | JWT            |
-| `PATCH`  | `/me`                | Update profile (name, photo, password) | JWT            |
-| `DELETE` | `/me`                | Delete account (soft delete)           | JWT            |
-| `POST`   | `/refresh`           | Refresh access token                   | Refresh cookie |
-| `POST`   | `/logout`            | Logout, invalidate session             | JWT            |
+| Method   | Path                 | Description                                      | Guard          |
+| -------- | -------------------- | ------------------------------------------------ | -------------- |
+| `POST`   | `/email/login`       | Login with email & password                      | Public         |
+| `POST`   | `/email/register`    | Register a new account                           | Public         |
+| `POST`   | `/email/confirm`     | Confirm registration email                       | Public         |
+| `POST`   | `/email/confirm/new` | Confirm new email after change                   | Public         |
+| `POST`   | `/forgot/password`   | Send a password reset link                       | Public         |
+| `POST`   | `/reset/password`    | Reset password using token                       | Public         |
+| `GET`    | `/me`                | Get current user profile                         | JWT            |
+| `PATCH`  | `/me`                | Update profile (name, photo, password)           | JWT            |
+| `DELETE` | `/me`                | Delete account (soft delete)                     | JWT            |
+| `POST`   | `/refresh`           | Refresh access token                             | Refresh cookie |
+| `POST`   | `/logout`            | Logout, invalidate session                       | JWT Refresh    |
+| `GET`    | `/sessions`          | List all active sessions (with `isCurrent` flag) | JWT            |
+| `DELETE` | `/sessions/:id`      | Revoke a specific session (ownership-checked)    | JWT            |
+| `DELETE` | `/sessions`          | Revoke all other sessions (keep current)         | JWT            |
 
 ### OAuth (`/api/v1/auth`)
 
@@ -586,7 +591,7 @@ The auth system combines **stateless JWTs** for request verification with **serv
 | **Access token**  | `{ id, roles, permissions, sessionId }` | `Authorization: Bearer` header    | Short (default 15 min) |
 | **Refresh token** | `{ sessionId, hash }`                   | `HttpOnly` cookie `refresh_token` | Long (default 7 days)  |
 
-The **session** record in the database holds `{ id, user_id, hash }`. The `hash` is a random SHA-256 value that ties the refresh token to a specific session state.
+The **session** record in the database holds `{ id, user_id, hash, deviceId, deviceName, ipAddress, userAgent, platform, lastUsedAt, revokeAt?, revokeReason? }`. The `hash` is a random SHA-256 value that ties the refresh token to a specific session state. `revokeAt` (replacing the generic `deletedAt`) plus `revokeReason` (`'logout' | 'suspicious' | 'expired' | 'limit_exceeded'`) provide a full audit trail of why and when a session was ended.
 
 ### Login flow
 
@@ -594,10 +599,13 @@ The **session** record in the database holds `{ id, user_id, hash }`. The `hash`
 POST /api/v1/auth/email/login
   1. Verify email exists + bcrypt password match
   2. Generate hash = SHA-256(random string)
-  3. INSERT session { user_id, hash } → DB
-  4. Sign access JWT  (secret, short TTL)  — payload: { id, roles, permissions, sessionId }
-  5. Sign refresh JWT (refreshSecret, long TTL) — payload: { sessionId, hash }
-  6. Return access token in body; set refresh JWT in HttpOnly cookie
+  3. Parse User-Agent header → deviceId (SHA-256 of UA), deviceName ("Chrome 124 on macOS"),
+     platform, ipAddress from x-forwarded-for / x-real-ip / socket
+  4. Enforce max 10 sessions: oldest excess sessions get revokeAt=NOW, revokeReason='limit_exceeded'
+  5. INSERT session { user_id, hash, deviceId, deviceName, ipAddress, userAgent, platform, lastUsedAt=NOW } → DB
+  6. Sign access JWT  (secret, short TTL)  — payload: { id, roles, permissions, sessionId }
+  7. Sign refresh JWT (refreshSecret, long TTL) — payload: { sessionId, hash }
+  8. Return access token in body; set refresh JWT in HttpOnly cookie
 ```
 
 ### Authenticated request
@@ -626,11 +634,27 @@ Each refresh token is **single-use**: once used, the `hash` in the DB is replace
 
 ### Session invalidation
 
-| Event           | Action                                                  |
-| --------------- | ------------------------------------------------------- |
-| Logout          | Delete session by `sessionId` from DB; clear cookie     |
-| Password change | Delete all sessions for user **except** the current one |
-| Password reset  | Delete **all** sessions for user                        |
+All revocation writes `revokeAt = NOW()` and `revokeReason` — sessions are never hard-deleted, preserving the audit trail. TypeORM's `@DeleteDateColumn` on `revokeAt` ensures soft-revoked sessions are automatically excluded from all queries.
+
+| Event                  | Action                                                                      | `revokeReason`   |
+| ---------------------- | --------------------------------------------------------------------------- | ---------------- |
+| Logout                 | Set `revokeAt + revokeReason` on session; clear refresh cookie              | `logout`         |
+| Password change        | Revoke all sessions for user **except** the current one                     | `logout`         |
+| Password reset         | Revoke **all** sessions for user                                            | `logout`         |
+| Revoke one session     | `DELETE /auth/sessions/:id` — ownership-checked, sets `revokeAt`            | `logout`         |
+| Revoke all other       | `DELETE /auth/sessions` — keeps current session, revokes all others         | `logout`         |
+| Session limit exceeded | Oldest session(s) revoked automatically when a new login would exceed limit | `limit_exceeded` |
+
+### Session listing
+
+```
+GET /api/v1/auth/sessions  [JWT]
+  1. sessionService.findByUserId(userId) → active sessions (revokeAt IS NULL), sorted lastUsedAt DESC
+  2. Map: { ...session, isCurrent: session.id === jwt.sessionId }
+  3. Return SessionResponseDto[] (id, deviceId, deviceName, ipAddress, platform, lastUsedAt, createdAt, isCurrent)
+```
+
+Each token refresh also updates `lastUsedAt = NOW()` on the session so the list shows accurate "last active" times.
 
 ### Email rate limiting (`POST /forgot/password`)
 
