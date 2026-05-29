@@ -6,6 +6,7 @@ import { SessionMapper } from '../mappers/session.mapper';
 import { NullableType } from '@/utils/types/nullable.type';
 import { SessionRepository } from '@/session/infrastructure/persistence/session.repository';
 import { Session } from '@/session/domain/session';
+import { RevokeReason } from '@/session/domain/session';
 import { User } from '@/users/domain/user';
 
 @Injectable()
@@ -18,6 +19,13 @@ export class SessionDocumentRepository implements SessionRepository {
   async findById(id: Session['id']): Promise<NullableType<Session>> {
     const sessionObject = await this.sessionModel.findById(id);
     return sessionObject ? SessionMapper.toDomain(sessionObject) : null;
+  }
+
+  async findByUserId(userId: User['id']): Promise<Session[]> {
+    const sessions = await this.sessionModel
+      .find({ user: userId.toString(), revokeAt: { $exists: false } })
+      .sort({ lastUsedAt: -1, createdAt: -1 });
+    return sessions.map(SessionMapper.toDomain);
   }
 
   async create(data: Session): Promise<Session> {
@@ -35,7 +43,7 @@ export class SessionDocumentRepository implements SessionRepository {
     delete clonedPayload.id;
     delete clonedPayload.createdAt;
     delete clonedPayload.updatedAt;
-    delete clonedPayload.deletedAt;
+    delete clonedPayload.revokeAt;
 
     const filter = { _id: id.toString() };
     const session = await this.sessionModel.findOne(filter);
@@ -64,31 +72,73 @@ export class SessionDocumentRepository implements SessionRepository {
   ): Promise<Session | null> {
     const sessionObject = await this.sessionModel.findOneAndUpdate(
       { _id: conditions.id.toString(), hash: conditions.hash },
-      { hash: payload.hash },
+      { $set: { hash: payload.hash, lastUsedAt: new Date() } },
       { returnDocument: 'after' },
     );
 
     return sessionObject ? SessionMapper.toDomain(sessionObject) : null;
   }
 
-  async deleteById(id: Session['id']): Promise<void> {
-    await this.sessionModel.deleteOne({ _id: id.toString() });
+  async deleteById(
+    id: Session['id'],
+    revokeReason?: RevokeReason,
+  ): Promise<void> {
+    await this.sessionModel.updateOne(
+      { _id: id.toString(), revokeAt: { $exists: false } },
+      {
+        $set: { revokeAt: new Date(), revokeReason: revokeReason ?? 'logout' },
+      },
+    );
   }
 
-  async deleteByUserId({ userId }: { userId: User['id'] }): Promise<void> {
-    await this.sessionModel.deleteMany({ user: userId.toString() });
+  async deleteByUserId(
+    { userId }: { userId: User['id'] },
+    revokeReason?: RevokeReason,
+  ): Promise<void> {
+    await this.sessionModel.updateMany(
+      { user: userId.toString(), revokeAt: { $exists: false } },
+      {
+        $set: { revokeAt: new Date(), revokeReason: revokeReason ?? 'logout' },
+      },
+    );
   }
 
-  async deleteByUserIdWithExclude({
-    userId,
-    excludeSessionId,
-  }: {
-    userId: User['id'];
-    excludeSessionId: Session['id'];
-  }): Promise<void> {
-    await this.sessionModel.deleteMany({
-      user: userId.toString(),
-      _id: { $not: { $eq: excludeSessionId.toString() } },
-    });
+  async deleteByUserIdWithExclude(
+    {
+      userId,
+      excludeSessionId,
+    }: {
+      userId: User['id'];
+      excludeSessionId: Session['id'];
+    },
+    revokeReason?: RevokeReason,
+  ): Promise<void> {
+    await this.sessionModel.updateMany(
+      {
+        user: userId.toString(),
+        _id: { $ne: excludeSessionId.toString() },
+        revokeAt: { $exists: false },
+      },
+      {
+        $set: { revokeAt: new Date(), revokeReason: revokeReason ?? 'logout' },
+      },
+    );
+  }
+
+  async enforceSessionLimit(
+    userId: User['id'],
+    maxSessions: number,
+  ): Promise<void> {
+    const sessions = await this.sessionModel
+      .find({ user: userId.toString(), revokeAt: { $exists: false } })
+      .sort({ createdAt: 1 })
+      .select('_id');
+    if (sessions.length >= maxSessions) {
+      const excess = sessions.slice(0, sessions.length - maxSessions + 1);
+      await this.sessionModel.updateMany(
+        { _id: { $in: excess.map((s) => s._id) } },
+        { $set: { revokeAt: new Date(), revokeReason: 'limit_exceeded' } },
+      );
+    }
   }
 }

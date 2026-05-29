@@ -11,11 +11,20 @@ export class SessionMapper {
       domainEntity.user = UserMapper.toDomain(raw.user);
     }
     domainEntity.hash = raw.hash;
+    domainEntity.deviceId = raw.deviceId;
+    domainEntity.deviceName = raw.deviceName;
+    domainEntity.ipAddress = raw.ipAddress;
+    domainEntity.userAgent = raw.userAgent;
+    domainEntity.platform = raw.platform;
+    domainEntity.lastUsedAt = raw.lastUsedAt;
     domainEntity.createdAt = raw.createdAt;
     domainEntity.updatedAt = raw.updatedAt;
-    if (raw.deletedAt) {
-      domainEntity.deletedAt = raw.deletedAt;
+    if (raw.revokeAt) {
+      domainEntity.revokeAt = raw.revokeAt;
     }
+    domainEntity.revokeReason = raw.revokeReason as
+      | import('@/session/domain/session').RevokeReason
+      | undefined;
     return domainEntity;
   }
 
@@ -28,10 +37,17 @@ export class SessionMapper {
       persistenceEntity.id = domainEntity.id;
     }
     persistenceEntity.hash = domainEntity.hash;
+    persistenceEntity.deviceId = domainEntity.deviceId;
+    persistenceEntity.deviceName = domainEntity.deviceName;
+    persistenceEntity.ipAddress = domainEntity.ipAddress;
+    persistenceEntity.userAgent = domainEntity.userAgent;
+    persistenceEntity.platform = domainEntity.platform;
+    persistenceEntity.lastUsedAt = domainEntity.lastUsedAt;
+    persistenceEntity.revokeReason = domainEntity.revokeReason;
     persistenceEntity.user = user;
     persistenceEntity.createdAt = domainEntity.createdAt;
     persistenceEntity.updatedAt = domainEntity.updatedAt;
-    persistenceEntity.deletedAt = domainEntity.deletedAt;
+    persistenceEntity.revokeAt = domainEntity.revokeAt;
 
     return persistenceEntity;
   }
