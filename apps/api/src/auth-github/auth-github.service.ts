@@ -48,6 +48,37 @@ export class AuthGithubService {
         );
       }
 
+      // /user only returns email when the user has set it public.
+      // Fall back to /user/emails (requires user:email scope) to get the
+      // primary verified email for users with a private email setting.
+      let email: string | undefined = data.email ?? undefined;
+      if (!email) {
+        const emailsRes = await fetch(`${this.apiUrl}/user/emails`, {
+          headers: {
+            Authorization: `Bearer ${loginDto.accessToken}`,
+            Accept: 'application/vnd.github+json',
+          },
+          signal: AbortSignal.timeout(10000),
+        });
+        if (emailsRes.ok) {
+          const emails: Array<{
+            email: string;
+            primary: boolean;
+            verified: boolean;
+          }> = await emailsRes.json();
+          email = emails.find((e) => e.primary && e.verified)?.email;
+          this.logger.debug(
+            { githubId: data.id, email },
+            'GitHub email resolved from /user/emails',
+          );
+        } else {
+          this.logger.warn(
+            { statusCode: emailsRes.status },
+            'GitHub /user/emails returned non-OK status',
+          );
+        }
+      }
+
       const [firstName, ...rest] = (data.name ?? data.login).split(' ');
       const lastName = rest.join(' ') || undefined;
 
@@ -55,7 +86,7 @@ export class AuthGithubService {
 
       return {
         id: String(data.id),
-        email: data.email ?? undefined,
+        email,
         firstName,
         lastName,
         provider: 'github',
