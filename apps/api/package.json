@@ -20,10 +20,10 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "seed:run:document": "ts-node -r tsconfig-paths/register src/database/seeds/document/run-seed.ts",
     "seed:run:relational": "ts-node -r tsconfig-paths/register src/database/seeds/relational/run-seed.ts",
-    "migration:generate": "ts-node -r tsconfig-paths/register ./node_modules/.bin/typeorm migration:generate -d src/database/data-source.ts",
-    "migration:run": "ts-node -r tsconfig-paths/register ./node_modules/.bin/typeorm migration:run -d src/database/data-source.ts",
-    "migration:revert": "ts-node -r tsconfig-paths/register ./node_modules/.bin/typeorm migration:revert -d src/database/data-source.ts",
-    "migration:show": "ts-node -r tsconfig-paths/register ./node_modules/.bin/typeorm migration:show -d src/database/data-source.ts"
+    "migration:generate": "ts-node --project tsconfig.migration.json -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:generate -d src/database/data-source.ts",
+    "migration:run": "ts-node --project tsconfig.migration.json -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:run -d src/database/data-source.ts",
+    "migration:revert": "ts-node --project tsconfig.migration.json -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:revert -d src/database/data-source.ts",
+    "migration:show": "ts-node --project tsconfig.migration.json -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:show -d src/database/data-source.ts"
   },
   "dependencies": {
     "@apollo/server": "^5.5.0",
@@ -97,6 +97,7 @@
     "swagger-ui-express": "^5.0.1",
     "typeorm": "^0.3.28",
     "typescript": "^5.7.3",
+    "ua-parser-js": "^2.0.10",
     "uuid": "^14.0.0"
   },
   "devDependencies": {

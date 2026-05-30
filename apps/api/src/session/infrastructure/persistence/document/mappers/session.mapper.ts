@@ -14,11 +14,20 @@ export class SessionMapper {
     }
 
     domainEntity.hash = raw.hash;
+    domainEntity.deviceId = raw.deviceId;
+    domainEntity.deviceName = raw.deviceName;
+    domainEntity.ipAddress = raw.ipAddress;
+    domainEntity.userAgent = raw.userAgent;
+    domainEntity.platform = raw.platform;
+    domainEntity.lastUsedAt = raw.lastUsedAt;
     domainEntity.createdAt = raw.createdAt;
     domainEntity.updatedAt = raw.updatedAt;
-    if (raw.deletedAt) {
-      domainEntity.deletedAt = raw.deletedAt;
+    if (raw.revokeAt) {
+      domainEntity.revokeAt = raw.revokeAt;
     }
+    domainEntity.revokeReason = raw.revokeReason as
+      | import('@/session/domain/session').RevokeReason
+      | undefined;
     return domainEntity;
   }
 
@@ -29,9 +38,16 @@ export class SessionMapper {
     }
     sessionEntity.user = domainEntity.user.id.toString();
     sessionEntity.hash = domainEntity.hash;
+    sessionEntity.deviceId = domainEntity.deviceId;
+    sessionEntity.deviceName = domainEntity.deviceName;
+    sessionEntity.ipAddress = domainEntity.ipAddress;
+    sessionEntity.userAgent = domainEntity.userAgent;
+    sessionEntity.platform = domainEntity.platform;
+    sessionEntity.lastUsedAt = domainEntity.lastUsedAt;
+    sessionEntity.revokeReason = domainEntity.revokeReason;
     sessionEntity.createdAt = domainEntity.createdAt;
     sessionEntity.updatedAt = domainEntity.updatedAt;
-    sessionEntity.deletedAt = domainEntity.deletedAt;
+    sessionEntity.revokeAt = domainEntity.revokeAt;
     return sessionEntity;
   }
 }

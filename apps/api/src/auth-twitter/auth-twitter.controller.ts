@@ -1,11 +1,19 @@
-import { Body, Controller, Post, Res, SerializeOptions } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  Request,
+  Res,
+  SerializeOptions,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiTags } from '@nestjs/swagger';
-import type { Response } from 'express';
+import type { Request as ExpressRequest, Response } from 'express';
 import ms from 'ms';
 
 import { ApiPublic } from '@/decorators/http.decorators';
 import { AllConfigType } from '@/config/config.type';
+import { getSecurityContext } from '@/utils/security';
 import { AuthService } from '../auth/auth.service';
 import { AuthTwitterService } from './auth-twitter.service';
 import { AuthTwitterLoginDto } from './dto/auth-twitter-login.dto';
@@ -31,12 +39,17 @@ export class AuthTwitterController {
   @Post('login')
   async login(
     @Body() loginDto: AuthTwitterLoginDto,
+    @Request() req: ExpressRequest,
     @Res({ passthrough: true }) response: Response,
   ): Promise<LoginResponseDto> {
     const socialData =
       await this.authTwitterService.getProfileByToken(loginDto);
     const { refreshToken, ...result } =
-      await this.authService.validateSocialLogin('twitter', socialData);
+      await this.authService.validateSocialLogin(
+        'twitter',
+        socialData,
+        getSecurityContext(req),
+      );
     const maxAge = Number(
       ms(this.configService.getOrThrow('auth.refreshExpires', { infer: true })),
     );

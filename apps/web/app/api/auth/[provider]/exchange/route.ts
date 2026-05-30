@@ -3,7 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 // API_URL is for server-side calls (Docker: use internal network URL via API_URL env var).
 // NEXT_PUBLIC_API_URL is baked at build time for client-side only.
 const API_URL =
-  process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+  process.env.API_URL ??
+  process.env.NEXT_PUBLIC_API_URL ??
+  "http://localhost:8080";
 
 type Provider = "google" | "facebook" | "github" | "twitter";
 
@@ -12,7 +14,18 @@ interface ExchangeBody {
   codeVerifier?: string;
 }
 
-async function exchangeGoogle(code: string, redirectUri: string) {
+function backendHeaders(browserUserAgent: string): Record<string, string> {
+  return {
+    "Content-Type": "application/json",
+    "x-forwarded-user-agent": browserUserAgent,
+  };
+}
+
+async function exchangeGoogle(
+  code: string,
+  redirectUri: string,
+  browserUserAgent: string,
+) {
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -28,12 +41,16 @@ async function exchangeGoogle(code: string, redirectUri: string) {
   const { id_token } = await res.json();
   return fetch(`${API_URL}/api/v1/auth/google/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: backendHeaders(browserUserAgent),
     body: JSON.stringify({ idToken: id_token }),
   });
 }
 
-async function exchangeFacebook(code: string, redirectUri: string) {
+async function exchangeFacebook(
+  code: string,
+  redirectUri: string,
+  browserUserAgent: string,
+) {
   const params = new URLSearchParams({
     client_id: process.env.NEXT_PUBLIC_FACEBOOK_APP_ID ?? "",
     client_secret: process.env.FACEBOOK_APP_SECRET ?? "",
@@ -47,12 +64,16 @@ async function exchangeFacebook(code: string, redirectUri: string) {
   const { access_token } = await res.json();
   return fetch(`${API_URL}/api/v1/auth/facebook/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: backendHeaders(browserUserAgent),
     body: JSON.stringify({ accessToken: access_token }),
   });
 }
 
-async function exchangeGithub(code: string, redirectUri: string) {
+async function exchangeGithub(
+  code: string,
+  redirectUri: string,
+  browserUserAgent: string,
+) {
   const res = await fetch("https://github.com/login/oauth/access_token", {
     method: "POST",
     headers: { Accept: "application/json", "Content-Type": "application/json" },
@@ -67,7 +88,7 @@ async function exchangeGithub(code: string, redirectUri: string) {
   const { access_token } = await res.json();
   return fetch(`${API_URL}/api/v1/auth/github/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: backendHeaders(browserUserAgent),
     body: JSON.stringify({ accessToken: access_token }),
   });
 }
@@ -76,6 +97,7 @@ async function exchangeTwitter(
   code: string,
   codeVerifier: string,
   redirectUri: string,
+  browserUserAgent: string,
 ) {
   const credentials = Buffer.from(
     `${process.env.NEXT_PUBLIC_TWITTER_CLIENT_ID}:${process.env.TWITTER_CLIENT_SECRET}`,
@@ -97,7 +119,7 @@ async function exchangeTwitter(
   const { access_token } = await res.json();
   return fetch(`${API_URL}/api/v1/auth/twitter/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: backendHeaders(browserUserAgent),
     body: JSON.stringify({ accessToken: access_token }),
   });
 }
@@ -109,6 +131,7 @@ export async function POST(
   const { provider } = await params;
   const origin = request.headers.get("origin") ?? "http://localhost:3000";
   const redirectUri = `${origin}/auth/${provider}/callback`;
+  const browserUserAgent = request.headers.get("user-agent") ?? "";
 
   let body: ExchangeBody;
   try {
@@ -130,13 +153,17 @@ export async function POST(
 
     switch (provider as Provider) {
       case "google":
-        backendRes = await exchangeGoogle(code, redirectUri);
+        backendRes = await exchangeGoogle(code, redirectUri, browserUserAgent);
         break;
       case "facebook":
-        backendRes = await exchangeFacebook(code, redirectUri);
+        backendRes = await exchangeFacebook(
+          code,
+          redirectUri,
+          browserUserAgent,
+        );
         break;
       case "github":
-        backendRes = await exchangeGithub(code, redirectUri);
+        backendRes = await exchangeGithub(code, redirectUri, browserUserAgent);
         break;
       case "twitter":
         if (!codeVerifier) {
@@ -145,7 +172,12 @@ export async function POST(
             { status: 400 },
           );
         }
-        backendRes = await exchangeTwitter(code, codeVerifier, redirectUri);
+        backendRes = await exchangeTwitter(
+          code,
+          codeVerifier,
+          redirectUri,
+          browserUserAgent,
+        );
         break;
       default:
         return NextResponse.json(

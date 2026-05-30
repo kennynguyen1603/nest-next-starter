@@ -1,7 +1,10 @@
 import 'reflect-metadata';
+import * as dotenv from 'dotenv';
 import { DataSource, DataSourceOptions } from 'typeorm';
 import databaseConfig from '@/config/database/database.config';
 import { DatabaseConfig } from '@/config/database/database-config.type';
+
+dotenv.config();
 
 const dbConfig = databaseConfig() as DatabaseConfig;
 

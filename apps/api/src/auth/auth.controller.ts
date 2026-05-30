@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Param,
   Patch,
   Post,
   Request,
@@ -13,15 +14,18 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
-import type { Response } from 'express';
+import { Throttle } from '@nestjs/throttler';
+import type { Request as ExpressRequest, Response } from 'express';
 import ms from 'ms';
 
 import { ApiAuth, ApiPublic } from '@/decorators/http.decorators';
 import { AllConfigType } from '@/config/config.type';
 import { User } from '@/users/domain/user';
 import { NullableType } from '@/utils/types/nullable.type';
+import { getSecurityContext } from '@/utils/security';
 import { JwtPayloadType } from './strategies/types/jwt-payload.type';
 import { JwtRefreshPayloadType } from './strategies/types/jwt-refresh-payload.type';
+import { SessionResponseDto } from './dto/session-response.dto';
 
 import { AuthService } from './auth.service';
 import { AuthEmailLoginDto } from './dto/auth-email-login.dto';
@@ -60,18 +64,29 @@ export class AuthController {
   }
 
   private clearRefreshCookie(response: Response): void {
-    response.clearCookie('refresh_token', { path: '/' });
+    response.clearCookie('refresh_token', {
+      httpOnly: true,
+      secure: this.configService.getOrThrow('app.cookieSecure', {
+        infer: true,
+      }),
+      sameSite: 'strict',
+      path: '/',
+    });
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiPublic({ type: LoginResponseDto, summary: 'Login with email/password' })
   @SerializeOptions({ groups: ['me'] })
   @Post('email/login')
   public async login(
     @Body() loginDto: AuthEmailLoginDto,
+    @Request() req: ExpressRequest,
     @Res({ passthrough: true }) response: Response,
   ): Promise<Omit<LoginResponseDto, never> & { message: string }> {
-    const { refreshToken, ...result } =
-      await this.service.validateLogin(loginDto);
+    const { refreshToken, ...result } = await this.service.validateLogin(
+      loginDto,
+      getSecurityContext(req),
+    );
     this.setRefreshCookie(response, refreshToken);
     return result;
   }
@@ -150,10 +165,10 @@ export class AuthController {
   }
 
   @ApiAuth({ summary: 'Logout current session' })
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt-refresh'))
   @Post('logout')
   public async logout(
-    @Request() request: { user: JwtPayloadType },
+    @Request() request: { user: JwtRefreshPayloadType },
     @Res({ passthrough: true }) response: Response,
   ): Promise<{ message: string }> {
     this.clearRefreshCookie(response);
@@ -180,5 +195,36 @@ export class AuthController {
     @Request() request: { user: JwtPayloadType },
   ): Promise<{ message: string }> {
     return this.service.softDelete(request.user.id);
+  }
+
+  @ApiAuth({ summary: 'List active sessions' })
+  @UseGuards(AuthGuard('jwt'))
+  @Get('sessions')
+  public async sessions(
+    @Request() request: { user: JwtPayloadType },
+  ): Promise<SessionResponseDto[]> {
+    return this.service.getSessions(request.user.id, request.user.sessionId);
+  }
+
+  @ApiAuth({ summary: 'Revoke a specific session' })
+  @UseGuards(AuthGuard('jwt'))
+  @Delete('sessions/:id')
+  public async revokeSession(
+    @Request() request: { user: JwtPayloadType },
+    @Param('id') sessionId: string,
+  ): Promise<{ message: string }> {
+    return this.service.revokeSession(request.user.id, sessionId);
+  }
+
+  @ApiAuth({ summary: 'Revoke all other sessions' })
+  @UseGuards(AuthGuard('jwt'))
+  @Delete('sessions')
+  public async revokeAllOtherSessions(
+    @Request() request: { user: JwtPayloadType },
+  ): Promise<{ message: string }> {
+    return this.service.revokeAllOtherSessions(
+      request.user.id,
+      request.user.sessionId,
+    );
   }
 }
