@@ -7,6 +7,9 @@ import { z } from "zod";
 import { useTranslations } from "next-intl";
 import { Link } from "@/lib/navigation";
 import { api } from "@/lib/api";
+import { Spinner } from "@/components/spinner";
+import { FormField } from "@/components/form-field";
+import { ServerError } from "@/components/server-error";
 
 type FormValues = {
   firstName: string;
@@ -44,9 +47,16 @@ export default function RegisterPage() {
       await api.post("/api/v1/auth/email/register", values);
       setSuccess(true);
     } catch (err) {
-      const details = (err as { details?: { property: string; message: string }[] })?.details;
+      const details = (
+        err as { details?: { property: string; message: string }[] }
+      )?.details;
       if (details?.length) {
-        const fields = new Set<string>(["firstName", "lastName", "email", "password"]);
+        const fields = new Set<string>([
+          "firstName",
+          "lastName",
+          "email",
+          "password",
+        ]);
         let hasFieldError = false;
         for (const { property, message } of details) {
           if (fields.has(property)) {
@@ -55,7 +65,9 @@ export default function RegisterPage() {
           }
         }
         if (!hasFieldError) {
-          setServerError(err instanceof Error ? err.message : t("errorDefault"));
+          setServerError(
+            err instanceof Error ? err.message : t("errorDefault"),
+          );
         }
       } else {
         setServerError(err instanceof Error ? err.message : t("errorDefault"));
@@ -121,13 +133,11 @@ export default function RegisterPage() {
         noValidate
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="firstName"
-              className="text-xs font-medium text-neutral-500 uppercase tracking-wider"
-            >
-              {t("firstName")}
-            </label>
+          <FormField
+            id="firstName"
+            label={t("firstName")}
+            error={errors.firstName?.message}
+          >
             <input
               id="firstName"
               type="text"
@@ -136,19 +146,12 @@ export default function RegisterPage() {
               className="border border-[#D0D0D0] px-4 py-3.5 text-sm transition-colors focus-visible:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black"
               {...register("firstName")}
             />
-            {errors.firstName && (
-              <span role="alert" className="text-xs text-red-600">
-                {errors.firstName.message}
-              </span>
-            )}
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="lastName"
-              className="text-xs font-medium text-neutral-500 uppercase tracking-wider"
-            >
-              {t("lastName")}
-            </label>
+          </FormField>
+          <FormField
+            id="lastName"
+            label={t("lastName")}
+            error={errors.lastName?.message}
+          >
             <input
               id="lastName"
               type="text"
@@ -157,21 +160,10 @@ export default function RegisterPage() {
               className="border border-[#D0D0D0] px-4 py-3.5 text-sm transition-colors focus-visible:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black"
               {...register("lastName")}
             />
-            {errors.lastName && (
-              <span role="alert" className="text-xs text-red-600">
-                {errors.lastName.message}
-              </span>
-            )}
-          </div>
+          </FormField>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="email"
-            className="text-xs font-medium text-neutral-500 uppercase tracking-wider"
-          >
-            {t("email")}
-          </label>
+        <FormField id="email" label={t("email")} error={errors.email?.message}>
           <input
             id="email"
             type="email"
@@ -181,20 +173,13 @@ export default function RegisterPage() {
             className="border border-[#D0D0D0] px-4 py-3.5 text-sm transition-colors focus-visible:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black"
             {...register("email")}
           />
-          {errors.email && (
-            <span role="alert" className="text-xs text-red-600">
-              {errors.email.message}
-            </span>
-          )}
-        </div>
+        </FormField>
 
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="password"
-            className="text-xs font-medium text-neutral-500 uppercase tracking-wider"
-          >
-            {t("password")}
-          </label>
+        <FormField
+          id="password"
+          label={t("password")}
+          error={errors.password?.message}
+        >
           <input
             id="password"
             type="password"
@@ -203,31 +188,16 @@ export default function RegisterPage() {
             className="border border-[#D0D0D0] px-4 py-3.5 text-sm transition-colors focus-visible:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black"
             {...register("password")}
           />
-          {errors.password && (
-            <span role="alert" className="text-xs text-red-600">
-              {errors.password.message}
-            </span>
-          )}
-        </div>
+        </FormField>
 
-        {serverError && (
-          <p
-            role="alert"
-            aria-live="assertive"
-            className="text-xs text-red-600 bg-red-50 border border-red-200 px-3 py-2.5"
-          >
-            {serverError}
-          </p>
-        )}
+        {serverError && <ServerError message={serverError} />}
 
         <button
           type="submit"
           disabled={isSubmitting}
           className="bg-black text-white text-sm font-medium py-3.5 hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 flex items-center justify-center gap-2 mt-1"
         >
-          {isSubmitting && (
-            <span className="w-4 h-4 border-2 border-white/30 border-t-white animate-spin rounded-full shrink-0" />
-          )}
+          {isSubmitting && <Spinner variant="white" />}
           {isSubmitting ? t("submitting") : t("submit")}
         </button>
       </form>

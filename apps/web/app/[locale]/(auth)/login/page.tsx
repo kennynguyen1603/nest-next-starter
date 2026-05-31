@@ -11,6 +11,9 @@ import { api } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth-store";
 import { buildOAuthUrl } from "@/lib/oauth";
 import type { OAuthProvider } from "@/lib/oauth";
+import { Spinner } from "@/components/spinner";
+import { FormField } from "@/components/form-field";
+import { ServerError } from "@/components/server-error";
 
 type FormValues = {
   email: string;
@@ -144,9 +147,7 @@ function LoginPageContent() {
       setAuth(data.token, data.tokenExpires, null);
       router.push("/");
     } catch (err) {
-      setServerError(
-        err instanceof Error ? err.message : t("errorDefault"),
-      );
+      setServerError(err instanceof Error ? err.message : t("errorDefault"));
     }
   }
 
@@ -182,13 +183,7 @@ function LoginPageContent() {
         className="flex flex-col gap-5"
         noValidate
       >
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="email"
-            className="text-xs font-medium text-neutral-500 uppercase tracking-wider"
-          >
-            {t("email")}
-          </label>
+        <FormField id="email" label={t("email")} error={errors.email?.message}>
           <input
             id="email"
             type="email"
@@ -198,20 +193,13 @@ function LoginPageContent() {
             className="border border-[#D0D0D0] px-4 py-3.5 text-sm transition-colors focus-visible:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black"
             {...register("email")}
           />
-          {errors.email && (
-            <span role="alert" className="text-xs text-red-600">
-              {errors.email.message}
-            </span>
-          )}
-        </div>
+        </FormField>
 
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="password"
-            className="text-xs font-medium text-neutral-500 uppercase tracking-wider"
-          >
-            {t("password")}
-          </label>
+        <FormField
+          id="password"
+          label={t("password")}
+          error={errors.password?.message}
+        >
           <input
             id="password"
             type="password"
@@ -220,31 +208,16 @@ function LoginPageContent() {
             className="border border-[#D0D0D0] px-4 py-3.5 text-sm transition-colors focus-visible:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black"
             {...register("password")}
           />
-          {errors.password && (
-            <span role="alert" className="text-xs text-red-600">
-              {errors.password.message}
-            </span>
-          )}
-        </div>
+        </FormField>
 
-        {serverError && (
-          <p
-            role="alert"
-            aria-live="assertive"
-            className="text-xs text-red-600 bg-red-50 border border-red-200 px-3 py-2.5"
-          >
-            {serverError}
-          </p>
-        )}
+        {serverError && <ServerError message={serverError} />}
 
         <button
           type="submit"
           disabled={isSubmitting}
           className="bg-black text-white text-sm font-medium py-3.5 hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 flex items-center justify-center gap-2 mt-1"
         >
-          {isSubmitting && (
-            <span className="w-4 h-4 border-2 border-white/30 border-t-white animate-spin rounded-full shrink-0" />
-          )}
+          {isSubmitting && <Spinner variant="white" />}
           {isSubmitting ? t("submitting") : t("submit")}
         </button>
       </form>
@@ -267,7 +240,7 @@ function LoginPageContent() {
             className="flex items-center justify-center gap-2.5 border border-[#D0D0D0] px-4 py-3.5 text-sm font-medium hover:bg-neutral-50 hover:border-neutral-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-1"
           >
             {oauthLoading === id ? (
-              <span className="w-4 h-4 border-2 border-black/20 border-t-black/70 animate-spin rounded-full shrink-0" />
+              <span className="w-4 h-4 border-2 border-black/20 border-t-black/70 animate-spin rounded-[9999px] shrink-0" />
             ) : (
               icon
             )}
