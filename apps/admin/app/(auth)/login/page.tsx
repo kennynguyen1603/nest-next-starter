@@ -7,6 +7,7 @@ import { z } from "zod";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/auth-store";
 import type { AuthUser } from "@repo/types";
+import { Spinner } from "@/components/shared/spinner";
 
 const schema = z.object({
   email: z.email("Invalid email"),
@@ -134,8 +135,9 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-medium py-2.5 px-4 rounded-lg transition-colors text-sm"
+          className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-medium py-2.5 px-4 rounded-lg transition-colors text-sm flex items-center justify-center gap-2"
         >
+          {isSubmitting && <Spinner variant="white" />}
           {isSubmitting ? "Signing in…" : "Sign in"}
         </button>
       </form>

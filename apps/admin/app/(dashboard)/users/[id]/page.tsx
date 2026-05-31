@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Pencil } from "lucide-react";
 import { api } from "@/lib/api";
 import type { AdminUser } from "@repo/types";
+import { Spinner } from "@/components/shared/spinner";
 
 export default function UserDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -20,7 +21,13 @@ export default function UserDetailPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  if (loading) return <p className="text-sm text-gray-500">Loading…</p>;
+  if (loading)
+    return (
+      <div className="flex items-center gap-2 text-sm text-gray-500">
+        <Spinner />
+        Loading…
+      </div>
+    );
   if (!user) return <p className="text-sm text-red-600">User not found</p>;
 
   return (

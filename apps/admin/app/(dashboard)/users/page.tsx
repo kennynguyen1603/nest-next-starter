@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import UserTable from "@/components/users/UserTable";
 import type { AdminUser } from "@repo/types";
+import { Spinner } from "@/components/shared/spinner";
 
 interface UsersApiResponse {
   data: AdminUser[];
@@ -87,7 +88,10 @@ export default function UsersPage() {
       </div>
 
       {loading ? (
-        <div className="text-sm text-gray-400 py-8 text-center">Loading…</div>
+        <div className="flex items-center justify-center py-8 gap-2 text-sm text-gray-400">
+          <Spinner />
+          Loading…
+        </div>
       ) : (
         <UserTable users={users} onRefresh={fetchUsers} />
       )}

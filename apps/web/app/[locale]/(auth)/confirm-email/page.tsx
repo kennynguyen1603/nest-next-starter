@@ -6,6 +6,8 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "@/lib/navigation";
 import { Link } from "@/lib/navigation";
 import { api } from "@/lib/api";
+import { Spinner } from "@/components/spinner";
+import { AuthSuccessState } from "@/components/auth-success-state";
 
 type Status = "loading" | "success" | "error";
 
@@ -41,7 +43,7 @@ function ConfirmEmailContent() {
   if (status === "loading") {
     return (
       <div className="mb-8 flex flex-col items-start gap-4">
-        <span className="w-6 h-6 border-2 border-neutral-300 border-t-black animate-spin rounded-full" />
+        <Spinner size="lg" variant="neutral" />
         <p className="text-sm text-neutral-500">{t("loading")}</p>
       </div>
     );
@@ -49,20 +51,11 @@ function ConfirmEmailContent() {
 
   if (status === "success") {
     return (
-      <>
-        <div className="mb-8">
-          <h1 className="text-3xl font-semibold tracking-tight">
-            {t("successTitle")}
-          </h1>
-          <p className="mt-2 text-sm text-neutral-500">{t("successMessage")}</p>
-        </div>
-        <Link
-          href="/login"
-          className="text-sm font-medium underline underline-offset-2 hover:text-neutral-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
-        >
-          {t("backToSignIn")}
-        </Link>
-      </>
+      <AuthSuccessState
+        title={t("successTitle")}
+        message={t("successMessage")}
+        backLabel={t("backToSignIn")}
+      />
     );
   }
 

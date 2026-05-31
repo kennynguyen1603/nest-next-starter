@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "@/lib/navigation";
 import { useAuthStore } from "@/lib/auth-store";
 import { api, tryRefresh } from "@/lib/api";
+import { Spinner } from "@/components/spinner";
 
 interface Notification {
   id: string;
@@ -144,7 +145,7 @@ export default function NotificationsPage() {
   if (!accessToken) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F8F8F8]">
-        <div className="w-5 h-5 border-2 border-black border-t-transparent animate-spin rounded-full" />
+        <Spinner size="md" />
       </div>
     );
   }
@@ -192,7 +193,7 @@ export default function NotificationsPage() {
         <div className="w-full max-w-2xl">
           {loading ? (
             <div className="flex items-center justify-center py-20">
-              <div className="w-5 h-5 border-2 border-black border-t-transparent animate-spin rounded-full" />
+              <Spinner size="md" />
             </div>
           ) : error ? (
             <div className="text-sm text-red-600 text-center py-10">
@@ -211,7 +212,7 @@ export default function NotificationsPage() {
                     className={`flex items-start gap-3 px-5 py-4 ${!n.isRead ? "bg-white" : "bg-[#FAFAFA]"}`}
                   >
                     <span
-                      className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${!n.isRead ? "bg-black" : "bg-[#D0D0D0]"}`}
+                      className={`mt-1.5 w-2 h-2 rounded-[9999px] shrink-0 ${!n.isRead ? "bg-black" : "bg-[#D0D0D0]"}`}
                     />
                     <div className="flex-1 min-w-0">
                       <p

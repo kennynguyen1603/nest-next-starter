@@ -74,8 +74,8 @@ export default function OAuthCallbackPage({
     <div className="min-h-screen flex items-center justify-center bg-white">
       <div className="flex flex-col items-center gap-7">
         <div className="relative w-10 h-10">
-          <div className="absolute inset-0 border border-neutral-100 rounded-full" />
-          <div className="absolute inset-0 border-2 border-neutral-200 border-t-black animate-spin rounded-full" />
+          <div className="absolute inset-0 border border-neutral-100 rounded-[9999px]" />
+          <div className="absolute inset-0 border-2 border-neutral-200 border-t-black animate-spin rounded-[9999px]" />
         </div>
         <div className="flex flex-col items-center gap-1.5 text-center">
           <p className="text-sm font-medium text-neutral-800">

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
+import { Spinner } from "@/components/spinner";
 import { useAuthStore } from "@/lib/auth-store";
 import { useRouter } from "@/lib/navigation";
 
@@ -76,9 +77,7 @@ export function DeleteAccountDialog({ onClose }: Props) {
               disabled={isDeleting}
               className="bg-red-600 text-white text-sm font-medium px-4 py-2 hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-1 flex items-center gap-2"
             >
-              {isDeleting && (
-                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white animate-spin rounded-full shrink-0" />
-              )}
+              {isDeleting && <Spinner size="xs" variant="white" />}
               {isDeleting ? t("deleting") : t("deleteAccount")}
             </button>
           </div>

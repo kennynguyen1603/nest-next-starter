@@ -8,6 +8,7 @@ import { api, tryRefresh } from "@/lib/api";
 import type { AuthUser } from "@repo/types";
 import Image from "next/image";
 import { LanguageSwitcher } from "./_components/language-switcher";
+import { Spinner } from "@/components/spinner";
 
 const EditProfileDialog = lazy(() =>
   import("./_components/edit-profile-dialog").then((m) => ({
@@ -94,11 +95,7 @@ export default function Home() {
   if (!accessToken || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F8F8F8]">
-        <div
-          role="status"
-          aria-label={t("common.loading")}
-          className="w-5 h-5 border-2 border-black border-t-transparent animate-spin rounded-full"
-        />
+        <Spinner size="md" role="status" aria-label={t("common.loading")} />
       </div>
     );
   }

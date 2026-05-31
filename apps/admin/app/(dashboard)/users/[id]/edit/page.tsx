@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ArrowLeft } from "lucide-react";
 import { api } from "@/lib/api";
+import { FormField, inputCls } from "@/components/shared/form-field";
 import type { AdminUser } from "@repo/types";
 
 const schema = z.object({
@@ -129,7 +130,7 @@ export default function EditUserPage() {
           className="space-y-4"
         >
           <div className="grid grid-cols-2 gap-4">
-            <Field
+            <FormField
               label="First name"
               error={errors.firstName?.message}
               required
@@ -140,18 +141,22 @@ export default function EditUserPage() {
                 disabled={isLoading}
                 className={inputCls(!!errors.firstName)}
               />
-            </Field>
-            <Field label="Last name" error={errors.lastName?.message} required>
+            </FormField>
+            <FormField
+              label="Last name"
+              error={errors.lastName?.message}
+              required
+            >
               <input
                 {...register("lastName")}
                 placeholder="Doe"
                 disabled={isLoading}
                 className={inputCls(!!errors.lastName)}
               />
-            </Field>
+            </FormField>
           </div>
 
-          <Field label="Email" error={errors.email?.message} required>
+          <FormField label="Email" error={errors.email?.message} required>
             <input
               {...register("email")}
               type="email"
@@ -159,9 +164,9 @@ export default function EditUserPage() {
               disabled={isLoading}
               className={inputCls(!!errors.email)}
             />
-          </Field>
+          </FormField>
 
-          <Field
+          <FormField
             label="New password"
             error={errors.password?.message}
             hint="Leave blank to keep current password"
@@ -173,10 +178,10 @@ export default function EditUserPage() {
               disabled={isLoading}
               className={inputCls(!!errors.password)}
             />
-          </Field>
+          </FormField>
 
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Role" error={errors.role?.message}>
+            <FormField label="Role" error={errors.role?.message}>
               <select
                 {...register("role")}
                 disabled={isLoading}
@@ -186,8 +191,8 @@ export default function EditUserPage() {
                 <option value="manager">Manager</option>
                 <option value="admin">Admin</option>
               </select>
-            </Field>
-            <Field label="Status" error={errors.status?.message}>
+            </FormField>
+            <FormField label="Status" error={errors.status?.message}>
               <select
                 {...register("status")}
                 disabled={isLoading}
@@ -198,7 +203,7 @@ export default function EditUserPage() {
                 <option value="pending">Pending</option>
                 <option value="banned">Banned</option>
               </select>
-            </Field>
+            </FormField>
           </div>
 
           {serverError && (
@@ -228,38 +233,6 @@ export default function EditUserPage() {
           </div>
         </form>
       </div>
-    </div>
-  );
-}
-
-function inputCls(hasError: boolean) {
-  return `w-full rounded-lg border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:border-transparent disabled:bg-gray-50 disabled:text-gray-400 ${
-    hasError ? "border-red-400 bg-red-50" : "border-gray-300"
-  }`;
-}
-
-function Field({
-  label,
-  error,
-  hint,
-  required,
-  children,
-}: {
-  label: string;
-  error?: string;
-  hint?: string;
-  required?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-1">
-      <label className="block text-sm font-medium text-gray-700">
-        {label}
-        {required && <span className="text-red-500 ml-0.5">*</span>}
-      </label>
-      {children}
-      {hint && !error && <p className="text-xs text-gray-400">{hint}</p>}
-      {error && <p className="text-xs text-red-600">{error}</p>}
     </div>
   );
 }
