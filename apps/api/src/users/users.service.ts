@@ -160,11 +160,8 @@ export class UsersService {
     let password: string | undefined = undefined;
 
     if (updateUserDto.password) {
-      const existingUser = await this.usersRepository.findById(id);
-      if (existingUser && existingUser.password !== updateUserDto.password) {
-        const salt = await bcrypt.genSalt();
-        password = await bcrypt.hash(updateUserDto.password, salt);
-      }
+      const salt = await bcrypt.genSalt();
+      password = await bcrypt.hash(updateUserDto.password, salt);
     }
 
     let email: string | null | undefined = undefined;
@@ -227,19 +224,8 @@ export class UsersService {
     this.logger.debug({ userId: id }, 'User removed');
   }
 
-  async findAllIds(): Promise<string[]> {
-    const ids: string[] = [];
-    let page = 1;
-    const limit = 200;
-    while (true) {
-      const [users] = await this.usersRepository.findManyWithPagination({
-        paginationOptions: { page, limit },
-      });
-      ids.push(...users.map((u) => u.id));
-      if (users.length < limit) break;
-      page++;
-    }
-    return ids;
+  findAllIds(): Promise<string[]> {
+    return this.usersRepository.findAllIds();
   }
 
   private resolveRoles(roleDtos: RoleDto[]): Role[] {
