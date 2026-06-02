@@ -49,15 +49,13 @@ export class RolesRelationalRepository implements RolesRepository {
   }
 
   async getRoleNamesForUser(userId: string): Promise<RoleEnum[]> {
-    const userRoles = await this.userRoleRepo.find({
-      where: { userId },
-      select: ['roleId'],
-    });
-    if (!userRoles.length) return [];
-    const roles = await this.roleRepo.find({
-      where: { id: In(userRoles.map((userRole) => userRole.roleId)) },
-      select: ['name'],
-    });
+    // Single JOIN query instead of 2 sequential queries
+    const roles = await this.roleRepo
+      .createQueryBuilder('role')
+      .innerJoin('user_role', 'ur', 'ur.role_id = role.id')
+      .where('ur.user_id = :userId', { userId })
+      .select('role.name')
+      .getMany();
     return roles.map((role) => role.name as RoleEnum);
   }
 
@@ -65,12 +63,14 @@ export class RolesRelationalRepository implements RolesRepository {
     userId: string,
     roleNames: RoleEnum[],
   ): Promise<void> {
-    await this.userRoleRepo.delete({ userId });
-    if (!roleNames.length) return;
-    const roles = await this.roleRepo.find({
-      where: { name: In(roleNames) },
-      select: ['id'],
-    });
+    // Parallelize the independent DELETE and SELECT
+    const [roles] = await Promise.all([
+      roleNames.length
+        ? this.roleRepo.find({ where: { name: In(roleNames) }, select: ['id'] })
+        : Promise.resolve([]),
+      this.userRoleRepo.delete({ userId }),
+    ]);
+    if (!roles.length) return;
     await this.userRoleRepo.save(
       roles.map((role) =>
         this.userRoleRepo.create({
