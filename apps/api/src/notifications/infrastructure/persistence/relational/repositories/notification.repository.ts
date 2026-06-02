@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { v7 as uuidv7 } from 'uuid';
 import { NotificationRepository } from '../../notification.repository';
 import { Notification } from '@/notifications/domain/notification';
 import { NotificationEntity } from '../entities/notification.entity';
@@ -25,6 +26,34 @@ export class NotificationsRelationalRepository implements NotificationRepository
     return NotificationMapper.toDomain(saved);
   }
 
+  async bulkCreate(
+    notifications: Array<Omit<Notification, 'id' | 'createdAt' | 'updatedAt'>>,
+  ): Promise<Notification[]> {
+    if (!notifications.length) return [];
+    const now = new Date();
+    const rows = notifications.map((n) => ({
+      id: uuidv7(),
+      userId: n.userId,
+      type: n.type,
+      title: n.title,
+      message: n.message,
+      data: n.data ?? null,
+      isRead: n.isRead,
+      readAt: n.readAt ?? null,
+      createdAt: now,
+      updatedAt: now,
+    }));
+    await this.repo
+      .createQueryBuilder()
+      .insert()
+      .into(NotificationEntity)
+      .values(rows as any[])
+      .execute();
+    return rows.map((row) =>
+      NotificationMapper.toDomain(row as unknown as NotificationEntity),
+    );
+  }
+
   async findManyByUserId(
     userId: string,
     paginationOptions: IPaginationOptions,
@@ -38,7 +67,10 @@ export class NotificationsRelationalRepository implements NotificationRepository
       take: paginationOptions.limit,
       order: { createdAt: 'DESC' },
     });
-    return [entities.map(NotificationMapper.toDomain), total];
+    return [
+      entities.map((entity) => NotificationMapper.toDomain(entity)),
+      total,
+    ];
   }
 
   async findById(id: string): Promise<NullableType<Notification>> {
@@ -46,13 +78,8 @@ export class NotificationsRelationalRepository implements NotificationRepository
     return entity ? NotificationMapper.toDomain(entity) : null;
   }
 
-  async markAsRead(id: string): Promise<NullableType<Notification>> {
-    const entity = await this.repo.findOne({ where: { id } });
-    if (!entity) return null;
-    entity.isRead = true;
-    entity.readAt = new Date();
-    const saved = await this.repo.save(entity);
-    return NotificationMapper.toDomain(saved);
+  async markAsRead(id: string): Promise<void> {
+    await this.repo.update(id, { isRead: true, readAt: new Date() });
   }
 
   async remove(id: string): Promise<void> {
