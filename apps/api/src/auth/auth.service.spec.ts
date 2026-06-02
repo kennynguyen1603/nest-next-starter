@@ -360,14 +360,10 @@ describe('AuthService', () => {
         password: null,
       });
       mockSessionService.deleteByUserIdWithExclude.mockResolvedValue(undefined);
-      mockUsersService.update.mockResolvedValue(undefined);
-      mockUsersService.findById
-        .mockResolvedValueOnce({
-          id: 'user1',
-          provider: 'google',
-          password: null,
-        })
-        .mockResolvedValueOnce({ id: 'user1', provider: 'google' });
+      mockUsersService.update.mockResolvedValue({
+        id: 'user1',
+        provider: 'google',
+      });
 
       await expect(
         service.update(jwtPayload as any, { password: 'newpass123' }),
@@ -412,15 +408,16 @@ describe('AuthService', () => {
 
     it('allows email user to change password with correct oldPassword', async () => {
       const hash = await bcrypt.hash('correctpass', 10);
-      mockUsersService.findById
-        .mockResolvedValueOnce({
-          id: 'user1',
-          provider: 'email',
-          password: hash,
-        })
-        .mockResolvedValueOnce({ id: 'user1', provider: 'email' });
+      mockUsersService.findById.mockResolvedValue({
+        id: 'user1',
+        provider: 'email',
+        password: hash,
+      });
       mockSessionService.deleteByUserIdWithExclude.mockResolvedValue(undefined);
-      mockUsersService.update.mockResolvedValue(undefined);
+      mockUsersService.update.mockResolvedValue({
+        id: 'user1',
+        provider: 'email',
+      });
 
       await expect(
         service.update(jwtPayload as any, {
@@ -502,39 +499,21 @@ describe('AuthService', () => {
       );
     });
 
-    it('updates email without changing user status', async () => {
+    it('updates only the email field (does not pass status in payload)', async () => {
       mockJwtService.verifyAsync.mockResolvedValue(validPayload);
-      const user = {
+      mockUsersService.findById.mockResolvedValue({
         id: 'user1',
         email: 'old@x.com',
         status: UserStatus.ACTIVE,
-      };
-      mockUsersService.findById.mockResolvedValue(user);
+      });
       mockUsersService.update.mockResolvedValue(undefined);
 
       await service.confirmNewEmail('valid-hash');
 
-      const updatedUser = mockUsersService.update.mock
-        .calls[0][1] as typeof user;
-      expect(updatedUser.email).toBe('new@x.com');
-      expect(updatedUser.status).toBe(UserStatus.ACTIVE);
-    });
-
-    it('does not reactivate a suspended user', async () => {
-      mockJwtService.verifyAsync.mockResolvedValue(validPayload);
-      const user = {
-        id: 'user1',
-        email: 'old@x.com',
-        status: UserStatus.INACTIVE,
-      };
-      mockUsersService.findById.mockResolvedValue(user);
-      mockUsersService.update.mockResolvedValue(undefined);
-
-      await service.confirmNewEmail('valid-hash');
-
-      const updatedUser = mockUsersService.update.mock
-        .calls[0][1] as typeof user;
-      expect(updatedUser.status).toBe(UserStatus.INACTIVE);
+      // Only {email} is passed — status preservation is the repository's responsibility
+      expect(mockUsersService.update).toHaveBeenCalledWith('user1', {
+        email: 'new@x.com',
+      });
     });
 
     it('returns success message', async () => {
@@ -655,7 +634,6 @@ describe('AuthService', () => {
         id: 'user1',
         roles: [{ name: 'user' }],
       });
-      mockCacheService.get.mockResolvedValue(null);
       mockRolesService.getPermissionsForRoles.mockResolvedValue([]);
       mockJwtService.signAsync.mockResolvedValue('new-token');
 
@@ -669,7 +647,7 @@ describe('AuthService', () => {
       expect(result).toHaveProperty('tokenExpires');
     });
 
-    it('uses cached permissions and skips getPermissionsForRoles on cache hit', async () => {
+    it('calls getPermissionsForRoles with user role names and does not touch cacheService directly', async () => {
       mockSessionService.updateByHash.mockResolvedValue({
         id: 'session1',
         user: { id: 'user1' },
@@ -678,34 +656,16 @@ describe('AuthService', () => {
         id: 'user1',
         roles: [{ name: 'user' }],
       });
-      mockCacheService.get.mockResolvedValue(['read:task']);
-
-      await service.refreshToken({ sessionId: 'session1', hash: 'hash1' });
-
-      expect(mockRolesService.getPermissionsForRoles).not.toHaveBeenCalled();
-      expect(mockCacheService.set).not.toHaveBeenCalled();
-    });
-
-    it('fetches and caches permissions on cache miss', async () => {
-      mockSessionService.updateByHash.mockResolvedValue({
-        id: 'session1',
-        user: { id: 'user1' },
-      });
-      mockUsersService.findById.mockResolvedValue({
-        id: 'user1',
-        roles: [{ name: 'user' }],
-      });
-      mockCacheService.get.mockResolvedValue(null);
       mockRolesService.getPermissionsForRoles.mockResolvedValue(['read:task']);
 
       await service.refreshToken({ sessionId: 'session1', hash: 'hash1' });
 
       expect(mockRolesService.getPermissionsForRoles).toHaveBeenCalledTimes(1);
-      expect(mockCacheService.set).toHaveBeenCalledWith(
-        expect.objectContaining({ key: 'RolePermissions' }),
-        ['read:task'],
-        { ttl: 300_000 },
-      );
+      expect(mockRolesService.getPermissionsForRoles).toHaveBeenCalledWith([
+        'user',
+      ]);
+      expect(mockCacheService.get).not.toHaveBeenCalled();
+      expect(mockCacheService.set).not.toHaveBeenCalled();
     });
   });
 });
