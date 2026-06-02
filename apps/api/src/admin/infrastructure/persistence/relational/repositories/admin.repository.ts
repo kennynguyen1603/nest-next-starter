@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
-import { Repository, DataSource, IsNull } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { UserEntity } from '@/users/infrastructure/persistence/relational/entities/user.entity';
 import { UserStatus } from '@/users/user-status.enum';
 import { AdminRepository } from '../../admin.repository';
@@ -25,24 +25,34 @@ export class AdminRelationalRepository implements AdminRepository {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const [totalUsers, newUsersToday, activeUsers, usersThirtyDaysAgo] =
-      await Promise.all([
-        this.userRepo.count({ where: { deletedAt: IsNull() } }),
-        this.userRepo
-          .createQueryBuilder('u')
-          .where('u.deletedAt IS NULL')
-          .andWhere('u.createdAt >= :today', { today })
-          .getCount(),
-        this.userRepo.count({
-          where: { deletedAt: IsNull(), status: UserStatus.ACTIVE },
-        }),
-        this.userRepo
-          .createQueryBuilder('u')
-          .where('u.deletedAt IS NULL')
-          .andWhere('u.createdAt < :thirtyDaysAgo', { thirtyDaysAgo })
-          .getCount(),
-      ]);
+    // Single query instead of 4 parallel COUNT queries
+    const row = await this.userRepo
+      .createQueryBuilder('u')
+      .select('COUNT(*)', 'totalUsers')
+      .addSelect(
+        `SUM(CASE WHEN u.createdAt >= :today THEN 1 ELSE 0 END)`,
+        'newUsersToday',
+      )
+      .addSelect(
+        `SUM(CASE WHEN u.status = :active THEN 1 ELSE 0 END)`,
+        'activeUsers',
+      )
+      .addSelect(
+        `SUM(CASE WHEN u.createdAt < :thirtyDaysAgo THEN 1 ELSE 0 END)`,
+        'usersThirtyDaysAgo',
+      )
+      .setParameters({ today, active: UserStatus.ACTIVE, thirtyDaysAgo })
+      .getRawOne<{
+        totalUsers: string;
+        newUsersToday: string;
+        activeUsers: string;
+        usersThirtyDaysAgo: string;
+      }>();
 
+    const totalUsers = Number(row?.totalUsers ?? 0);
+    const newUsersToday = Number(row?.newUsersToday ?? 0);
+    const activeUsers = Number(row?.activeUsers ?? 0);
+    const usersThirtyDaysAgo = Number(row?.usersThirtyDaysAgo ?? 0);
     const inactiveUsers = totalUsers - activeUsers;
     const userGrowthPercent =
       usersThirtyDaysAgo > 0
@@ -62,9 +72,17 @@ export class AdminRelationalRepository implements AdminRepository {
 
   async getRecentActivity(): Promise<ActivityDto[]> {
     const users = await this.userRepo.find({
-      where: { deletedAt: IsNull() },
+      where: {},
       order: { createdAt: 'DESC' },
       take: 10,
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        createdAt: true,
+      },
+      loadEagerRelations: false,
     });
 
     return users.map((u) => ({
@@ -83,18 +101,28 @@ export class AdminRelationalRepository implements AdminRepository {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const [totalUsers, activeUsers, usersThirtyDaysAgo] = await Promise.all([
-      this.userRepo.count({ where: { deletedAt: IsNull() } }),
-      this.userRepo.count({
-        where: { deletedAt: IsNull(), status: UserStatus.ACTIVE },
-      }),
-      this.userRepo
-        .createQueryBuilder('u')
-        .where('u.deletedAt IS NULL')
-        .andWhere('u.createdAt < :thirtyDaysAgo', { thirtyDaysAgo })
-        .getCount(),
-    ]);
+    // Single query instead of 3 parallel COUNT queries
+    const row = await this.userRepo
+      .createQueryBuilder('u')
+      .select('COUNT(*)', 'totalUsers')
+      .addSelect(
+        `SUM(CASE WHEN u.status = :active THEN 1 ELSE 0 END)`,
+        'activeUsers',
+      )
+      .addSelect(
+        `SUM(CASE WHEN u.createdAt < :thirtyDaysAgo THEN 1 ELSE 0 END)`,
+        'usersThirtyDaysAgo',
+      )
+      .setParameters({ active: UserStatus.ACTIVE, thirtyDaysAgo })
+      .getRawOne<{
+        totalUsers: string;
+        activeUsers: string;
+        usersThirtyDaysAgo: string;
+      }>();
 
+    const totalUsers = Number(row?.totalUsers ?? 0);
+    const activeUsers = Number(row?.activeUsers ?? 0);
+    const usersThirtyDaysAgo = Number(row?.usersThirtyDaysAgo ?? 0);
     const inactiveUsers = totalUsers - activeUsers;
     const userGrowthPercent =
       usersThirtyDaysAgo > 0
@@ -122,13 +150,13 @@ export class AdminRelationalRepository implements AdminRepository {
       dateExpr = `DATE_FORMAT(u.createdAt, '%Y-%m-%d')`;
     }
 
+    // TypeORM auto-adds "deletedAt IS NULL" for entities with @DeleteDateColumn
     const rows: Array<{ date: string; count: string }> = await this.dataSource
       .createQueryBuilder()
       .select(dateExpr, 'date')
       .addSelect('COUNT(*)', 'count')
       .from(UserEntity, 'u')
-      .where('u.deletedAt IS NULL')
-      .andWhere('u.createdAt >= :from', { from })
+      .where('u.createdAt >= :from', { from })
       .groupBy(dateExpr)
       .orderBy(dateExpr, 'ASC')
       .getRawMany();
