@@ -15,4 +15,6 @@ export type AppConfig = {
   logLevel: string;
   logService: string;
   cookieSecure: boolean;
+  cookieSameSite: 'lax' | 'strict' | 'none';
+  cookieDomain?: string;
 };
