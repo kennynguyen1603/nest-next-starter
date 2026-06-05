@@ -26,7 +26,19 @@ export default function UsersPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [q, setQ] = useState("");
+  const [debouncedQ, setDebouncedQ] = useState("");
   const [loading, setLoading] = useState(true);
+
+  // Debounce the raw input into the term we actually query with. Keeping these
+  // separate means fetchUsers' identity is stable while typing, so the (memoized)
+  // table doesn't re-render on every keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedQ(q);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [q]);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -35,7 +47,7 @@ export default function UsersPage() {
         page: String(page),
         limit: String(LIMIT),
       });
-      if (q) params.set("q", q);
+      if (debouncedQ) params.set("q", debouncedQ);
       const data = await api.get<UsersApiResponse>(
         `/api/v1/users?${params.toString()}`,
       );
@@ -46,12 +58,11 @@ export default function UsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, q]);
+  }, [page, debouncedQ]);
 
   useEffect(() => {
-    const t = setTimeout(fetchUsers, q ? 300 : 0);
-    return () => clearTimeout(t);
-  }, [fetchUsers, q]);
+    fetchUsers();
+  }, [fetchUsers]);
 
   const totalPages = Math.ceil(total / LIMIT);
 
@@ -78,10 +89,7 @@ export default function UsersPage() {
         />
         <input
           value={q}
-          onChange={(e) => {
-            setQ(e.target.value);
-            setPage(1);
-          }}
+          onChange={(e) => setQ(e.target.value)}
           placeholder="Search users…"
           className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />

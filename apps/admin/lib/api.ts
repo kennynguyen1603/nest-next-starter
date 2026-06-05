@@ -32,9 +32,16 @@ async function request<T>(
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({ message: "Request failed" }));
-    throw new Error(
-      (data as { message?: string })?.message ?? "Request failed",
-    );
+    const error: Error & {
+      details?: { property: string; message: string }[];
+    } = new Error((data as { message?: string })?.message ?? "Request failed");
+    // Surface field-level validation errors so forms can map them via setError.
+    if (Array.isArray((data as { details?: unknown }).details)) {
+      error.details = (
+        data as { details: { property: string; message: string }[] }
+      ).details;
+    }
+    throw error;
   }
 
   if (res.status === 204) return undefined as T;
@@ -45,7 +52,19 @@ async function clearSession(): Promise<void> {
   await fetch("/api/auth/clear-session", { method: "POST" }).catch(() => {});
 }
 
-export async function tryRefresh(): Promise<boolean> {
+// Dedupe concurrent refreshes (layout bootstrap + a page fetch + a 401 retry can
+// all fire at once) so they share one round-trip instead of racing.
+let refreshInFlight: Promise<boolean> | null = null;
+
+export function tryRefresh(): Promise<boolean> {
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = doRefresh().finally(() => {
+    refreshInFlight = null;
+  });
+  return refreshInFlight;
+}
+
+async function doRefresh(): Promise<boolean> {
   try {
     const res = await fetch(`${BASE_URL}/api/v1/auth/refresh`, {
       method: "POST",
