@@ -63,21 +63,26 @@ export class RolesRelationalRepository implements RolesRepository {
     userId: string,
     roleNames: RoleEnum[],
   ): Promise<void> {
-    // Parallelize the independent DELETE and SELECT
-    const [roles] = await Promise.all([
-      roleNames.length
-        ? this.roleRepo.find({ where: { name: In(roleNames) }, select: ['id'] })
-        : Promise.resolve([]),
-      this.userRoleRepo.delete({ userId }),
-    ]);
-    if (!roles.length) return;
-    await this.userRoleRepo.save(
-      roles.map((role) =>
-        this.userRoleRepo.create({
-          userId: String(userId),
-          roleId: role.id,
-        }),
-      ),
-    );
+    // Resolve role ids (static read) before the transaction.
+    const roles = roleNames.length
+      ? await this.roleRepo.find({
+          where: { name: In(roleNames) },
+          select: ['id'],
+        })
+      : [];
+
+    // DELETE + INSERT must be atomic: a failure between them would otherwise
+    // leave the user with no roles.
+    await this.userRoleRepo.manager.transaction(async (manager) => {
+      const repo = manager.getRepository(UserRoleEntity);
+      await repo.delete({ userId });
+      if (roles.length) {
+        await repo.save(
+          roles.map((role) =>
+            repo.create({ userId: String(userId), roleId: role.id }),
+          ),
+        );
+      }
+    });
   }
 }

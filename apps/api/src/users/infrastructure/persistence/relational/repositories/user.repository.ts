@@ -143,39 +143,49 @@ export class UsersRelationalRepository implements UserRepository {
     if (payload.status !== undefined) scalarUpdate.status = merged.status;
     if (payload.photo !== undefined) scalarUpdate.photo = merged.photo ?? null;
 
-    if (Object.keys(scalarUpdate).length > 0) {
-      await this.usersRepository.update(
-        { id },
-        scalarUpdate as Parameters<typeof this.usersRepository.update>[1],
-      );
-    }
-
-    // Handle role changes via direct junction-table manipulation.
-    // Bypasses TypeORM's save() cascade which always re-reads the junction table.
+    // Resolve role entities (static read) before opening the transaction.
+    let newRoles: RoleEntity[] | undefined;
     if (payload.roles !== undefined) {
       const roleNames = (payload.roles ?? [])
         .map((r) => r.name)
         .filter(Boolean) as string[];
-      const newRoles = roleNames.length
+      newRoles = roleNames.length
         ? await this.roleRepository.find({ where: { name: In(roleNames) } })
         : [];
+    }
 
-      await this.usersRepository.manager
-        .createQueryBuilder()
-        .delete()
-        .from('user_role')
-        .where('"user_id" = :userId', { userId: id })
-        .execute();
-
-      if (newRoles.length) {
-        await this.usersRepository.manager
-          .createQueryBuilder()
-          .insert()
-          .into('user_role')
-          .values(newRoles.map((role) => ({ user_id: id, role_id: role.id })))
-          .execute();
+    // Apply the scalar update and the junction-table re-write atomically so a
+    // mid-flight failure can never leave the user with a half-applied role set.
+    // Direct junction manipulation bypasses TypeORM's save() cascade re-reads.
+    await this.usersRepository.manager.transaction(async (manager) => {
+      if (Object.keys(scalarUpdate).length > 0) {
+        await manager.update(
+          UserEntity,
+          { id },
+          scalarUpdate as Parameters<typeof this.usersRepository.update>[1],
+        );
       }
 
+      if (newRoles !== undefined) {
+        await manager
+          .createQueryBuilder()
+          .delete()
+          .from('user_role')
+          .where('"user_id" = :userId', { userId: id })
+          .execute();
+
+        if (newRoles.length) {
+          await manager
+            .createQueryBuilder()
+            .insert()
+            .into('user_role')
+            .values(newRoles.map((role) => ({ user_id: id, role_id: role.id })))
+            .execute();
+        }
+      }
+    });
+
+    if (newRoles !== undefined) {
       entity.roles = newRoles;
     }
 

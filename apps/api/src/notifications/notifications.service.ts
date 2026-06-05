@@ -103,32 +103,40 @@ export class NotificationsService {
       data?: Record<string, unknown>;
     },
   ): Promise<{ count: number }> {
-    // Bulk INSERT in one query instead of N individual INSERTs
-    const notifications = await this.notificationRepo.bulkCreate(
-      userIds.map((userId) => ({
-        userId,
-        type: data.type,
-        title: data.title,
-        message: data.message,
-        data: data.data ?? null,
-        isRead: false,
-        readAt: null,
-      })),
-    );
-
-    notifications.forEach((notif) => {
-      this.socketService?.emitToUser(
-        notif.userId,
-        SocketEvent.NotificationNew,
-        notif,
+    // Chunk the bulk INSERT: a single VALUES list over every user would blow
+    // past the DB bind-parameter limit (Postgres ~65535 params) once the user
+    // base grows. Each chunk is still one INSERT.
+    const CHUNK_SIZE = 1000;
+    let count = 0;
+    for (let i = 0; i < userIds.length; i += CHUNK_SIZE) {
+      const chunk = userIds.slice(i, i + CHUNK_SIZE);
+      const notifications = await this.notificationRepo.bulkCreate(
+        chunk.map((userId) => ({
+          userId,
+          type: data.type,
+          title: data.title,
+          message: data.message,
+          data: data.data ?? null,
+          isRead: false,
+          readAt: null,
+        })),
       );
-    });
+
+      notifications.forEach((notif) => {
+        this.socketService?.emitToUser(
+          notif.userId,
+          SocketEvent.NotificationNew,
+          notif,
+        );
+      });
+      count += chunk.length;
+    }
 
     this.logger.info(
-      { count: userIds.length, title: data.title },
+      { count, title: data.title },
       'Broadcast notification sent',
     );
-    return { count: userIds.length };
+    return { count };
   }
 
   async countUnread(userId: string): Promise<number> {
