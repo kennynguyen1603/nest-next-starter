@@ -227,11 +227,12 @@ Error in DATABASE_PORT:
 
 Default configuration for the global `ValidationPipe`:
 
-| Option                | Value  | Description                                           |
-| --------------------- | ------ | ----------------------------------------------------- |
-| `transform`           | `true` | Automatically transform types (string → number, etc.) |
-| `whitelist`           | `true` | Strip properties not declared in the DTO              |
-| `errorHttpStatusCode` | `422`  | Validation errors return `422 Unprocessable Entity`   |
+| Option                 | Value  | Description                                                    |
+| ---------------------- | ------ | -------------------------------------------------------------- |
+| `transform`            | `true` | Automatically transform types (string → number, etc.)          |
+| `whitelist`            | `true` | Strip properties not declared in the DTO                       |
+| `forbidNonWhitelisted` | `true` | Reject (`422`) any request whose body/query has unknown fields |
+| `errorHttpStatusCode`  | `422`  | Validation errors return `422 Unprocessable Entity`            |
 
 **Setup in `main.ts`:**
 
@@ -248,7 +249,7 @@ Validation error response format:
   "status": 422,
   "errors": {
     "email": "email must be an email",
-    "password": "password must be longer than 6 characters"
+    "password": "password must be at least 8 characters and contain a letter and a number"
   }
 }
 ```

@@ -342,12 +342,12 @@ transports: ['websocket'],
 
 - `helmet` — HTTP security headers
 - `cookie-parser` — HttpOnly cookie for the refresh token
-- **Configurable cookie `secure` flag** — `APP_COOKIE_SECURE` env var controls whether the refresh token cookie requires HTTPS. Defaults to `true` in production; set to `false` for HTTP-only deployments (e.g. Docker without TLS termination)
+- **Configurable refresh cookie** — `APP_COOKIE_SECURE` controls whether the refresh token cookie requires HTTPS (defaults to `true` in production; set `false` for HTTP-only deployments). `APP_COOKIE_SAME_SITE` (`lax` | `strict` | `none`, default `lax`) and `APP_COOKIE_DOMAIN` let web + admin share the cookie across sibling origins; `none` forces `secure`
 - **Generic credentials error** — All login failure paths (email not found, no password set, wrong password) return the same `INVALID_CREDENTIALS` error on the `email` field, preventing user enumeration attacks
 - CORS configured to the frontend domain
-- `class-validator` + `class-transformer` — Request input validation
-- **Basic Auth middleware** — Protects `/api/queues` (Bull Board) and `/docs` (Swagger) with username/password
-- **Rate Limiting** — `@nestjs/throttler` applied globally as `APP_GUARD`; tracks requests per real IP extracted from `x-forwarded-for` / `x-real-ip` headers; Redis-backed storage (shared with BullMQ); configurable limit, TTL, and on/off toggle via env vars
+- `class-validator` + `class-transformer` — Request input validation; `whitelist` + `forbidNonWhitelisted` reject any request carrying properties not declared in the DTO (`422`)
+- **Basic Auth middleware** — Protects `/api/queues` (Bull Board) and `/docs` (Swagger) with username/password; credentials are compared in constant time to avoid timing leaks
+- **Rate Limiting** — `@nestjs/throttler` applied globally as `APP_GUARD`; tracks requests per client IP resolved from the framework's `trust proxy` setting (`req.ip`), never from raw `X-Forwarded-*` headers which a client could spoof to rotate its key — set `TRUST_PROXY` behind a proxy; Redis-backed storage (shared with BullMQ); configurable limit, TTL, and on/off toggle via env vars
 - **Per-user email cooldown** — separate from the IP throttler; `POST /forgot/password` checks a Redis key scoped to the user's ID before dispatching an email, returning `429 Too Many Requests` if the cooldown has not expired; prevents a targeted account from being flooded with password-reset emails
 
 ### 🏥 Health Check
@@ -917,7 +917,7 @@ THROTTLER_TTL=60           # TTL window in seconds
 ```
 
 > Default in `.env.example` is disabled (`THROTTLER_ENABLED=false`) — enable in production.  
-> Storage is Redis (shared with BullMQ). The tracker key is the client's real IP, resolved in order: `x-forwarded-for` → `x-real-ip` → `req.ips[0]` → `req.ip`.
+> Storage is Redis (shared with BullMQ). The tracker key is the framework-derived client IP (`req.ips[0]` → `req.ip`), which honours the `trust proxy` hop count set from `TRUST_PROXY`. It deliberately never reads `X-Forwarded-*` directly, so a client cannot spoof those headers to rotate its rate-limit key.
 
 ### Email Cooldown
 

@@ -113,7 +113,7 @@ apps/web/
 │   └── request.ts                  ← Server-side locale resolution
 │
 ├── messages/                       ← Translation files (en, vi, …)
-├── middleware.ts                   ← next-intl locale routing middleware
+├── proxy.ts                        ← next-intl locale routing (Next 16 proxy, replaces middleware.ts)
 ├── public/
 ├── next.config.js
 ├── tailwind.config.js
