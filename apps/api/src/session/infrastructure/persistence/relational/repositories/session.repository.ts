@@ -51,9 +51,14 @@ export class SessionRelationalRepository implements SessionRepository {
       Omit<Session, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>
     >,
   ): Promise<Session | null> {
-    const entity = await this.sessionRepository.findOne({
-      where: { id: Number(id) },
-    });
+    // user is no longer eager-loaded; select user.id so SessionMapper.toPersistence
+    // (which reads entity.user.id) does not throw on the round-trip.
+    const entity = await this.sessionRepository
+      .createQueryBuilder('session')
+      .leftJoin('session.user', 'user')
+      .addSelect('user.id')
+      .where('session.id = :id', { id: Number(id) })
+      .getOne();
 
     if (!entity) {
       throw new Error('Session not found');
