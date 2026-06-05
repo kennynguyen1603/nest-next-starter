@@ -19,14 +19,10 @@ export class AppThrottlerGuard extends ThrottlerGuard {
   }
 
   protected getTracker(req: FastifyRequest): Promise<string> {
-    const forwarded =
-      req.headers['x-forwarded-for'] ?? req.headers['x-real-ip'];
-    if (forwarded) {
-      const ip = Array.isArray(forwarded)
-        ? forwarded[0]
-        : forwarded.split(',')[0];
-      return Promise.resolve(ip.trim());
-    }
-    return Promise.resolve(req.ips?.[0] ?? req.ip);
+    // Use the framework-derived client IP, which honours the configured
+    // `trust proxy` setting (see main.ts). Never read X-Forwarded-* directly:
+    // a client can spoof those headers to rotate its rate-limit key and bypass
+    // the limiter. Behind a proxy, set TRUST_PROXY so req.ip resolves correctly.
+    return Promise.resolve(req.ips?.[0] ?? req.ip ?? 'unknown');
   }
 }
