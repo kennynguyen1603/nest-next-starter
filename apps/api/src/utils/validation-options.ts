@@ -21,6 +21,7 @@ function generateErrors(errors: ValidationError[]): Record<string, unknown> {
 const validationOptions: ValidationPipeOptions = {
   transform: true,
   whitelist: true,
+  forbidNonWhitelisted: true,
   errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
   exceptionFactory: (errors: ValidationError[]) => {
     return new UnprocessableEntityException({

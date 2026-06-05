@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  NotFoundException,
   Param,
   Post,
   Response,
@@ -70,9 +71,17 @@ export class FilesLocalController {
     return this.filesService.getFileUrl(id);
   }
 
+  // Served publicly so <img src> can load it (a bearer token can't ride on an
+  // <img> request). The random, unguessable filename is the capability. Validate
+  // strictly to the generated pattern to rule out path traversal / arbitrary reads.
+  private static readonly SAFE_FILENAME = /^[A-Za-z0-9]+\.(jpg|jpeg|png|gif)$/;
+
   @Get(':path')
   @ApiExcludeEndpoint()
   download(@Param('path') path: string, @Response() response: ExpressResponse) {
+    if (!FilesLocalController.SAFE_FILENAME.test(path)) {
+      throw new NotFoundException();
+    }
     return response.sendFile(path, { root: './files' });
   }
 }

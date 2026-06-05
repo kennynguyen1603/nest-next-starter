@@ -60,35 +60,30 @@ describe('AppThrottlerGuard', () => {
       return (guard as any).getTracker(makeRequest(overrides));
     }
 
-    it('returns single IP from x-forwarded-for string', async () => {
-      expect(await track({ headers: { 'x-forwarded-for': '1.2.3.4' } })).toBe(
-        '1.2.3.4',
-      );
-    });
-
-    it('returns first IP when x-forwarded-for has multiple comma-separated IPs', async () => {
+    it('ignores client-supplied x-forwarded-for and uses the framework IP', async () => {
+      // Spoofable headers must NOT control the rate-limit key.
       expect(
         await track({
-          headers: { 'x-forwarded-for': '1.2.3.4, 5.6.7.8, 9.10.11.12' },
+          headers: { 'x-forwarded-for': '1.2.3.4' },
+          ips: undefined,
+          ip: '127.0.0.1',
         }),
-      ).toBe('1.2.3.4');
+      ).toBe('127.0.0.1');
     });
 
-    it('returns first element when x-forwarded-for is an array', async () => {
+    it('ignores client-supplied x-real-ip and uses the framework IP', async () => {
       expect(
-        await track({ headers: { 'x-forwarded-for': ['1.2.3.4', '5.6.7.8'] } }),
-      ).toBe('1.2.3.4');
+        await track({
+          headers: { 'x-real-ip': '10.0.0.1' },
+          ips: undefined,
+          ip: '127.0.0.1',
+        }),
+      ).toBe('127.0.0.1');
     });
 
-    it('trims whitespace from extracted IP', async () => {
-      expect(
-        await track({ headers: { 'x-forwarded-for': '  1.2.3.4  ' } }),
-      ).toBe('1.2.3.4');
-    });
-
-    it('falls back to x-real-ip when x-forwarded-for is absent', async () => {
-      expect(await track({ headers: { 'x-real-ip': '10.0.0.1' } })).toBe(
-        '10.0.0.1',
+    it('returns "unknown" when no IP can be derived', async () => {
+      expect(await track({ headers: {}, ips: undefined, ip: undefined })).toBe(
+        'unknown',
       );
     });
 

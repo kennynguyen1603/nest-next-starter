@@ -58,6 +58,14 @@ class EnvironmentVariablesValidator {
   @IsOptional()
   APP_COOKIE_SECURE?: boolean;
 
+  @IsEnum(['lax', 'strict', 'none'])
+  @IsOptional()
+  APP_COOKIE_SAME_SITE?: string;
+
+  @IsString()
+  @IsOptional()
+  APP_COOKIE_DOMAIN?: string;
+
   @IsBoolean()
   @IsOptional()
   APP_DEBUG?: boolean;
@@ -103,6 +111,9 @@ export function getConfig(): AppConfig {
       process.env.APP_COOKIE_SECURE !== undefined
         ? process.env.APP_COOKIE_SECURE === 'true'
         : (process.env.NODE_ENV ?? 'development') === 'production',
+    cookieSameSite:
+      (process.env.APP_COOKIE_SAME_SITE as 'lax' | 'strict' | 'none') || 'lax',
+    cookieDomain: process.env.APP_COOKIE_DOMAIN || undefined,
   };
 }
 

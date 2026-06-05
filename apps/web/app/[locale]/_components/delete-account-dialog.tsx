@@ -13,7 +13,7 @@ interface Props {
 
 export function DeleteAccountDialog({ onClose }: Props) {
   const t = useTranslations("user");
-  const { clearAuth } = useAuthStore();
+  const clearAuth = useAuthStore((s) => s.clearAuth);
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [serverError, setServerError] = useState("");

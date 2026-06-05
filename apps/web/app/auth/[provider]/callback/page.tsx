@@ -20,11 +20,20 @@ export default function OAuthCallbackPage({
       const { provider } = await params;
       const code = searchParams.get("code");
       const error = searchParams.get("error");
+      const returnedState = searchParams.get("state");
 
       if (error || !code) {
         router.replace(
           `/login?error=${encodeURIComponent(error ?? "no_code")}`,
         );
+        return;
+      }
+
+      // Verify the state we stored before redirecting (CSRF protection).
+      const savedState = sessionStorage.getItem("oauth_state");
+      sessionStorage.removeItem("oauth_state");
+      if (!returnedState || returnedState !== savedState) {
+        router.replace("/login?error=invalid_state");
         return;
       }
 
@@ -52,14 +61,8 @@ export default function OAuthCallbackPage({
             `/login?error=${encodeURIComponent(data?.error ?? "auth_failed")}`,
           );
         } else {
-          localStorage.setItem(
-            "_oauth_result",
-            JSON.stringify({
-              token: data.token,
-              tokenExpires: data.tokenExpires,
-              user: data.user,
-            }),
-          );
+          // The exchange route forwarded the httpOnly refresh cookie; the home
+          // page restores the session from it (no token in localStorage).
           router.replace("/");
         }
       } catch {

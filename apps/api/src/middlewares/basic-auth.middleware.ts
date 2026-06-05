@@ -1,6 +1,15 @@
+import { timingSafeEqual } from 'crypto';
 import { Request, Response, NextFunction } from 'express';
 
 import { getConfig } from '@/config/auth/auth.config';
+
+// Constant-time string compare to avoid leaking credentials via timing.
+function safeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+}
 
 export function basicAuthMiddleware(
   req: Request,
@@ -24,8 +33,8 @@ export function basicAuthMiddleware(
   const config = getConfig();
 
   if (
-    username === config.basicAuth.username &&
-    password === config.basicAuth.password
+    safeEqual(username ?? '', config.basicAuth.username ?? '') &&
+    safeEqual(password ?? '', config.basicAuth.password ?? '')
   ) {
     next();
     return;

@@ -34,9 +34,33 @@ async function bootstrap() {
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
   const configService = app.get(ConfigService<AllConfigType>);
 
+  // Honour the reverse proxy's forwarded client IP (used by the rate limiter).
+  // Configure TRUST_PROXY to the proxy hop count / CIDR in production.
+  const trustProxy = process.env.TRUST_PROXY;
+  if (trustProxy) {
+    const value =
+      trustProxy === 'true'
+        ? true
+        : Number.isNaN(Number(trustProxy))
+          ? trustProxy
+          : Number(trustProxy);
+    (
+      app.getHttpAdapter().getInstance() as {
+        set: (k: string, v: unknown) => void;
+      }
+    ).set('trust proxy', value);
+  }
+
+  // Fail closed: when no allowed origins are configured we deny cross-origin
+  // rather than reflecting any origin with credentials (a credential-leak risk).
   const corsOrigin = configService.get('app.corsOrigin', { infer: true });
+  if (!corsOrigin?.length) {
+    logger.warn(
+      'No CORS origins configured (FRONTEND_DOMAIN/ADMIN_DOMAIN). Cross-origin requests will be blocked.',
+    );
+  }
   app.enableCors({
-    origin: corsOrigin?.length ? corsOrigin : true,
+    origin: corsOrigin?.length ? corsOrigin : false,
     credentials: true,
   });
   app.use(cookieParser());

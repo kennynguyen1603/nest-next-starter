@@ -6,11 +6,11 @@ Three pagination strategies are pre-configured. Choose the right one for each us
 
 ## Quick Reference
 
-| Strategy | When to use | Total count? | Logic file |
-|---|---|---|---|
-| **Infinity** | Infinite scroll, simple lists | ❌ | `infinity-pagination.ts` |
-| **Offset** | Data tables with page numbers | ✅ | `offset-pagination.ts` |
-| **Cursor** | Large datasets, real-time feeds | ❌ | `cursor-pagination.ts` |
+| Strategy     | When to use                     | Total count? | Logic file               |
+| ------------ | ------------------------------- | ------------ | ------------------------ |
+| **Infinity** | Infinite scroll, simple lists   | ❌           | `infinity-pagination.ts` |
+| **Offset**   | Data tables with page numbers   | ✅           | `offset-pagination.ts`   |
+| **Cursor**   | Large datasets, real-time feeds | ❌           | `cursor-pagination.ts`   |
 
 ---
 
@@ -82,11 +82,11 @@ Returns `{ data, pagination }` with full metadata (totalPages, currentPage, etc.
 
 **DTOs:** `src/common/dto/offset-pagination/`
 
-| File | Purpose |
-|---|---|
-| `page-options.dto.ts` | Query params (page, limit, order, q) |
-| `offset-pagination.dto.ts` | Pagination metadata |
-| `paginated.dto.ts` | `OffsetPaginatedDto<T>` response wrapper |
+| File                       | Purpose                                  |
+| -------------------------- | ---------------------------------------- |
+| `page-options.dto.ts`      | Query params (page, limit, order, q)     |
+| `offset-pagination.dto.ts` | Pagination metadata                      |
+| `paginated.dto.ts`         | `OffsetPaginatedDto<T>` response wrapper |
 
 ### Controller
 
@@ -112,12 +112,12 @@ async findAll(@Query() pageOptions: PageOptionsDto): Promise<OffsetPaginatedDto<
 
 ### Query params
 
-| Param | Default | Description |
-|---|---|---|
-| `page` | `1` | Current page number |
-| `limit` | `DEFAULT_PAGE_LIMIT` | Records per page |
-| `order` | `asc` | Sort direction |
-| `q` | — | Free-text search |
+| Param   | Default              | Description         |
+| ------- | -------------------- | ------------------- |
+| `page`  | `1`                  | Current page number |
+| `limit` | `DEFAULT_PAGE_LIMIT` | Records per page    |
+| `order` | `asc`                | Sort direction      |
+| `q`     | —                    | Free-text search    |
 
 ### `paginate()` options
 
@@ -153,11 +153,11 @@ Uses a base64-encoded cursor instead of page numbers. Efficient for large datase
 
 **DTOs:** `src/common/dto/cursor-pagination/`
 
-| File | Purpose |
-|---|---|
-| `page-options.dto.ts` | Query params (afterCursor, beforeCursor, limit, q) |
-| `cursor-pagination.dto.ts` | Pagination metadata (cursors, totalRecords) |
-| `paginated.dto.ts` | `CursorPaginatedDto<T>` response wrapper |
+| File                       | Purpose                                            |
+| -------------------------- | -------------------------------------------------- |
+| `page-options.dto.ts`      | Query params (afterCursor, beforeCursor, limit, q) |
+| `cursor-pagination.dto.ts` | Pagination metadata (cursors, totalRecords)        |
+| `paginated.dto.ts`         | `CursorPaginatedDto<T>` response wrapper           |
 
 ### Controller
 
@@ -200,12 +200,12 @@ async findAll(@Query() pageOptions: PageOptionsDto): Promise<CursorPaginatedDto<
 
 ### Query params
 
-| Param | Description |
-|---|---|
-| `limit` | Records per page |
-| `afterCursor` | Cursor to fetch the next page |
+| Param          | Description                       |
+| -------------- | --------------------------------- |
+| `limit`        | Records per page                  |
+| `afterCursor`  | Cursor to fetch the next page     |
 | `beforeCursor` | Cursor to fetch the previous page |
-| `q` | Free-text search |
+| `q`            | Free-text search                  |
 
 ### Important notes
 

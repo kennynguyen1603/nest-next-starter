@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import type { AdminUser } from "@repo/types";
@@ -17,7 +17,7 @@ const ROLE_OPTIONS = ["user", "manager", "admin"] as const;
 
 type BulkAction = "delete" | "status" | "role";
 
-export default function UserTable({ users, onRefresh }: Props) {
+function UserTable({ users, onRefresh }: Props) {
   const router = useRouter();
 
   // Single delete
@@ -80,61 +80,46 @@ export default function UserTable({ users, onRefresh }: Props) {
 
   // ─── Bulk actions ─────────────────────────────────────────────────────────────
 
-  async function executeBulkDelete() {
+  // Run a per-id action over the selection. Uses allSettled so a single failure
+  // doesn't abandon the already-applied changes — we always refresh and surface
+  // how many items failed instead of leaving the table in a stale, partial state.
+  async function runBulk(op: (id: string) => Promise<unknown>, label: string) {
     setBulkWorking(true);
     setBulkError(null);
     try {
-      await Promise.all(
-        [...selected].map((id) => api.delete(`/api/v1/users/${id}`)),
-      );
+      const ids = [...selected];
+      const results = await Promise.allSettled(ids.map((id) => op(id)));
+      const failed = results.filter((r) => r.status === "rejected").length;
       clearSelection();
       onRefresh();
-    } catch (e) {
-      setBulkError(e instanceof Error ? e.message : "Bulk delete failed");
+      if (failed > 0) {
+        setBulkError(`${failed} of ${ids.length} ${label} failed`);
+      }
     } finally {
       setBulkWorking(false);
+    }
+  }
+
+  async function executeBulkDelete() {
+    try {
+      await runBulk((id) => api.delete(`/api/v1/users/${id}`), "deletes");
+    } finally {
       setBulkAction(null);
     }
   }
 
   async function executeBulkStatus() {
-    setBulkWorking(true);
-    setBulkError(null);
-    try {
-      await Promise.all(
-        [...selected].map((id) =>
-          api.patch(`/api/v1/users/${id}`, { status: bulkStatus }),
-        ),
-      );
-      clearSelection();
-      onRefresh();
-    } catch (e) {
-      setBulkError(
-        e instanceof Error ? e.message : "Bulk status update failed",
-      );
-    } finally {
-      setBulkWorking(false);
-    }
+    await runBulk(
+      (id) => api.patch(`/api/v1/users/${id}`, { status: bulkStatus }),
+      "status updates",
+    );
   }
 
   async function executeBulkRole() {
-    setBulkWorking(true);
-    setBulkError(null);
-    try {
-      await Promise.all(
-        [...selected].map((id) =>
-          api.patch(`/api/v1/users/${id}`, {
-            roles: [{ name: bulkRole }],
-          }),
-        ),
-      );
-      clearSelection();
-      onRefresh();
-    } catch (e) {
-      setBulkError(e instanceof Error ? e.message : "Bulk role update failed");
-    } finally {
-      setBulkWorking(false);
-    }
+    await runBulk(
+      (id) => api.patch(`/api/v1/users/${id}`, { roles: [{ name: bulkRole }] }),
+      "role updates",
+    );
   }
 
   // ─── Render ───────────────────────────────────────────────────────────────────
@@ -349,3 +334,8 @@ export default function UserTable({ users, onRefresh }: Props) {
     </>
   );
 }
+
+// Memoized so typing in the page's search box (which re-renders the parent on
+// every keystroke) doesn't re-render the whole table; props are stable until a
+// fetch completes.
+export default memo(UserTable);

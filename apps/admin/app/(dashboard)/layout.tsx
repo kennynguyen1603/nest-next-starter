@@ -1,5 +1,6 @@
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
+import AuthBootstrap from "@/components/AuthBootstrap";
 
 export default function DashboardLayout({
   children,
@@ -8,6 +9,7 @@ export default function DashboardLayout({
 }) {
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
+      <AuthBootstrap />
       <Sidebar />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Header />

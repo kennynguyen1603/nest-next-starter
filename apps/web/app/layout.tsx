@@ -1,4 +1,5 @@
 import localFont from "next/font/local";
+import { getLocale } from "next-intl/server";
 import "./globals.css";
 
 const geistSans = localFont({
@@ -10,13 +11,14 @@ const geistMono = localFont({
   variable: "--font-geist-mono",
 });
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
   return (
-    <html>
+    <html lang={locale}>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         {children}
       </body>

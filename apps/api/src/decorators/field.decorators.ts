@@ -183,7 +183,7 @@ export function PasswordField(
   options: Omit<ApiPropertyOptions, 'type' | 'minLength'> &
     IStringFieldOptions = {},
 ): PropertyDecorator {
-  const decorators = [StringField({ ...options, minLength: 6 }), IsPassword()];
+  const decorators = [StringField({ ...options, minLength: 8 }), IsPassword()];
 
   if (options.nullable) {
     decorators.push(IsNullable());

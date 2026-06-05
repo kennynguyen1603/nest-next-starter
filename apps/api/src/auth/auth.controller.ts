@@ -48,30 +48,31 @@ export class AuthController {
     private readonly configService: ConfigService<AllConfigType>,
   ) {}
 
+  // sameSite/domain are configurable so web+admin can sit on sibling origins.
+  // 'strict' breaks cross-origin refresh; default is 'lax'. 'none' requires secure.
+  private refreshCookieOptions() {
+    const sameSite = this.configService.getOrThrow('app.cookieSameSite', {
+      infer: true,
+    });
+    const secure =
+      sameSite === 'none' ||
+      this.configService.getOrThrow('app.cookieSecure', { infer: true });
+    const domain = this.configService.get('app.cookieDomain', { infer: true });
+    return { httpOnly: true as const, secure, sameSite, domain, path: '/' };
+  }
+
   private setRefreshCookie(response: Response, token: string): void {
     const maxAge = Number(
       ms(this.configService.getOrThrow('auth.refreshExpires', { infer: true })),
     );
     response.cookie('refresh_token', token, {
-      httpOnly: true,
-      secure: this.configService.getOrThrow('app.cookieSecure', {
-        infer: true,
-      }),
-      sameSite: 'strict',
+      ...this.refreshCookieOptions(),
       maxAge,
-      path: '/',
     });
   }
 
   private clearRefreshCookie(response: Response): void {
-    response.clearCookie('refresh_token', {
-      httpOnly: true,
-      secure: this.configService.getOrThrow('app.cookieSecure', {
-        infer: true,
-      }),
-      sameSite: 'strict',
-      path: '/',
-    });
+    response.clearCookie('refresh_token', this.refreshCookieOptions());
   }
 
   @Throttle({ default: { limit: 5, ttl: 60000 } })
