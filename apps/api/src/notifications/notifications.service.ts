@@ -64,9 +64,10 @@ export class NotificationsService {
       paginationOptions,
       isRead,
     );
-    const pageOptions = new PageOptionsDto();
-    (pageOptions as any).limit = paginationOptions.limit;
-    (pageOptions as any).page = paginationOptions.page;
+    const pageOptions = Object.assign(new PageOptionsDto(), {
+      limit: paginationOptions.limit,
+      page: paginationOptions.page,
+    });
     return new OffsetPaginatedDto(
       notifications,
       new OffsetPaginationDto(total, pageOptions),
@@ -78,8 +79,11 @@ export class NotificationsService {
     if (!existing || existing.userId !== userId) {
       throw new NotFoundException('Notification not found');
     }
-    const updated = await this.notificationRepo.markAsRead(id);
-    return updated!;
+    await this.notificationRepo.markAsRead(id);
+    // Mutate and return the already-fetched entity — avoids a second SELECT
+    existing.isRead = true;
+    existing.readAt = new Date();
+    return existing;
   }
 
   async remove(id: string, userId: string): Promise<void> {
@@ -99,14 +103,27 @@ export class NotificationsService {
       data?: Record<string, unknown>;
     },
   ): Promise<{ count: number }> {
-    const CHUNK = 20;
-    for (let i = 0; i < userIds.length; i += CHUNK) {
-      await Promise.all(
-        userIds
-          .slice(i, i + CHUNK)
-          .map((userId) => this.create({ userId, ...data })),
+    // Bulk INSERT in one query instead of N individual INSERTs
+    const notifications = await this.notificationRepo.bulkCreate(
+      userIds.map((userId) => ({
+        userId,
+        type: data.type,
+        title: data.title,
+        message: data.message,
+        data: data.data ?? null,
+        isRead: false,
+        readAt: null,
+      })),
+    );
+
+    notifications.forEach((notif) => {
+      this.socketService?.emitToUser(
+        notif.userId,
+        SocketEvent.NotificationNew,
+        notif,
       );
-    }
+    });
+
     this.logger.info(
       { count: userIds.length, title: data.title },
       'Broadcast notification sent',

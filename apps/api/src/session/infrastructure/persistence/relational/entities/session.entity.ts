@@ -16,7 +16,7 @@ export class SessionEntity extends EntityRelationalHelper {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @ManyToOne(() => UserEntity, { eager: true })
+  @ManyToOne(() => UserEntity)
   @Index()
   user!: UserEntity;
 

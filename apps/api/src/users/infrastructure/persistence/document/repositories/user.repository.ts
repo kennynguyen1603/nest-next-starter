@@ -24,6 +24,8 @@ export class UsersDocumentRepository implements UserRepository {
     private readonly roleModel: Model<RoleSchemaClass>,
   ) {}
 
+  // Single-user role lookup (3 queries: user + user_role + role).
+  // Acceptable for point lookups — no N+1 risk with a single user.
   private async populateRoles(userId: string): Promise<RoleSchemaClass[]> {
     const userRoles = await this.userRoleModel
       .find({ userId })
@@ -31,6 +33,36 @@ export class UsersDocumentRepository implements UserRepository {
     if (!userRoles.length) return [];
     const roleIds = userRoles.map((userRole) => userRole.roleId);
     return this.roleModel.find({ _id: { $in: roleIds } }).lean();
+  }
+
+  // Batch role lookup for multiple users — 2 queries regardless of user count.
+  // Eliminates the N+1 pattern that would arise from calling populateRoles per user.
+  private async batchPopulateRoles(
+    userIds: string[],
+  ): Promise<Map<string, RoleSchemaClass[]>> {
+    if (!userIds.length) return new Map();
+
+    const userRoleDocs = await this.userRoleModel
+      .find({ userId: { $in: userIds } })
+      .lean<{ userId: string; roleId: string }[]>();
+
+    if (!userRoleDocs.length) return new Map();
+
+    const uniqueRoleIds = [...new Set(userRoleDocs.map((ur) => ur.roleId))];
+    const roles = await this.roleModel
+      .find({ _id: { $in: uniqueRoleIds } })
+      .lean<RoleSchemaClass[]>();
+
+    const roleById = new Map(roles.map((r) => [String(r._id), r]));
+
+    const result = new Map<string, RoleSchemaClass[]>();
+    for (const ur of userRoleDocs) {
+      const list = result.get(ur.userId) ?? [];
+      const role = roleById.get(ur.roleId);
+      if (role) list.push(role);
+      result.set(ur.userId, list);
+    }
+    return result;
   }
 
   async create(data: User): Promise<User> {
@@ -79,13 +111,12 @@ export class UsersDocumentRepository implements UserRepository {
       const userRoleDocs = await this.userRoleModel
         .find({ roleId: { $in: roleIds } })
         .lean<{ userId: string }[]>();
-      const userIds = userRoleDocs.map((userRole) => userRole.userId);
-      where['_id'] = { $in: userIds };
+      where['_id'] = { $in: userRoleDocs.map((ur) => ur.userId) };
     }
 
     const sortQuery = sortOptions?.reduce(
-      (accumulator, sort) => ({
-        ...accumulator,
+      (acc, sort) => ({
+        ...acc,
         [sort.orderBy === 'id' ? '_id' : sort.orderBy]:
           sort.order.toUpperCase() === 'ASC' ? 1 : -1,
       }),
@@ -101,13 +132,15 @@ export class UsersDocumentRepository implements UserRepository {
       this.usersModel.countDocuments(where),
     ]);
 
-    const data = await Promise.all(
-      userDocuments.map(async (userDocument) => {
-        const roles = await this.populateRoles(userDocument._id.toString());
-        return UserMapper.toDomain(userDocument, roles);
-      }),
-    );
+    if (!userDocuments.length) return [[], total];
 
+    // Batch-load all roles in 2 queries instead of 2N queries (N+1 eliminated)
+    const rolesMap = await this.batchPopulateRoles(
+      userDocuments.map((doc) => doc._id.toString()),
+    );
+    const data = userDocuments.map((doc) =>
+      UserMapper.toDomain(doc, rolesMap.get(doc._id.toString()) ?? []),
+    );
     return [data, total];
   }
 
@@ -119,14 +152,18 @@ export class UsersDocumentRepository implements UserRepository {
   }
 
   async findByIds(ids: User['id'][]): Promise<User[]> {
+    if (!ids.length) return [];
     const userDocuments = await this.usersModel.find({
       _id: { $in: ids.map((id) => id.toString()) },
     });
-    return Promise.all(
-      userDocuments.map(async (userDocument) => {
-        const roles = await this.populateRoles(userDocument._id.toString());
-        return UserMapper.toDomain(userDocument, roles);
-      }),
+    if (!userDocuments.length) return [];
+
+    // Batch-load roles in 2 queries instead of 2N queries (N+1 eliminated)
+    const rolesMap = await this.batchPopulateRoles(
+      userDocuments.map((doc) => doc._id.toString()),
+    );
+    return userDocuments.map((doc) =>
+      UserMapper.toDomain(doc, rolesMap.get(doc._id.toString()) ?? []),
     );
   }
 
@@ -160,11 +197,17 @@ export class UsersDocumentRepository implements UserRepository {
     const existingUser = await this.usersModel.findOne(filter);
     if (!existingUser) return null;
 
+    // Strip undefined so spreading doesn't accidentally remove fields from the
+    // replacement doc. null is kept — it signals an explicit clear (e.g. photo).
+    const defined = Object.fromEntries(
+      Object.entries(clonedPayload).filter(([, v]) => v !== undefined),
+    ) as Partial<User>;
+
     const updatedUser = await this.usersModel.findOneAndUpdate(
       filter,
       UserMapper.toPersistence({
         ...UserMapper.toDomain(existingUser),
-        ...clonedPayload,
+        ...defined,
       }),
       { returnDocument: 'after' },
     );
@@ -192,6 +235,13 @@ export class UsersDocumentRepository implements UserRepository {
 
     const roles = await this.populateRoles(updatedUser._id.toString());
     return UserMapper.toDomain(updatedUser, roles);
+  }
+
+  async findAllIds(): Promise<string[]> {
+    const docs = await this.usersModel
+      .find({}, { _id: 1 })
+      .lean<{ _id: unknown }[]>();
+    return docs.map((d) => String(d._id));
   }
 
   async remove(id: User['id']): Promise<void> {

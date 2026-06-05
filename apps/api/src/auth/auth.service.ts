@@ -128,26 +128,26 @@ export class AuthService {
       .update(randomStringGenerator())
       .digest('hex');
 
+    const roleNames = (user.roles ?? []).map((r) => r.name);
     await this.sessionService.enforceSessionLimit(
       user.id,
       MAX_SESSIONS_PER_USER,
     );
-    const session = await this.sessionService.create({
-      user,
-      hash,
-      deviceId: generateDeviceId(securityContext?.userAgent),
-      deviceName: securityContext
-        ? formatDeviceName(securityContext.deviceInfo)
-        : undefined,
-      ipAddress: securityContext?.ip,
-      userAgent: securityContext?.userAgent,
-      platform: securityContext?.deviceInfo.platform,
-      lastUsedAt: new Date(),
-    });
-
-    const roleNames = (user.roles ?? []).map((r) => r.name);
-    const permissions =
-      await this.rolesService.getPermissionsForRoles(roleNames);
+    const [session, permissions] = await Promise.all([
+      this.sessionService.create({
+        user,
+        hash,
+        deviceId: generateDeviceId(securityContext?.userAgent),
+        deviceName: securityContext
+          ? formatDeviceName(securityContext.deviceInfo)
+          : undefined,
+        ipAddress: securityContext?.ip,
+        userAgent: securityContext?.userAgent,
+        platform: securityContext?.deviceInfo.platform,
+        lastUsedAt: new Date(),
+      }),
+      this.rolesService.getPermissionsForRoles(roleNames),
+    ]);
 
     const { token, refreshToken, tokenExpires } = await this.getTokensData({
       id: user.id,
@@ -176,25 +176,24 @@ export class AuthService {
     socialData: SocialInterface,
     securityContext?: SecurityContext,
   ): Promise<LoginResponseDto & { refreshToken: string; message: string }> {
-    let user: NullableType<User> = null;
     const socialEmail = socialData.email?.toLowerCase();
-    let userByEmail: NullableType<User> = null;
-
-    if (socialEmail) {
-      userByEmail = await this.usersService.findByEmail(socialEmail);
-    }
-
-    if (socialData.id) {
-      user = await this.usersService.findBySocialIdAndProvider({
-        socialId: socialData.id,
-        provider: authProvider,
-      });
-    }
+    const [userByEmail, userBySocial] = await Promise.all([
+      socialEmail
+        ? this.usersService.findByEmail(socialEmail)
+        : Promise.resolve(null),
+      socialData.id
+        ? this.usersService.findBySocialIdAndProvider({
+            socialId: socialData.id,
+            provider: authProvider,
+          })
+        : Promise.resolve(null),
+    ]);
+    let user: NullableType<User> = userBySocial;
 
     if (user) {
       if (socialEmail && !userByEmail) {
         user.email = socialEmail;
-        await this.usersService.update(user.id, user);
+        await this.usersService.update(user.id, { email: socialEmail });
       }
     } else if (userByEmail) {
       user = userByEmail;
@@ -268,26 +267,26 @@ export class AuthService {
       '[social login] security context',
     );
 
+    const roleNames = (user.roles ?? []).map((r) => r.name);
     await this.sessionService.enforceSessionLimit(
       user.id,
       MAX_SESSIONS_PER_USER,
     );
-    const session = await this.sessionService.create({
-      user,
-      hash,
-      deviceId: generateDeviceId(securityContext?.userAgent),
-      deviceName: securityContext
-        ? formatDeviceName(securityContext.deviceInfo)
-        : undefined,
-      ipAddress: securityContext?.ip,
-      userAgent: securityContext?.userAgent,
-      platform: securityContext?.deviceInfo.platform,
-      lastUsedAt: new Date(),
-    });
-
-    const roleNames = (user.roles ?? []).map((r) => r.name);
-    const permissions =
-      await this.rolesService.getPermissionsForRoles(roleNames);
+    const [session, permissions] = await Promise.all([
+      this.sessionService.create({
+        user,
+        hash,
+        deviceId: generateDeviceId(securityContext?.userAgent),
+        deviceName: securityContext
+          ? formatDeviceName(securityContext.deviceInfo)
+          : undefined,
+        ipAddress: securityContext?.ip,
+        userAgent: securityContext?.userAgent,
+        platform: securityContext?.deviceInfo.platform,
+        lastUsedAt: new Date(),
+      }),
+      this.rolesService.getPermissionsForRoles(roleNames),
+    ]);
 
     const {
       token: jwtToken,
@@ -386,8 +385,7 @@ export class AuthService {
       });
     }
 
-    user.status = UserStatus.ACTIVE;
-    await this.usersService.update(user.id, user);
+    await this.usersService.update(user.id, { status: UserStatus.ACTIVE });
 
     this.logger.info(
       { userId: user.id },
@@ -427,8 +425,7 @@ export class AuthService {
       });
     }
 
-    user.email = newEmail;
-    await this.usersService.update(user.id, user);
+    await this.usersService.update(user.id, { email: newEmail });
 
     return { message: this.t('auth.NEW_EMAIL_CONFIRM_SUCCESS') };
   }
@@ -526,9 +523,10 @@ export class AuthService {
       });
     }
 
-    user.password = password;
-    await this.sessionService.deleteByUserId({ userId: user.id }, 'logout');
-    await this.usersService.update(user.id, user);
+    await Promise.all([
+      this.sessionService.deleteByUserId({ userId: user.id }, 'logout'),
+      this.usersService.update(user.id, { password }),
+    ]);
 
     this.logger.info(
       { userId: user.id },
@@ -618,8 +616,7 @@ export class AuthService {
     delete userDto.email;
     delete userDto.oldPassword;
 
-    await this.usersService.update(userJwtPayload.id, userDto);
-    return this.usersService.findById(userJwtPayload.id);
+    return this.usersService.update(userJwtPayload.id, userDto);
   }
 
   async refreshToken(
@@ -654,19 +651,8 @@ export class AuthService {
     }
 
     const roleNames = user.roles.map((r) => r.name);
-    const permissionsCacheKey = roleNames.slice().sort().join(',');
-    let permissions = await this.cacheService.get<PermissionEnum[]>({
-      key: 'RolePermissions',
-      args: [permissionsCacheKey],
-    });
-    if (permissions === null || permissions === undefined) {
-      permissions = await this.rolesService.getPermissionsForRoles(roleNames);
-      await this.cacheService.set(
-        { key: 'RolePermissions', args: [permissionsCacheKey] },
-        permissions,
-        { ttl: 5 * 60 * 1000 },
-      );
-    }
+    const permissions =
+      await this.rolesService.getPermissionsForRoles(roleNames);
 
     const { token, refreshToken, tokenExpires } = await this.getTokensData({
       id: session.user.id,

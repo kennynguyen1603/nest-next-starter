@@ -29,7 +29,13 @@ export default function RegisterPage() {
         firstName: z.string().min(1, t("errorFirstName")),
         lastName: z.string().min(1, t("errorLastName")),
         email: z.string().email(t("errorInvalidEmail")),
-        password: z.string().min(8, t("errorPasswordLength")),
+        password: z
+          .string()
+          .min(8, t("errorPasswordLength"))
+          .regex(
+            /^(?=.*[A-Za-z])(?=.*\d)[\d!#$%&*@A-Za-z^]+$/,
+            t("errorPasswordComplexity"),
+          ),
       }),
     [t],
   );

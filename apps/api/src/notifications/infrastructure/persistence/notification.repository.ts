@@ -17,9 +17,11 @@ export abstract class NotificationRepository {
     id: Notification['id'],
   ): Promise<NullableType<Notification>>;
 
-  abstract markAsRead(
-    id: Notification['id'],
-  ): Promise<NullableType<Notification>>;
+  abstract markAsRead(id: Notification['id']): Promise<void>;
+
+  abstract bulkCreate(
+    notifications: Array<Omit<Notification, 'id' | 'createdAt' | 'updatedAt'>>,
+  ): Promise<Notification[]>;
 
   abstract remove(id: Notification['id']): Promise<void>;
 

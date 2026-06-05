@@ -58,20 +58,22 @@ export class NotificationsDocumentRepository implements NotificationRepository {
       : null;
   }
 
-  async markAsRead(id: string): Promise<NullableType<Notification>> {
-    if (!Types.ObjectId.isValid(id)) return null;
-    const doc = await this.model
-      .findByIdAndUpdate(
-        id,
-        { isRead: true, readAt: new Date() },
-        { new: true },
-      )
-      .lean({ virtuals: true });
-    return doc
-      ? NotificationDocumentMapper.toDomain(
-          doc as unknown as NotificationSchemaClass,
-        )
-      : null;
+  async markAsRead(id: string): Promise<void> {
+    if (!Types.ObjectId.isValid(id)) return;
+    await this.model.updateOne(
+      { _id: id },
+      { isRead: true, readAt: new Date() },
+    );
+  }
+
+  async bulkCreate(
+    notifications: Array<Omit<Notification, 'id' | 'createdAt' | 'updatedAt'>>,
+  ): Promise<Notification[]> {
+    if (!notifications.length) return [];
+    const docs = await this.model.insertMany(
+      notifications.map((n) => ({ ...n })),
+    );
+    return docs.map((d) => NotificationDocumentMapper.toDomain(d));
   }
 
   async remove(id: string): Promise<void> {

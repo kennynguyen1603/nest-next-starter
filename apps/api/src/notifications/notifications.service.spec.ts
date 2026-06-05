@@ -29,7 +29,8 @@ const mockRepo = {
   create: jest.fn(),
   findManyByUserId: jest.fn(),
   findById: jest.fn(),
-  markAsRead: jest.fn(),
+  markAsRead: jest.fn().mockResolvedValue(undefined),
+  bulkCreate: jest.fn(),
   remove: jest.fn(),
   countUnread: jest.fn(),
 };

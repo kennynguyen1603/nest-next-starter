@@ -47,7 +47,7 @@ function LineChart({ data }: { data: UserGrowthPoint[] }) {
   ].join(" ");
 
   // Y-axis ticks
-  const yTicks = [0, Math.round(maxCount / 2), maxCount];
+  const yTicks = [...new Set([0, Math.round(maxCount / 2), maxCount])];
 
   // X-axis labels — show first, middle, last
   const xLabels = [

@@ -19,11 +19,12 @@ export class SessionRelationalRepository implements SessionRepository {
   ) {}
 
   async findById(id: Session['id']): Promise<NullableType<Session>> {
-    const entity = await this.sessionRepository.findOne({
-      where: {
-        id: Number(id),
-      },
-    });
+    const entity = await this.sessionRepository
+      .createQueryBuilder('session')
+      .leftJoin('session.user', 'user')
+      .addSelect('user.id')
+      .where('session.id = :id', { id: Number(id) })
+      .getOne();
 
     return entity ? SessionMapper.toDomain(entity) : null;
   }
@@ -33,7 +34,7 @@ export class SessionRelationalRepository implements SessionRepository {
       where: { user: { id: userId } },
       order: { lastUsedAt: 'DESC', createdAt: 'DESC' },
     });
-    return entities.map(SessionMapper.toDomain);
+    return entities.map((entity) => SessionMapper.toDomain(entity));
   }
 
   async create(data: Session): Promise<Session> {
@@ -50,9 +51,14 @@ export class SessionRelationalRepository implements SessionRepository {
       Omit<Session, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>
     >,
   ): Promise<Session | null> {
-    const entity = await this.sessionRepository.findOne({
-      where: { id: Number(id) },
-    });
+    // user is no longer eager-loaded; select user.id so SessionMapper.toPersistence
+    // (which reads entity.user.id) does not throw on the round-trip.
+    const entity = await this.sessionRepository
+      .createQueryBuilder('session')
+      .leftJoin('session.user', 'user')
+      .addSelect('user.id')
+      .where('session.id = :id', { id: Number(id) })
+      .getOne();
 
     if (!entity) {
       throw new Error('Session not found');
@@ -85,9 +91,12 @@ export class SessionRelationalRepository implements SessionRepository {
       return null;
     }
 
-    const entity = await this.sessionRepository.findOne({
-      where: { id: Number(conditions.id) },
-    });
+    const entity = await this.sessionRepository
+      .createQueryBuilder('session')
+      .leftJoin('session.user', 'user')
+      .addSelect('user.id')
+      .where('session.id = :id', { id: Number(conditions.id) })
+      .getOne();
 
     return entity ? SessionMapper.toDomain(entity) : null;
   }
@@ -132,11 +141,12 @@ export class SessionRelationalRepository implements SessionRepository {
     userId: User['id'],
     maxSessions: number,
   ): Promise<void> {
-    const sessions = await this.sessionRepository.find({
-      where: { user: { id: userId } },
-      order: { createdAt: 'ASC' },
-      select: ['id'],
-    });
+    const sessions = await this.sessionRepository
+      .createQueryBuilder('session')
+      .select('session.id')
+      .where('"session"."userId" = :userId', { userId })
+      .orderBy('session.createdAt', 'ASC')
+      .getMany();
     if (sessions.length >= maxSessions) {
       const excess = sessions.slice(0, sessions.length - maxSessions + 1);
       await this.sessionRepository.update(

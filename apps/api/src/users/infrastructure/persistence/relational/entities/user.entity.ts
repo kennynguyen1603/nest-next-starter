@@ -50,11 +50,11 @@ export class UserEntity extends EntityRelationalHelper {
   @Column({ type: String, nullable: true })
   lastName!: string | null;
 
-  @OneToOne(() => FileEntity, { eager: true })
+  @OneToOne(() => FileEntity)
   @JoinColumn()
   photo?: FileEntity | null;
 
-  @ManyToMany(() => RoleEntity, { eager: true })
+  @ManyToMany(() => RoleEntity)
   @JoinTable({
     name: 'user_role',
     joinColumn: { name: 'user_id', referencedColumnName: 'id' },

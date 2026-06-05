@@ -57,6 +57,7 @@
       "errorLastName": "Họ là bắt buộc",
       "errorInvalidEmail": "Địa chỉ email không hợp lệ",
       "errorPasswordLength": "Mật khẩu phải có ít nhất 8 ký tự",
+      "errorPasswordComplexity": "Mật khẩu phải chứa ít nhất một chữ cái và một chữ số",
       "errorDefault": "Đăng ký thất bại. Vui lòng thử lại.",
       "successTitle": "Kiểm tra email của bạn",
       "successMessage": "Chúng tôi đã gửi link xác nhận đến địa chỉ email của bạn. Kiểm tra hộp thư và nhấp vào link để kích hoạt tài khoản.",
@@ -85,6 +86,7 @@
       "successMessage": "Mật khẩu của bạn đã được đặt lại. Bạn có thể đăng nhập ngay bây giờ.",
       "backToSignIn": "← Quay lại đăng nhập",
       "errorPasswordLength": "Mật khẩu phải có ít nhất 8 ký tự",
+      "errorPasswordComplexity": "Mật khẩu phải chứa ít nhất một chữ cái và một chữ số",
       "errorDefault": "Link không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu link mới.",
       "errorMissingHash": "Link đặt lại không hợp lệ."
     },
@@ -118,6 +120,7 @@
     "errorFirstName": "Tên là bắt buộc",
     "errorLastName": "Họ là bắt buộc",
     "errorPasswordLength": "Mật khẩu phải có ít nhất 8 ký tự",
+    "errorPasswordComplexity": "Mật khẩu phải chứa ít nhất một chữ cái và một chữ số",
     "oldPasswordRequired": "Cần nhập mật khẩu hiện tại để đặt mật khẩu mới",
     "errorDefault": "Đã xảy ra lỗi. Vui lòng thử lại."
   },

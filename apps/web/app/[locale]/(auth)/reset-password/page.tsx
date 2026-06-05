@@ -23,7 +23,16 @@ function ResetPasswordContent() {
   const [serverError, setServerError] = useState("");
 
   const schema = useMemo(
-    () => z.object({ password: z.string().min(8, t("errorPasswordLength")) }),
+    () =>
+      z.object({
+        password: z
+          .string()
+          .min(8, t("errorPasswordLength"))
+          .regex(
+            /^(?=.*[A-Za-z])(?=.*\d)[\d!#$%&*@A-Za-z^]+$/,
+            t("errorPasswordComplexity"),
+          ),
+      }),
     [t],
   );
 
