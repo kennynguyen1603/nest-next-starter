@@ -17,13 +17,13 @@ class ThrottleTestController {
 async function buildApp(
   limit: number,
   ttl: number,
-  skipIf?: () => boolean,
+  opts: { skipIf?: () => boolean; trustProxy?: boolean } = {},
 ): Promise<INestApplication<App>> {
   const moduleRef = await Test.createTestingModule({
     imports: [
       ThrottlerModule.forRoot({
         throttlers: [{ limit, ttl }],
-        ...(skipIf ? { skipIf } : {}),
+        ...(opts.skipIf ? { skipIf: opts.skipIf } : {}),
       }),
     ],
     controllers: [ThrottleTestController],
@@ -31,6 +31,15 @@ async function buildApp(
   }).compile();
 
   const app = moduleRef.createNestApplication<INestApplication<App>>();
+  if (opts.trustProxy) {
+    // Mirror main.ts: only when TRUST_PROXY is configured does req.ip/req.ips
+    // reflect the X-Forwarded-For chain.
+    (
+      app.getHttpAdapter().getInstance() as {
+        set: (k: string, v: unknown) => void;
+      }
+    ).set('trust proxy', true);
+  }
   await app.init();
   return app;
 }
@@ -65,7 +74,7 @@ describe('AppThrottlerGuard (e2e)', () => {
   });
 
   it('does not rate limit when skipIf returns true', async () => {
-    app = await buildApp(1, 60000, () => true);
+    app = await buildApp(1, 60000, { skipIf: () => true });
     for (let i = 0; i < 5; i++) {
       await request(app.getHttpServer())
         .get('/throttle-test/limited')
@@ -73,53 +82,42 @@ describe('AppThrottlerGuard (e2e)', () => {
     }
   });
 
-  it('tracks requests per IP via x-forwarded-for — each IP has its own counter', async () => {
+  it('ignores X-Forwarded-For when trust proxy is off, so a client cannot rotate its key', async () => {
     app = await buildApp(1, 60000);
 
-    // First request from IP A — allowed
+    // First request — allowed
     await request(app.getHttpServer())
       .get('/throttle-test/limited')
       .set('x-forwarded-for', '1.2.3.4')
       .expect(200);
 
-    // First request from IP B — allowed (different counter)
-    await request(app.getHttpServer())
-      .get('/throttle-test/limited')
-      .set('x-forwarded-for', '5.6.7.8')
-      .expect(200);
-
-    // Second request from IP A — rate limited
-    await request(app.getHttpServer())
-      .get('/throttle-test/limited')
-      .set('x-forwarded-for', '1.2.3.4')
-      .expect(429);
-
-    // Second request from IP B — rate limited
+    // Same socket, but a DIFFERENT spoofed header — still limited, because the
+    // guard keys on req.ip (not the untrusted header) when trust proxy is off.
     await request(app.getHttpServer())
       .get('/throttle-test/limited')
       .set('x-forwarded-for', '5.6.7.8')
       .expect(429);
   });
 
-  it('uses the first IP in a comma-separated x-forwarded-for as the tracker key', async () => {
-    app = await buildApp(1, 60000);
+  it('keys on the client IP from X-Forwarded-For when trust proxy is enabled', async () => {
+    app = await buildApp(1, 60000, { trustProxy: true });
 
-    // Client IP 1.2.3.4 (first in chain) — first hit allowed
+    // Client IP A — allowed
     await request(app.getHttpServer())
       .get('/throttle-test/limited')
-      .set('x-forwarded-for', '1.2.3.4, 10.0.0.1')
+      .set('x-forwarded-for', '1.2.3.4')
       .expect(200);
 
-    // Same client IP, second hit — rate limited
+    // Client IP B — separate counter, allowed
     await request(app.getHttpServer())
       .get('/throttle-test/limited')
-      .set('x-forwarded-for', '1.2.3.4, 10.0.0.1')
+      .set('x-forwarded-for', '5.6.7.8')
+      .expect(200);
+
+    // Client IP A again — rate limited
+    await request(app.getHttpServer())
+      .get('/throttle-test/limited')
+      .set('x-forwarded-for', '1.2.3.4')
       .expect(429);
-
-    // Different client IP 10.0.0.1 as first — not yet limited
-    await request(app.getHttpServer())
-      .get('/throttle-test/limited')
-      .set('x-forwarded-for', '10.0.0.1')
-      .expect(200);
   });
 });
