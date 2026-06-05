@@ -25,8 +25,12 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
 export default function Home() {
   const router = useRouter();
-  const { accessToken, tokenExpires, user, clearAuth, setAuth } =
-    useAuthStore();
+  // Per-field selectors so unrelated store writes don't re-render the page.
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const tokenExpires = useAuthStore((s) => s.tokenExpires);
+  const user = useAuthStore((s) => s.user);
+  const clearAuth = useAuthStore((s) => s.clearAuth);
+  const setAuth = useAuthStore((s) => s.setAuth);
   const t = useTranslations();
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
@@ -34,22 +38,9 @@ export default function Home() {
 
   useEffect(() => {
     async function init() {
-      const pending = localStorage.getItem("_oauth_result");
-      if (pending) {
-        localStorage.removeItem("_oauth_result");
-        try {
-          const { token, tokenExpires: exp } = JSON.parse(pending);
-          setAuth(token, exp, null);
-          const fetched = await api.get<AuthUser>("/api/v1/auth/me");
-          setAuth(token, exp, fetched);
-        } catch {
-          clearAuth();
-          router.replace("/login");
-        }
-        return;
-      }
-
       if (!accessToken) {
+        // Restores the session from the httpOnly refresh cookie (also covers the
+        // OAuth callback, which set that cookie before redirecting here).
         const ok = await tryRefresh();
         if (!ok) router.replace("/login");
         return;

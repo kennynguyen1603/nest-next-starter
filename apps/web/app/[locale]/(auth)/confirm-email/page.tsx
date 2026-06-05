@@ -26,17 +26,20 @@ function ConfirmEmailContent() {
       return;
     }
 
+    let timer: ReturnType<typeof setTimeout> | undefined;
     api
       .post<void>("/api/v1/auth/email/confirm", { hash })
       .then(() => {
         setStatus("success");
-        const timer = setTimeout(() => router.push("/login"), 3000);
-        return () => clearTimeout(timer);
+        timer = setTimeout(() => router.push("/login"), 3000);
       })
       .catch((err: unknown) => {
         setStatus("error");
         setErrorMessage(err instanceof Error ? err.message : t("errorDefault"));
       });
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hash]);
 

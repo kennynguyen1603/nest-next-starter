@@ -30,7 +30,8 @@ interface Props {
 export function EditProfileDialog({ user, currentPhotoUrl, onClose }: Props) {
   const t = useTranslations("user");
   const commonT = useTranslations("common");
-  const { accessToken, updateUser } = useAuthStore();
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const updateUser = useAuthStore((s) => s.updateUser);
   const [serverError, setServerError] = useState("");
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);

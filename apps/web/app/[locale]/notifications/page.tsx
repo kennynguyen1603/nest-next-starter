@@ -33,7 +33,7 @@ const PAGE_SIZE = 20;
 
 export default function NotificationsPage() {
   const router = useRouter();
-  const { accessToken } = useAuthStore();
+  const accessToken = useAuthStore((s) => s.accessToken);
   const t = useTranslations("notifications");
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
