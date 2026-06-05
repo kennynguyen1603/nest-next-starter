@@ -57,6 +57,7 @@
       "errorLastName": "Last name is required",
       "errorInvalidEmail": "Invalid email address",
       "errorPasswordLength": "Password must be at least 8 characters",
+      "errorPasswordComplexity": "Password must contain at least one letter and one number",
       "errorDefault": "Registration failed. Please try again.",
       "successTitle": "Check your email",
       "successMessage": "We've sent a confirmation link to your email address. Check your inbox and click the link to activate your account.",
@@ -85,6 +86,7 @@
       "successMessage": "Your password has been reset. You can now sign in.",
       "backToSignIn": "← Back to sign in",
       "errorPasswordLength": "Password must be at least 8 characters",
+      "errorPasswordComplexity": "Password must contain at least one letter and one number",
       "errorDefault": "Invalid or expired link. Please request a new one.",
       "errorMissingHash": "Invalid reset link."
     },
@@ -118,6 +120,7 @@
     "errorFirstName": "First name is required",
     "errorLastName": "Last name is required",
     "errorPasswordLength": "Password must be at least 8 characters",
+    "errorPasswordComplexity": "Password must contain at least one letter and one number",
     "oldPasswordRequired": "Current password is required to set a new password",
     "errorDefault": "Something went wrong. Please try again."
   },

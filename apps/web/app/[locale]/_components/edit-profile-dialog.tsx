@@ -51,6 +51,12 @@ export function EditProfileDialog({ user, currentPhotoUrl, onClose }: Props) {
           path: ["newPassword"],
         })
         .refine(
+          (d) =>
+            !d.newPassword ||
+            /^(?=.*[A-Za-z])(?=.*\d)[\d!#$%&*@A-Za-z^]+$/.test(d.newPassword),
+          { message: t("errorPasswordComplexity"), path: ["newPassword"] },
+        )
+        .refine(
           (d) => !d.newPassword || d.newPassword.length < 8 || !!d.oldPassword,
           { message: t("oldPasswordRequired"), path: ["oldPassword"] },
         ),
