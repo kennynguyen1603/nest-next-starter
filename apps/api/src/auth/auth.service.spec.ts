@@ -21,6 +21,7 @@ import { EmailQueueService } from '@/worker/queues/email/email.service';
 import { CacheService } from '@/shared/cache/cache.service';
 import { AuthProvidersEnum } from './auth-providers.enum';
 import { UserStatus } from '@/users/user-status.enum';
+import { SocialInterface } from '@/social/interfaces/social.interface';
 
 const mockI18n = { t: jest.fn().mockReturnValue('mocked') };
 const mockUsersService = {
@@ -843,7 +844,7 @@ describe('AuthService', () => {
   });
 
   describe('validateSocialLogin — account resolution', () => {
-    const social = {
+    const social: SocialInterface = {
       id: 'gid1',
       email: 'New@X.com',
       firstName: 'A',
@@ -937,7 +938,10 @@ describe('AuthService', () => {
 
     it('throws when no user can be resolved or created', async () => {
       await expect(
-        service.validateSocialLogin('google', { ...social, id: undefined }),
+        service.validateSocialLogin('google', {
+          ...social,
+          id: undefined,
+        } as unknown as SocialInterface),
       ).rejects.toThrow(UnprocessableEntityException);
       expect(mockSessionService.create).not.toHaveBeenCalled();
     });
