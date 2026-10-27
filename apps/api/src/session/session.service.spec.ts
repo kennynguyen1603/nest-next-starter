@@ -3,7 +3,17 @@ import { SessionRepository } from './infrastructure/persistence/session.reposito
 import { Session } from './domain/session';
 
 describe('SessionService', () => {
-  const repository = { findById: jest.fn() };
+  const repository = {
+    findById: jest.fn(),
+    findByUserId: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    updateByHash: jest.fn(),
+    deleteById: jest.fn(),
+    deleteByUserId: jest.fn(),
+    deleteByUserIdWithExclude: jest.fn(),
+    enforceSessionLimit: jest.fn(),
+  };
   const service = new SessionService(
     repository as unknown as SessionRepository,
   );
@@ -43,5 +53,32 @@ describe('SessionService', () => {
       repository.findById.mockResolvedValue(session());
       await expect(service.isActiveForUser('s1', 'u2')).resolves.toBe(false);
     });
+  });
+
+  describe('repository delegation', () => {
+    it.each([
+      ['findById', ['s1']],
+      ['findByUserId', ['u1']],
+      ['create', [{ hash: 'h' }]],
+      ['update', ['s1', { hash: 'h' }]],
+      ['updateByHash', [{ id: 's1', hash: 'h' }, { hash: 'h2' }]],
+      ['deleteById', ['s1', 'logout']],
+      ['deleteByUserId', [{ userId: 'u1' }, 'logout']],
+      [
+        'deleteByUserIdWithExclude',
+        [{ userId: 'u1', excludeSessionId: 's1' }, 'logout'],
+      ],
+      ['enforceSessionLimit', ['u1', 5]],
+    ] as const)(
+      '%s forwards its arguments and result',
+      async (method, args) => {
+        repository[method].mockResolvedValue('result');
+
+        await expect(
+          (service[method] as (...a: unknown[]) => Promise<unknown>)(...args),
+        ).resolves.toBe('result');
+        expect(repository[method]).toHaveBeenCalledWith(...args);
+      },
+    );
   });
 });
