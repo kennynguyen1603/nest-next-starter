@@ -10,6 +10,9 @@ scrape_configs:
   - job_name: server
     scrape_interval: 15s
     metrics_path: /api/metrics
+    basic_auth:
+      username_file: /run/secrets/metrics_username
+      password_file: /run/secrets/metrics_password
     static_configs:
       - targets: ['api:8080']
 
