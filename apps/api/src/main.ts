@@ -22,8 +22,7 @@ import validationOptions from '@/utils/validation-options';
 import { AllConfigType } from './config/config.type';
 import { BULL_BOARD_PATH } from './config/bull/bull.config';
 import { basicAuthMiddleware } from './middlewares/basic-auth.middleware';
-import { SocketGateway } from './socket/socket.gateway';
-import { createSocketRedisAdapter } from './socket/socket.adapter';
+import { RedisIoAdapter } from './socket/socket.adapter';
 
 export const SWAGGER_PATH = '/docs';
 
@@ -125,14 +124,15 @@ async function bootstrap() {
 
   const port = configService.getOrThrow('app.port', { infer: true });
 
-  await app.init();
-
   if (process.env.WEBSOCKET_ENABLED === 'true') {
-    const redisConfig = configService.getOrThrow('redis', { infer: true });
-    const { adapter, cleanup } = await createSocketRedisAdapter(redisConfig);
-    app.get(SocketGateway).server.adapter(adapter);
-    process.once('beforeExit', () => void cleanup());
+    const ioAdapter = new RedisIoAdapter(app);
+    await ioAdapter.connectToRedis(
+      configService.getOrThrow('redis', { infer: true }),
+    );
+    app.useWebSocketAdapter(ioAdapter);
   }
+
+  await app.init();
 
   await app.listen(port);
   setupGracefulShutdown({ app });

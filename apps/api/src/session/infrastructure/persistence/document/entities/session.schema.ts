@@ -32,5 +32,6 @@ export class SessionSchemaClass extends EntityDocumentHelper {
 }
 
 export const SessionSchema = SchemaFactory.createForClass(SessionSchemaClass);
-SessionSchema.index({ user: 1 });
+// Prefix serves user-only lookups; the sort keys cover the active-sessions list.
+SessionSchema.index({ user: 1, lastUsedAt: -1, createdAt: -1 });
 SessionSchema.index({ deviceId: 1 });

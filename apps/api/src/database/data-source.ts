@@ -25,6 +25,9 @@ export const AppDataSource = new DataSource({
     // based on https://node-postgres.com/api/pool
     // max connection pool size
     max: dbConfig.maxConnections,
+    min: dbConfig.minConnections,
+    idleTimeoutMillis: dbConfig.idleTimeoutMs,
+    connectionTimeoutMillis: dbConfig.connectionTimeoutMs,
     ssl: dbConfig.sslEnabled
       ? {
           rejectUnauthorized: dbConfig.rejectUnauthorized,

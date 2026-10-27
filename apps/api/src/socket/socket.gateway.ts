@@ -11,12 +11,9 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { AllConfigType } from '@/config/config.type';
 import { JwtPayloadType } from '@/auth/strategies/types/jwt-payload.type';
-import { CacheService } from '@/shared/cache/cache.service';
 import { SessionService } from '@/session/session.service';
 import { AuthenticatedSocket } from './types/authenticated-socket.type';
 import { SocketEvent } from './types/socket-event.enum';
-
-const USER_SOCKET_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 // Same allowlist as HTTP CORS (see main.ts). Fail closed: with no configured
 // origin, cross-origin handshakes are rejected instead of reflecting any origin
@@ -46,7 +43,6 @@ export class SocketGateway
   constructor(
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService<AllConfigType>,
-    private readonly cacheService: CacheService,
     private readonly sessionService: SessionService,
     @InjectPinoLogger(SocketGateway.name)
     private readonly logger: PinoLogger,
@@ -86,18 +82,9 @@ export class SocketGateway
       socket.data.user = payload;
       const userId = payload.id;
 
+      // The room is the source of truth for a user's sockets; the Redis
+      // adapter resolves it across instances, so no separate socket registry.
       await socket.join(`user:${userId}`);
-
-      const existing =
-        (await this.cacheService.get<string[]>({
-          key: 'UserSocketClients',
-          args: [userId],
-        })) ?? [];
-      await this.cacheService.set(
-        { key: 'UserSocketClients', args: [userId] },
-        [...existing, socket.id],
-        { ttl: USER_SOCKET_CACHE_TTL_MS },
-      );
 
       this.logger.info({ userId, socketId: socket.id }, 'Socket connected');
     } catch {
@@ -106,33 +93,15 @@ export class SocketGateway
     }
   }
 
+  // Only this instance's sockets: with the Redis adapter a plain
+  // disconnectSockets() would kick clients off every node during a rollout.
   onModuleDestroy(): void {
-    this.server?.disconnectSockets(true);
+    this.server?.local.disconnectSockets(true);
   }
 
-  async handleDisconnect(socket: AuthenticatedSocket): Promise<void> {
+  handleDisconnect(socket: AuthenticatedSocket): void {
     const userId = socket.data.user?.id;
     if (!userId) return;
-
-    const existing =
-      (await this.cacheService.get<string[]>({
-        key: 'UserSocketClients',
-        args: [userId],
-      })) ?? [];
-    const remaining = existing.filter((id) => id !== socket.id);
-
-    if (remaining.length > 0) {
-      await this.cacheService.set(
-        { key: 'UserSocketClients', args: [userId] },
-        remaining,
-        { ttl: USER_SOCKET_CACHE_TTL_MS },
-      );
-    } else {
-      await this.cacheService.delete({
-        key: 'UserSocketClients',
-        args: [userId],
-      });
-    }
 
     this.logger.info({ userId, socketId: socket.id }, 'Socket disconnected');
   }

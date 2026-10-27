@@ -14,10 +14,6 @@ import { NotificationQueueService } from './notification.service';
     BullModule.registerQueue({
       name: QueueName.Notification,
       streams: { events: { maxLen: 1000 } },
-      defaultJobOptions: {
-        removeOnComplete: { count: 1000 },
-        removeOnFail: { count: 5000 },
-      },
     }),
     BullBoardModule.forFeature({
       name: QueueName.Notification,

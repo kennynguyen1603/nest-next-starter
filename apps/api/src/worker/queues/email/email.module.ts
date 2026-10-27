@@ -14,10 +14,6 @@ import { EmailQueueService } from './email.service';
     BullModule.registerQueue({
       name: QueueName.Email,
       streams: { events: { maxLen: 1000 } },
-      defaultJobOptions: {
-        removeOnComplete: { count: 1000 },
-        removeOnFail: { count: 5000 },
-      },
     }),
     BullBoardModule.forFeature({
       name: QueueName.Email,

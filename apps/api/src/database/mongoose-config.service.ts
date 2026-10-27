@@ -17,6 +17,19 @@ export class MongooseConfigService implements MongooseOptionsFactory {
     return {
       uri: url,
       dbName: this.configService.get('database.name', { infer: true }),
+      maxPoolSize: this.configService.get('database.maxConnections', {
+        infer: true,
+      }),
+      minPoolSize: this.configService.get('database.minConnections', {
+        infer: true,
+      }),
+      maxIdleTimeMS: this.configService.get('database.idleTimeoutMs', {
+        infer: true,
+      }),
+      serverSelectionTimeoutMS: this.configService.get(
+        'database.connectionTimeoutMs',
+        { infer: true },
+      ),
       ...(url
         ? {}
         : {

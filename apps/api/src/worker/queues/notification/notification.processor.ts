@@ -3,6 +3,7 @@ import {
   Queue as QueueName,
 } from '@/constants/job.constant';
 import { NotificationsService } from '@/notifications/notifications.service';
+import { getQueueConcurrency } from '@/config/bull/bull.config';
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
@@ -11,10 +12,12 @@ import { NotificationJobUnion } from './notification.type';
 const { Notification: NotificationJob } = JobConstants;
 
 @Processor(QueueName.Notification, {
-  concurrency: 5,
+  concurrency: getQueueConcurrency(
+    process.env.NOTIFICATION_QUEUE_CONCURRENCY,
+    10,
+  ),
   drainDelay: 300,
-  stalledInterval: 300000,
-  removeOnComplete: { age: 86400, count: 100 },
+  stalledInterval: 30000,
 })
 export class NotificationProcessor extends WorkerHost {
   constructor(
