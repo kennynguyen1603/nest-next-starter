@@ -37,6 +37,7 @@ const mockSessionService = {
   deleteById: jest.fn(),
   deleteByUserId: jest.fn(),
   deleteByUserIdWithExclude: jest.fn(),
+  findByUserId: jest.fn(),
   updateByHash: jest.fn(),
   enforceSessionLimit: jest.fn().mockResolvedValue(undefined),
 };
@@ -838,6 +839,279 @@ describe('AuthService', () => {
       ]);
       expect(mockCacheService.get).not.toHaveBeenCalled();
       expect(mockCacheService.set).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('validateSocialLogin — account resolution', () => {
+    const social = {
+      id: 'gid1',
+      email: 'New@X.com',
+      firstName: 'A',
+      lastName: 'B',
+      provider: 'google',
+    };
+    let fetchSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      mockSessionService.create.mockResolvedValue({
+        id: 'session1',
+        hash: 'h',
+      });
+      mockUsersService.findBySocialIdAndProvider.mockResolvedValue(null);
+      mockUsersService.findByEmail.mockResolvedValue(null);
+      mockUsersService.create.mockResolvedValue({ id: 'new1' });
+      mockUsersService.findById.mockResolvedValue({
+        id: 'new1',
+        roles: [{ name: 'user' }],
+      });
+      fetchSpy = jest.spyOn(global, 'fetch');
+    });
+
+    afterEach(() => fetchSpy.mockRestore());
+
+    it('links to an existing email account instead of creating a user', async () => {
+      mockUsersService.findByEmail.mockResolvedValue({
+        id: 'email1',
+        roles: [{ name: 'user' }],
+      });
+
+      const result = await service.validateSocialLogin('google', social);
+
+      expect(mockUsersService.findByEmail).toHaveBeenCalledWith('new@x.com');
+      expect(mockUsersService.create).not.toHaveBeenCalled();
+      expect(result.user).toEqual(expect.objectContaining({ id: 'email1' }));
+    });
+
+    it('creates an active user with the downloaded avatar', async () => {
+      fetchSpy.mockResolvedValue({
+        ok: true,
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(4)),
+        headers: { get: () => 'image/png' },
+      } as unknown as Response);
+      mockFileUploadService.uploadFromBuffer.mockResolvedValue({ id: 'file1' });
+
+      await service.validateSocialLogin('google', {
+        ...social,
+        photoUrl: 'https://cdn/x.png',
+      });
+
+      expect(mockFileUploadService.uploadFromBuffer).toHaveBeenCalledWith(
+        expect.any(Buffer),
+        { filename: 'avatar.png', mimetype: 'image/png' },
+      );
+      expect(mockUsersService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'new@x.com',
+          socialId: 'gid1',
+          provider: 'google',
+          photo: { id: 'file1' },
+          status: UserStatus.ACTIVE,
+        }),
+      );
+    });
+
+    it('still creates the user when the avatar download fails', async () => {
+      fetchSpy.mockRejectedValue(new Error('network'));
+
+      await service.validateSocialLogin('google', {
+        ...social,
+        photoUrl: 'https://cdn/x.png',
+      });
+
+      expect(mockLogger.warn).toHaveBeenCalled();
+      expect(mockUsersService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ photo: undefined }),
+      );
+    });
+
+    it('skips upload when the avatar response is not ok', async () => {
+      fetchSpy.mockResolvedValue({ ok: false } as Response);
+
+      await service.validateSocialLogin('google', {
+        ...social,
+        photoUrl: 'https://cdn/x.png',
+      });
+
+      expect(mockFileUploadService.uploadFromBuffer).not.toHaveBeenCalled();
+    });
+
+    it('throws when no user can be resolved or created', async () => {
+      await expect(
+        service.validateSocialLogin('google', { ...social, id: undefined }),
+      ).rejects.toThrow(UnprocessableEntityException);
+      expect(mockSessionService.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('confirmEmail', () => {
+    it('throws UnprocessableEntityException when the hash is invalid', async () => {
+      mockJwtService.verifyAsync.mockRejectedValue(new Error('bad'));
+
+      await expect(service.confirmEmail('bad')).rejects.toThrow(
+        UnprocessableEntityException,
+      );
+    });
+
+    it('throws NotFoundException when the user is already active', async () => {
+      mockJwtService.verifyAsync.mockResolvedValue({
+        confirmEmailUserId: 'u1',
+      });
+      mockUsersService.findById.mockResolvedValue({
+        id: 'u1',
+        status: UserStatus.ACTIVE,
+      });
+
+      await expect(service.confirmEmail('h')).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(mockUsersService.update).not.toHaveBeenCalled();
+    });
+
+    it('activates an inactive user', async () => {
+      mockJwtService.verifyAsync.mockResolvedValue({
+        confirmEmailUserId: 'u1',
+      });
+      mockUsersService.findById.mockResolvedValue({
+        id: 'u1',
+        status: UserStatus.INACTIVE,
+      });
+
+      const result = await service.confirmEmail('h');
+
+      expect(mockUsersService.update).toHaveBeenCalledWith('u1', {
+        status: UserStatus.ACTIVE,
+      });
+      expect(result).toEqual({ message: 'mocked' });
+    });
+  });
+
+  describe('update — profile and email change', () => {
+    const payload = { id: 'u1', sessionId: 's1' } as never;
+
+    it('throws when the current user no longer exists', async () => {
+      mockUsersService.findById.mockResolvedValue(null);
+
+      await expect(service.update(payload, {})).rejects.toThrow(
+        UnprocessableEntityException,
+      );
+    });
+
+    it('rejects an email already used by another account', async () => {
+      mockUsersService.findById.mockResolvedValue({
+        id: 'u1',
+        email: 'a@x.com',
+      });
+      mockUsersService.findByEmail.mockResolvedValue({ id: 'u2' });
+
+      await expect(
+        service.update(payload, { email: 'b@x.com' }),
+      ).rejects.toThrow(UnprocessableEntityException);
+      expect(
+        mockEmailQueueService.addConfirmNewEmailJob,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('queues a confirmation mail and does not write the new email directly', async () => {
+      mockUsersService.findById.mockResolvedValue({
+        id: 'u1',
+        email: 'a@x.com',
+      });
+      mockUsersService.findByEmail.mockResolvedValue(null);
+      mockJwtService.signAsync.mockResolvedValue('confirm-hash');
+
+      await service.update(payload, { email: 'b@x.com', firstName: 'N' });
+
+      expect(mockJwtService.signAsync).toHaveBeenCalledWith(
+        { confirmEmailUserId: 'u1', newEmail: 'b@x.com' },
+        expect.any(Object),
+      );
+      expect(mockEmailQueueService.addConfirmNewEmailJob).toHaveBeenCalledWith({
+        email: 'b@x.com',
+        hash: 'confirm-hash',
+      });
+      expect(mockUsersService.update).toHaveBeenCalledWith(
+        'u1',
+        expect.not.objectContaining({ email: expect.anything() as unknown }),
+      );
+    });
+  });
+
+  describe('me', () => {
+    it('loads the user from the JWT payload id', async () => {
+      mockUsersService.findById.mockResolvedValue({ id: 'u1' });
+
+      await expect(service.me({ id: 'u1' } as never)).resolves.toEqual({
+        id: 'u1',
+      });
+      expect(mockUsersService.findById).toHaveBeenCalledWith('u1');
+    });
+  });
+
+  describe('session management', () => {
+    it('getSessions flags the current session', async () => {
+      mockSessionService.findByUserId.mockResolvedValue([{ id: 1 }, { id: 2 }]);
+
+      const result = await service.getSessions('u1', '2');
+
+      expect(result).toEqual([
+        { id: 1, isCurrent: false },
+        { id: 2, isCurrent: true },
+      ]);
+    });
+
+    it('revokeSession refuses to revoke another user’s session', async () => {
+      mockSessionService.findById.mockResolvedValue({
+        id: 's1',
+        user: { id: 'u2' },
+      });
+
+      await expect(service.revokeSession('u1', 's1')).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(mockSessionService.deleteById).not.toHaveBeenCalled();
+    });
+
+    it('revokeSession throws when the session does not exist', async () => {
+      mockSessionService.findById.mockResolvedValue(null);
+
+      await expect(service.revokeSession('u1', 's1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('revokeSession deletes the user’s own session', async () => {
+      mockSessionService.findById.mockResolvedValue({
+        id: 's1',
+        user: { id: 'u1' },
+      });
+
+      await service.revokeSession('u1', 's1');
+
+      expect(mockSessionService.deleteById).toHaveBeenCalledWith(
+        's1',
+        'logout',
+      );
+    });
+
+    it('revokeAllOtherSessions keeps the current session', async () => {
+      await service.revokeAllOtherSessions('u1', 's1');
+
+      expect(mockSessionService.deleteByUserIdWithExclude).toHaveBeenCalledWith(
+        { userId: 'u1', excludeSessionId: 's1' },
+        'logout',
+      );
+    });
+  });
+
+  describe('createBasicAuthHeaders', () => {
+    it('builds a Basic header from configured credentials', () => {
+      mockConfigService.getOrThrow
+        .mockReturnValueOnce('admin')
+        .mockReturnValueOnce('secret');
+
+      expect(service.createBasicAuthHeaders()).toEqual({
+        Authorization: `Basic ${Buffer.from('admin:secret').toString('base64')}`,
+      });
     });
   });
 });
