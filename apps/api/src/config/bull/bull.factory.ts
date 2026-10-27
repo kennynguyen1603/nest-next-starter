@@ -6,6 +6,9 @@ function useBullFactory(
   configService: ConfigService<AllConfigType>,
 ): BullRootModuleOptions {
   return {
+    defaultJobOptions: configService.get('queue.defaultJobOptions', {
+      infer: true,
+    }),
     prefix: `${configService.get('app.apiPrefix', { infer: true }) ?? 'api'}:bull`,
     connection: {
       host: configService.getOrThrow('redis.host', { infer: true }),

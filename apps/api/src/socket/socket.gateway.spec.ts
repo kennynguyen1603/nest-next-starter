@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { getLoggerToken, PinoLogger } from 'nestjs-pino';
 import { resolveSocketCorsOrigin, SocketGateway } from './socket.gateway';
-import { CacheService } from '@/shared/cache/cache.service';
 import { SessionService } from '@/session/session.service';
 import { SocketEvent } from './types/socket-event.enum';
 import { AuthenticatedSocket } from './types/authenticated-socket.type';
@@ -36,11 +35,6 @@ const mockJwtService = { verifyAsync: jest.fn() };
 const mockConfigService = {
   getOrThrow: jest.fn().mockReturnValue('test-secret'),
 };
-const mockCacheService = {
-  get: jest.fn().mockResolvedValue(null),
-  set: jest.fn().mockResolvedValue(undefined),
-  delete: jest.fn().mockResolvedValue(undefined),
-};
 const mockSessionService = {
   isActiveForUser: jest.fn(),
 };
@@ -62,7 +56,6 @@ describe('SocketGateway', () => {
         SocketGateway,
         { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },
-        { provide: CacheService, useValue: mockCacheService },
         { provide: SessionService, useValue: mockSessionService },
         { provide: getLoggerToken(SocketGateway.name), useValue: mockLogger },
       ],
@@ -111,7 +104,6 @@ describe('SocketGateway', () => {
       });
       expect(socket.disconnect).toHaveBeenCalledWith(true);
       expect(socket.join).not.toHaveBeenCalled();
-      expect(mockCacheService.set).not.toHaveBeenCalled();
     });
 
     it('disconnects when the payload has no sessionId', async () => {
@@ -126,30 +118,13 @@ describe('SocketGateway', () => {
       expect(socket.join).not.toHaveBeenCalled();
     });
 
-    it('joins user room and caches socket id on valid token', async () => {
+    it('joins the user room on valid token', async () => {
       mockJwtService.verifyAsync.mockResolvedValue(jwtPayload);
-      mockCacheService.get.mockResolvedValue(null);
       const socket = makeSocket('valid-token');
       await gateway.handleConnection(socket);
       expect(socket.data.user).toEqual(jwtPayload);
       expect(socket.join).toHaveBeenCalledWith('user:user-id');
-      expect(mockCacheService.set).toHaveBeenCalledWith(
-        { key: 'UserSocketClients', args: ['user-id'] },
-        ['socket-id-1'],
-        expect.objectContaining({ ttl: expect.any(Number) }),
-      );
-    });
-
-    it('appends socket id to existing cache entries', async () => {
-      mockJwtService.verifyAsync.mockResolvedValue(jwtPayload);
-      mockCacheService.get.mockResolvedValue(['socket-id-existing']);
-      const socket = makeSocket('valid-token');
-      await gateway.handleConnection(socket);
-      expect(mockCacheService.set).toHaveBeenCalledWith(
-        { key: 'UserSocketClients', args: ['user-id'] },
-        ['socket-id-existing', 'socket-id-1'],
-        expect.any(Object),
-      );
+      expect(socket.disconnect).not.toHaveBeenCalled();
     });
   });
 
@@ -175,33 +150,39 @@ describe('SocketGateway', () => {
   });
 
   describe('handleDisconnect', () => {
-    it('does nothing when socket had no authenticated user', async () => {
+    it('does nothing when socket had no authenticated user', () => {
       const socket = makeSocket();
-      await gateway.handleDisconnect(socket);
-      expect(mockCacheService.get).not.toHaveBeenCalled();
+      gateway.handleDisconnect(socket);
+      expect(mockLogger.info).not.toHaveBeenCalled();
     });
 
-    it('removes socket id from cache on disconnect', async () => {
-      mockCacheService.get.mockResolvedValue(['socket-id-1', 'socket-id-2']);
+    it('logs the disconnect of an authenticated socket', () => {
       const socket = makeSocket();
       socket.data.user = jwtPayload as any;
-      await gateway.handleDisconnect(socket);
-      expect(mockCacheService.set).toHaveBeenCalledWith(
-        { key: 'UserSocketClients', args: ['user-id'] },
-        ['socket-id-2'],
-        expect.any(Object),
+      gateway.handleDisconnect(socket);
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        { userId: 'user-id', socketId: 'socket-id-1' },
+        'Socket disconnected',
       );
     });
+  });
 
-    it('deletes cache key when last socket disconnects', async () => {
-      mockCacheService.get.mockResolvedValue(['socket-id-1']);
-      const socket = makeSocket();
-      socket.data.user = jwtPayload as any;
-      await gateway.handleDisconnect(socket);
-      expect(mockCacheService.delete).toHaveBeenCalledWith({
-        key: 'UserSocketClients',
-        args: ['user-id'],
-      });
+  describe('onModuleDestroy', () => {
+    it('disconnects only the sockets held by this instance', () => {
+      const disconnectSockets = jest.fn();
+      const clusterDisconnect = jest.fn();
+      gateway.server = {
+        local: { disconnectSockets },
+        disconnectSockets: clusterDisconnect,
+      } as any;
+      gateway.onModuleDestroy();
+      expect(disconnectSockets).toHaveBeenCalledWith(true);
+      expect(clusterDisconnect).not.toHaveBeenCalled();
+    });
+
+    it('is a no-op before the server is created', () => {
+      gateway.server = undefined as any;
+      expect(() => gateway.onModuleDestroy()).not.toThrow();
     });
   });
 });

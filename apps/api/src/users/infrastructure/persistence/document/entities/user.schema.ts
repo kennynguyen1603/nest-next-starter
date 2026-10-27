@@ -51,3 +51,8 @@ export class UserSchemaClass extends EntityDocumentHelper {
 }
 
 export const UserSchema = SchemaFactory.createForClass(UserSchemaClass);
+// Social login lookup; partial so the many email users (socialId null) stay out.
+UserSchema.index(
+  { socialId: 1, provider: 1 },
+  { partialFilterExpression: { socialId: { $type: 'string' } } },
+);

@@ -2,6 +2,7 @@ import {
   Job as JobConstants,
   Queue as QueueName,
 } from '@/constants/job.constant';
+import { getQueueConcurrency } from '@/config/bull/bull.config';
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
@@ -11,10 +12,10 @@ import { EmailJobUnion } from './email.type';
 const { Email: EmailJob } = JobConstants;
 
 @Processor(QueueName.Email, {
-  concurrency: 1,
+  concurrency: getQueueConcurrency(process.env.EMAIL_QUEUE_CONCURRENCY, 5),
   drainDelay: 300,
-  stalledInterval: 300000,
-  removeOnComplete: { age: 86400, count: 100 },
+  stalledInterval: 30000,
+  // Caps outbound SMTP rate across all workers sharing this queue.
   limiter: { max: 1, duration: 150 },
 })
 export class EmailProcessor extends WorkerHost {

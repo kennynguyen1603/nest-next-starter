@@ -62,8 +62,24 @@ class EnvironmentVariablesValidator {
   DATABASE_SYNCHRONIZE?: boolean;
 
   @IsInt()
+  @Min(1)
   @IsOptional()
   DATABASE_MAX_CONNECTIONS?: number;
+
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  DATABASE_MIN_CONNECTIONS?: number;
+
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  DATABASE_IDLE_TIMEOUT_MS?: number;
+
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  DATABASE_CONNECTION_TIMEOUT_MS?: number;
 
   @IsBoolean()
   @IsOptional()
@@ -101,9 +117,20 @@ export default registerAs<DatabaseConfig>('database', () => {
     name: process.env.DATABASE_NAME,
     username: process.env.DATABASE_USERNAME,
     synchronize: process.env.DATABASE_SYNCHRONIZE === 'true',
+    // Pool is per process: total connections = instances x maxConnections,
+    // so keep the default small and size it against the DB server's limit.
     maxConnections: process.env.DATABASE_MAX_CONNECTIONS
       ? parseInt(process.env.DATABASE_MAX_CONNECTIONS, 10)
-      : 100,
+      : 10,
+    minConnections: process.env.DATABASE_MIN_CONNECTIONS
+      ? parseInt(process.env.DATABASE_MIN_CONNECTIONS, 10)
+      : 0,
+    idleTimeoutMs: process.env.DATABASE_IDLE_TIMEOUT_MS
+      ? parseInt(process.env.DATABASE_IDLE_TIMEOUT_MS, 10)
+      : 30000,
+    connectionTimeoutMs: process.env.DATABASE_CONNECTION_TIMEOUT_MS
+      ? parseInt(process.env.DATABASE_CONNECTION_TIMEOUT_MS, 10)
+      : 10000,
     sslEnabled: process.env.DATABASE_SSL_ENABLED === 'true',
     rejectUnauthorized: process.env.DATABASE_REJECT_UNAUTHORIZED === 'true',
     ca: process.env.DATABASE_CA,
