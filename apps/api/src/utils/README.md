@@ -309,13 +309,13 @@ interface SecurityContext {
 
 #### Functions
 
-| Function             | Signature                            | Description                                                                                                                                                                           |
-| -------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `getClientIp`        | `(req: Request) => string`           | Extracts the real client IP by checking `x-client-ip`, `x-forwarded-for`, `cf-connecting-ip`, `x-real-ip`, and other proxy headers in order; falls back to `req.socket.remoteAddress` |
-| `parseUserAgent`     | `(userAgent: string) => DeviceInfo`  | Parses a `User-Agent` string via `ua-parser-js`; returns browser name/version, OS, platform, and device model                                                                         |
-| `formatDeviceName`   | `(deviceInfo: DeviceInfo) => string` | Produces a human-readable label: `"Chrome 124 on macOS"`. Returns `"Unknown Device"` if no info is available                                                                          |
-| `getSecurityContext` | `(req: Request) => SecurityContext`  | Convenience wrapper — calls `getClientIp` + `parseUserAgent` and returns a `SecurityContext`                                                                                          |
-| `generateDeviceId`   | `(userAgent?: string) => string`     | SHA-256 hash of the User-Agent string, truncated to 32 hex chars. Stable per browser/UA — not tied to IP so it survives network changes                                               |
+| Function             | Signature                            | Description                                                                                                                                                                         |
+| -------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `getClientIp`        | `(req: Request) => string`           | Returns Express's `req.ip` (honours `trust proxy` / `TRUST_PROXY`); never reads forwarding headers directly, since clients can forge them. Falls back to `req.socket.remoteAddress` |
+| `parseUserAgent`     | `(userAgent: string) => DeviceInfo`  | Parses a `User-Agent` string via `ua-parser-js`; returns browser name/version, OS, platform, and device model                                                                       |
+| `formatDeviceName`   | `(deviceInfo: DeviceInfo) => string` | Produces a human-readable label: `"Chrome 124 on macOS"`. Returns `"Unknown Device"` if no info is available                                                                        |
+| `getSecurityContext` | `(req: Request) => SecurityContext`  | Convenience wrapper — calls `getClientIp` + `parseUserAgent` and returns a `SecurityContext`                                                                                        |
+| `generateDeviceId`   | `(userAgent?: string) => string`     | SHA-256 hash of the User-Agent string, truncated to 32 hex chars. Stable per browser/UA — not tied to IP so it survives network changes                                             |
 
 #### Usage
 

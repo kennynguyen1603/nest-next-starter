@@ -46,7 +46,7 @@ class EnvironmentVariablesValidator {
   AUTH_RESET_PASSWORD_COOLDOWN?: string;
 
   @IsString()
-  @IsOptional()
+  @IsNotEmpty()
   BASIC_AUTH_USERNAME!: string;
 
   @IsString()

@@ -16,26 +16,11 @@ export interface SecurityContext {
   deviceInfo: DeviceInfo;
 }
 
+// Never read forwarding headers directly: any client can forge them. Express
+// derives req.ip from X-Forwarded-For only across the hops allowed by the
+// `trust proxy` setting (TRUST_PROXY), so it is the only safe source.
 export function getClientIp(req: Request): string {
-  const ipHeaders = [
-    'x-client-ip',
-    'x-forwarded-for',
-    'cf-connecting-ip',
-    'x-real-ip',
-    'x-forwarded',
-    'forwarded-for',
-    'x-cluster-client-ip',
-  ];
-
-  for (const header of ipHeaders) {
-    const value = req.headers[header] as string | undefined;
-    if (value) {
-      const ip = value.split(',')[0].trim();
-      if (ip) return ip;
-    }
-  }
-
-  return req.socket.remoteAddress ?? '0.0.0.0';
+  return req.ip || req.socket?.remoteAddress || '0.0.0.0';
 }
 
 export function parseUserAgent(userAgent: string): DeviceInfo {

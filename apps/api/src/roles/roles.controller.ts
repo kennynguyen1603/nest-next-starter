@@ -11,7 +11,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { ApiOkResponse, ApiParam, ApiTags } from '@nestjs/swagger';
 
-import { ApiAuth, ApiPublic } from '@/decorators/http.decorators';
+import { ApiAuth } from '@/decorators/http.decorators';
 import { NullableType } from '@/utils/types/nullable.type';
 
 import { Role } from './domain/role';
@@ -21,21 +21,23 @@ import { RoleEnum } from './roles.enum';
 import { Roles } from '../decorators/roles.decorator';
 import { RolesService } from './roles.service';
 
+// The role/permission matrix is admin-only: exposing it helps attackers map
+// which accounts and permissions are worth targeting.
 @ApiTags('Roles')
 @Controller({ path: 'roles', version: '1' })
+@UseGuards(AuthGuard('jwt'), RbacGuard)
+@Roles(RoleEnum.ADMIN)
 export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
 
   @Get()
-  @ApiPublic({ summary: 'List all roles' })
+  @ApiAuth({ summary: 'List all roles' })
   @ApiOkResponse({ type: Role, isArray: true })
   findAll(): Promise<Role[]> {
     return this.rolesService.findAll();
   }
 
   @Get(':id')
-  @UseGuards(AuthGuard('jwt'), RbacGuard)
-  @Roles(RoleEnum.ADMIN)
   @ApiOkResponse({ type: Role })
   @ApiAuth({ summary: 'Get role by id' })
   @ApiParam({ name: 'id', type: String })
@@ -46,8 +48,6 @@ export class RolesController {
   }
 
   @Put('users/:userId')
-  @UseGuards(AuthGuard('jwt'), RbacGuard)
-  @Roles(RoleEnum.ADMIN)
   @ApiAuth({
     summary: 'Assign roles to a user',
     statusCode: HttpStatus.NO_CONTENT,

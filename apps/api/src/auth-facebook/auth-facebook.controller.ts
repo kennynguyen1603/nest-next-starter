@@ -9,7 +9,6 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { ApiTags } from '@nestjs/swagger';
 import type { Request as ExpressRequest, Response } from 'express';
-import ms from 'ms';
 
 import { ApiPublic } from '@/decorators/http.decorators';
 import { AllConfigType } from '@/config/config.type';
@@ -18,6 +17,7 @@ import { AuthService } from '../auth/auth.service';
 import { AuthFacebookService } from './auth-facebook.service';
 import { AuthFacebookLoginDto } from './dto/auth-facebook-login.dto';
 import { LoginResponseDto } from '../auth/dto/login-response.dto';
+import { setRefreshCookie } from '../auth/refresh-cookie.util';
 
 @ApiTags('Auth')
 @Controller({
@@ -47,18 +47,7 @@ export class AuthFacebookController {
         socialData,
         getSecurityContext(req),
       );
-    const maxAge = Number(
-      ms(this.configService.getOrThrow('auth.refreshExpires', { infer: true })),
-    );
-    response.cookie('refresh_token', refreshToken, {
-      httpOnly: true,
-      secure:
-        this.configService.getOrThrow('app.nodeEnv', { infer: true }) ===
-        'production',
-      sameSite: 'strict',
-      maxAge,
-      path: '/',
-    });
+    setRefreshCookie(response, this.configService, refreshToken);
     return result;
   }
 }

@@ -6,6 +6,7 @@ import { Request } from 'express';
 import { AllConfigType } from '@/config/config.type';
 import { OrNeverType } from '@/utils/types/or-never.type';
 import { JwtRefreshPayloadType } from '@/auth/strategies/types/jwt-refresh-payload.type';
+import { REFRESH_COOKIE_NAME } from '@/auth/refresh-cookie.util';
 
 @Injectable()
 export class JwtRefreshStrategy extends PassportStrategy(
@@ -16,7 +17,8 @@ export class JwtRefreshStrategy extends PassportStrategy(
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         (req: Request) =>
-          (req.cookies as Record<string, string>)?.refresh_token ?? null,
+          (req.cookies as Record<string, string>)?.[REFRESH_COOKIE_NAME] ??
+          null,
       ]),
       secretOrKey: configService.getOrThrow('auth.refreshSecret', {
         infer: true,

@@ -10,6 +10,13 @@ import { SocialInterface } from '../social/interfaces/social.interface';
 import { AuthGoogleLoginDto } from './dto/auth-google-login.dto';
 import { AllConfigType } from '../config/config.type';
 
+function unprocessable(reason: string): UnprocessableEntityException {
+  return new UnprocessableEntityException({
+    status: HttpStatus.UNPROCESSABLE_ENTITY,
+    errors: { user: reason },
+  });
+}
+
 @Injectable()
 export class AuthGoogleService {
   private google: OAuth2Client;
@@ -40,20 +47,29 @@ export class AuthGoogleService {
       });
     } catch (err: unknown) {
       this.logger.warn({ err }, 'Google ID token verification failed');
-      throw new UnprocessableEntityException({
-        status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: { user: 'wrongToken' },
-      });
+      throw unprocessable('wrongToken');
     }
 
     const data = ticket.getPayload();
 
     if (!data) {
       this.logger.warn('Google token verified but payload is empty');
-      throw new UnprocessableEntityException({
-        status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: { user: 'wrongToken' },
-      });
+      throw unprocessable('wrongToken');
+    }
+
+    if (loginDto.nonce !== undefined && data.nonce !== loginDto.nonce) {
+      this.logger.warn('Google ID token nonce mismatch');
+      throw unprocessable('wrongToken');
+    }
+
+    // Accounts are linked by email, so an unverified Google email would let
+    // anyone claim an existing account registered with that address.
+    if (!data.email || data.email_verified !== true) {
+      this.logger.warn(
+        { googleSub: data.sub },
+        'Google account email is missing or not verified',
+      );
+      throw unprocessable('emailNotVerified');
     }
 
     this.logger.debug({ googleSub: data.sub }, 'Google profile retrieved');

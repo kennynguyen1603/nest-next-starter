@@ -15,7 +15,10 @@ Runs by default at **http://localhost:8080**.
 - **Session management** — Each login creates an isolated session with full device context (IP, user agent, browser, OS, platform); logout sets `revokeAt + revokeReason`; max 10 concurrent sessions per user (oldest evicted automatically)
 - **Device tracking** — `ua-parser-js` parses the `User-Agent` on every login; `deviceId` (SHA-256 of UA), `deviceName` (e.g. "Chrome 124 on macOS"), `ipAddress`, `platform`, and `lastUsedAt` are stored per session
 - **Session listing & revocation** — Authenticated users can list all active sessions (with `isCurrent` flag), revoke a specific session, or revoke all other sessions in one call
-- **RBAC** — Role-based (USER, MANAGER, ADMIN) and permission-based access control; JWT payload embeds `roles` + `permissions`
+- **Live sessions** — Every access token is bound to its session: after logout or revocation the token is rejected immediately (not at expiry). Banned users cannot refresh
+- **Refresh-token rotation with reuse detection** — Each refresh rotates the token; replaying an already-rotated refresh token revokes the whole session. Refreshes are deduped per tab in `apps/web/lib/api.ts`, but two tabs refreshing the same cookie at the same instant can trip reuse detection and log the user out — the safer tradeoff
+- **Single-use email tokens** — Confirm-email and reset-password tokens are consumed on first use (Redis marker until the token expires). The cache has no atomic set-if-absent, so two simultaneous requests with the same token can still both pass; the window is milliseconds and both carry the same, already-proven intent
+- **RBAC** — Role-based (USER, MANAGER, ADMIN) and permission-based access control; JWT payload embeds `roles` + `permissions`. Class-level and handler-level requirements both apply (a handler cannot loosen its controller). `GET /roles` is admin-only
 - **Permissions caching** — Role-to-permission mappings are cached in Redis for 5 minutes, eliminating repeated JOIN queries on every login and token refresh
 - **Per-user email cooldown** — `POST /forgot/password` enforces a per-user Redis-backed cooldown (default 60 s) to prevent email flooding; returns `429` if called again before the cooldown expires
 - **Guards & Decorators** — `@ApiAuth()`, `@ApiPublic()` to distinguish public vs protected endpoints
@@ -211,7 +214,7 @@ Client                       API (NestJS)                     Redis
   │                               │── DEL / update clients ─────▶│
 ```
 
-1. **Handshake** — Client passes `auth.token` (JWT access token). The gateway verifies it with `JwtService.verifyAsync`. On failure: `error` event → `disconnect(true)`.
+1. **Handshake** — Client passes `auth.token` (JWT access token); query-string tokens are ignored because URLs end up in logs. The gateway verifies the signature and that the token's session is still active (a logged-out session cannot connect). Cross-origin handshakes are only accepted from `FRONTEND_DOMAIN` / `ADMIN_DOMAIN`. On failure: `error` event → `disconnect(true)`.
 2. **Room join** — On success, `socket.data.user` is populated and the socket joins `user:{userId}`.
 3. **Push** — `SocketService.emitToUser(userId, event, payload)` targets the `user:{userId}` room. Redis adapter broadcasts to all instances.
 4. **Disconnect** — The gateway removes the socket ID from Redis. If no IDs remain, the key is deleted.
@@ -340,13 +343,16 @@ transports: ['websocket'],
 
 ### 🛡️ Security
 
-- `helmet` — HTTP security headers
+- `helmet` — HTTP security headers with helmet's default CSP (no third-party script hosts)
 - `cookie-parser` — HttpOnly cookie for the refresh token
 - **Configurable refresh cookie** — `APP_COOKIE_SECURE` controls whether the refresh token cookie requires HTTPS (defaults to `true` in production; set `false` for HTTP-only deployments). `APP_COOKIE_SAME_SITE` (`lax` | `strict` | `none`, default `lax`) and `APP_COOKIE_DOMAIN` let web + admin share the cookie across sibling origins; `none` forces `secure`
 - **Generic credentials error** — All login failure paths (email not found, no password set, wrong password) return the same `INVALID_CREDENTIALS` error on the `email` field, preventing user enumeration attacks
 - CORS configured to the frontend domain
 - `class-validator` + `class-transformer` — Request input validation; `whitelist` + `forbidNonWhitelisted` reject any request carrying properties not declared in the DTO (`422`)
-- **Basic Auth middleware** — Protects `/api/queues` (Bull Board) and `/docs` (Swagger) with username/password; credentials are compared in constant time to avoid timing leaks
+- **Basic Auth middleware** — Protects `/api/queues` (Bull Board) and `/docs` (Swagger) with username/password (`BASIC_AUTH_USERNAME` and `BASIC_AUTH_PASSWORD` are both required); credentials are parsed per RFC 7617 (UTF-8, password may contain `:`) and compared as SHA-256 digests in constant time, so neither content nor length leaks; unconfigured credentials fail closed
+- **Auth throttling** — Login, register, forgot/reset password and social login are limited to 5 requests/min per IP; refresh to 30/min
+- **Social login** — Google requires `email_verified` and checks the ID token `nonce` when the client sends one; Facebook calls the Graph API with `appsecret_proof` (compatible with _Require App Secret_) and a request timeout. Social logins set the same refresh cookie as email login (`APP_COOKIE_*`)
+- **Query injection** — `GET /users` only sorts by a whitelist of plain columns (`id`, `email`, `firstName`, `lastName`, `status`, `createdAt`, `updatedAt`); malformed `filters`/`sort` JSON returns `400` instead of `500`
 - **Rate Limiting** — `@nestjs/throttler` applied globally as `APP_GUARD`; tracks requests per client IP resolved from the framework's `trust proxy` setting (`req.ip`), never from raw `X-Forwarded-*` headers which a client could spoof to rotate its key — set `TRUST_PROXY` behind a proxy; Redis-backed storage (shared with BullMQ); configurable limit, TTL, and on/off toggle via env vars
 - **Per-user email cooldown** — separate from the IP throttler; `POST /forgot/password` checks a Redis key scoped to the user's ID before dispatching an email, returning `429 Too Many Requests` if the cooldown has not expired; prevents a targeted account from being flooded with password-reset emails
 

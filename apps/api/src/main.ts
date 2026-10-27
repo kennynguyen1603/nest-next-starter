@@ -68,23 +68,10 @@ async function bootstrap() {
   app.enableShutdownHooks();
 
   app.use(
+    // Helmet's default CSP (script-src 'self', img-src 'self' data:) covers
+    // Swagger UI, which serves its bundle and init script from this origin.
     helmet({
       crossOriginEmbedderPolicy: false,
-      contentSecurityPolicy: {
-        directives: {
-          imgSrc: [
-            `'self'`,
-            'data:',
-            'apollo-server-landing-page.cdn.apollographql.com',
-          ],
-          scriptSrc: [`'self'`, `https: 'unsafe-inline'`],
-          manifestSrc: [
-            `'self'`,
-            'apollo-server-landing-page.cdn.apollographql.com',
-          ],
-          frameSrc: [`'self'`, 'sandbox.embed.apollographql.com'],
-        },
-      },
     }),
   );
 

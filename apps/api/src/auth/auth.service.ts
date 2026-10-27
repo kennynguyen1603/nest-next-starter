@@ -74,6 +74,40 @@ export class AuthService {
     return this.i18n.t(key, { lang: this.lang() });
   }
 
+  private invalidHashError(): UnprocessableEntityException {
+    return new UnprocessableEntityException({
+      status: HttpStatus.UNPROCESSABLE_ENTITY,
+      errors: { hash: this.t('auth.INVALID_HASH') },
+    });
+  }
+
+  /**
+   * One-time tokens (reset password, confirm new email) are stateless JWTs, so
+   * their single use is enforced by remembering the digest of every consumed
+   * token until it would have expired anyway.
+   */
+  private tokenDigest(token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex');
+  }
+
+  private async assertTokenUnused(digest: string): Promise<void> {
+    const used = await this.cacheService.get({
+      key: 'UsedAuthToken',
+      args: [digest],
+    });
+    if (used) throw this.invalidHashError();
+  }
+
+  private async markTokenUsed(digest: string, exp?: number): Promise<void> {
+    const ttl = exp ? exp * 1000 - Date.now() : 0;
+    if (ttl <= 0) return;
+    await this.cacheService.set(
+      { key: 'UsedAuthToken', args: [digest] },
+      true,
+      { ttl },
+    );
+  }
+
   async validateLogin(
     loginDto: AuthEmailLoginDto,
     securityContext?: SecurityContext,
@@ -397,11 +431,13 @@ export class AuthService {
   async confirmNewEmail(hash: string): Promise<{ message: string }> {
     let userId: User['id'];
     let newEmail: User['email'];
+    let exp: number | undefined;
 
     try {
       const jwtData = await this.jwtService.verifyAsync<{
         confirmEmailUserId: User['id'];
         newEmail: User['email'];
+        exp?: number;
       }>(hash, {
         secret: this.configService.getOrThrow('auth.confirmEmailSecret', {
           infer: true,
@@ -409,12 +445,13 @@ export class AuthService {
       });
       userId = jwtData.confirmEmailUserId;
       newEmail = jwtData.newEmail;
+      exp = jwtData.exp;
     } catch {
-      throw new UnprocessableEntityException({
-        status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: { hash: this.t('auth.INVALID_HASH') },
-      });
+      throw this.invalidHashError();
     }
+
+    const digest = this.tokenDigest(hash);
+    await this.assertTokenUnused(digest);
 
     const user = await this.usersService.findById(userId);
 
@@ -425,7 +462,19 @@ export class AuthService {
       });
     }
 
+    // The address may have been claimed by another account since the link was sent.
+    const userByEmail = newEmail
+      ? await this.usersService.findByEmail(newEmail)
+      : null;
+    if (userByEmail && userByEmail.id !== user.id) {
+      throw new UnprocessableEntityException({
+        status: HttpStatus.UNPROCESSABLE_ENTITY,
+        errors: { email: this.t('auth.EMAIL_ALREADY_EXISTS') },
+      });
+    }
+
     await this.usersService.update(user.id, { email: newEmail });
+    await this.markTokenUsed(digest, exp);
 
     return { message: this.t('auth.NEW_EMAIL_CONFIRM_SUCCESS') };
   }
@@ -497,22 +546,25 @@ export class AuthService {
     password: string,
   ): Promise<{ message: string }> {
     let userId: User['id'];
+    let exp: number | undefined;
 
     try {
       const jwtData = await this.jwtService.verifyAsync<{
         forgotUserId: User['id'];
+        exp?: number;
       }>(hash, {
         secret: this.configService.getOrThrow('auth.forgotSecret', {
           infer: true,
         }),
       });
       userId = jwtData.forgotUserId;
+      exp = jwtData.exp;
     } catch {
-      throw new UnprocessableEntityException({
-        status: HttpStatus.UNPROCESSABLE_ENTITY,
-        errors: { hash: this.t('auth.INVALID_HASH') },
-      });
+      throw this.invalidHashError();
     }
+
+    const digest = this.tokenDigest(hash);
+    await this.assertTokenUnused(digest);
 
     const user = await this.usersService.findById(userId);
 
@@ -527,6 +579,7 @@ export class AuthService {
       this.sessionService.deleteByUserId({ userId: user.id }, 'logout'),
       this.usersService.update(user.id, { password }),
     ]);
+    await this.markTokenUsed(digest, exp);
 
     this.logger.info(
       { userId: user.id },
@@ -633,14 +686,20 @@ export class AuthService {
     );
 
     if (!session) {
-      this.logger.warn(
-        { sessionId: data.sessionId },
-        'Token refresh failed: session not found or hash mismatch',
-      );
+      await this.handleRefreshMiss(data.sessionId);
       throw new UnauthorizedException();
     }
 
     const user = await this.usersService.findById(session.user.id);
+
+    if (user?.status === UserStatus.BANNED) {
+      await this.sessionService.deleteById(session.id, 'suspicious');
+      this.logger.warn(
+        { sessionId: session.id, userId: session.user.id },
+        'Token refresh rejected: user is banned — session revoked',
+      );
+      throw new UnauthorizedException();
+    }
 
     if (!user?.roles?.length) {
       this.logger.warn(
@@ -667,6 +726,29 @@ export class AuthService {
       'Token refreshed',
     );
     return { token, refreshToken, tokenExpires };
+  }
+
+  /**
+   * A signed refresh token whose hash no longer matches a live session was
+   * either already rotated (replayed — possibly stolen) or belongs to a revoked
+   * session. On replay, revoke the session so neither holder can keep using it.
+   */
+  private async handleRefreshMiss(sessionId: Session['id']): Promise<void> {
+    const session = await this.sessionService.findById(sessionId);
+
+    if (session && !session.revokeAt) {
+      await this.sessionService.deleteById(session.id, 'suspicious');
+      this.logger.warn(
+        { sessionId, userId: session.user?.id },
+        'Refresh token reuse detected — session revoked',
+      );
+      return;
+    }
+
+    this.logger.warn(
+      { sessionId },
+      'Token refresh failed: session not found or revoked',
+    );
   }
 
   async softDelete(userId: User['id']): Promise<{ message: string }> {

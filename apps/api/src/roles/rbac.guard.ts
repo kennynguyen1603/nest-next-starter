@@ -6,22 +6,32 @@ import { ROLES_KEY } from '../decorators/roles.decorator';
 import { RoleEnum } from './roles.enum';
 import { JwtPayloadType } from '../auth/strategies/types/jwt-payload.type';
 
+interface AccessRequirement {
+  roles?: RoleEnum[];
+  permissions?: PermissionEnum[];
+}
+
 // @Roles: OR logic (any match passes). @Permissions: AND logic (all must match).
+// Class- and handler-level metadata are checked independently and BOTH must
+// pass, so a handler can only narrow its controller's access, never widen it.
 @Injectable()
 export class RbacGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const roles = this.reflector.getAllAndOverride<RoleEnum[]>(ROLES_KEY, [
-      context.getClass(),
-      context.getHandler(),
-    ]);
-    const permissions = this.reflector.getAllAndOverride<PermissionEnum[]>(
-      PERMISSIONS_KEY,
-      [context.getClass(), context.getHandler()],
-    );
+    const requirements = [context.getClass(), context.getHandler()]
+      .map(
+        (target): AccessRequirement => ({
+          roles: this.reflector.get<RoleEnum[]>(ROLES_KEY, target),
+          permissions: this.reflector.get<PermissionEnum[]>(
+            PERMISSIONS_KEY,
+            target,
+          ),
+        }),
+      )
+      .filter(({ roles, permissions }) => roles?.length || permissions?.length);
 
-    if (!roles?.length && !permissions?.length) {
+    if (!requirements.length) {
       return true;
     }
 
@@ -31,6 +41,15 @@ export class RbacGuard implements CanActivate {
 
     if (!user) return false;
 
+    return requirements.every((requirement) =>
+      this.satisfies(user, requirement),
+    );
+  }
+
+  private satisfies(
+    user: JwtPayloadType,
+    { roles, permissions }: AccessRequirement,
+  ): boolean {
     const userRoles = user.roles ?? [];
     const userPermissions = user.permissions ?? [];
 
@@ -38,13 +57,9 @@ export class RbacGuard implements CanActivate {
       return false;
     }
 
-    if (
-      permissions?.length &&
-      !permissions.every((permission) => userPermissions.includes(permission))
-    ) {
-      return false;
-    }
-
-    return true;
+    return (
+      !permissions?.length ||
+      permissions.every((permission) => userPermissions.includes(permission))
+    );
   }
 }

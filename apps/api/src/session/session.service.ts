@@ -14,6 +14,23 @@ export class SessionService {
     return this.sessionRepository.findById(id);
   }
 
+  /**
+   * A session is active when it exists, has not been revoked, and belongs to
+   * the given user. Used to bind short-lived access tokens to a live session so
+   * logout / revoke takes effect immediately instead of at access-token expiry.
+   */
+  async isActiveForUser(
+    sessionId: Session['id'],
+    userId: User['id'],
+  ): Promise<boolean> {
+    const session = await this.sessionRepository.findById(sessionId);
+    return (
+      !!session &&
+      !session.revokeAt &&
+      String(session.user?.id) === String(userId)
+    );
+  }
+
   findByUserId(userId: User['id']): Promise<Session[]> {
     return this.sessionRepository.findByUserId(userId);
   }

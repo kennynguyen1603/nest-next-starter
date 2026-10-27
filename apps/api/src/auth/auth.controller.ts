@@ -16,7 +16,6 @@ import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { Throttle } from '@nestjs/throttler';
 import type { Request as ExpressRequest, Response } from 'express';
-import ms from 'ms';
 
 import { ApiAuth, ApiPublic } from '@/decorators/http.decorators';
 import { AllConfigType } from '@/config/config.type';
@@ -36,6 +35,13 @@ import { AuthUpdateDto } from './dto/auth-update.dto';
 import { AuthRegisterLoginDto } from './dto/auth-register-login.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
 import { RefreshResponseDto } from './dto/refresh-response.dto';
+import { clearRefreshCookie, setRefreshCookie } from './refresh-cookie.util';
+
+// Brute-force / enumeration targets (credentials, one-time hashes, mail
+// triggers) get a tight per-IP budget on top of the global limiter.
+const SENSITIVE_THROTTLE = { default: { limit: 5, ttl: 60000 } };
+// Refresh runs on every page load and tab, so it needs more headroom.
+const REFRESH_THROTTLE = { default: { limit: 30, ttl: 60000 } };
 
 @ApiTags('Auth')
 @Controller({
@@ -48,34 +54,7 @@ export class AuthController {
     private readonly configService: ConfigService<AllConfigType>,
   ) {}
 
-  // sameSite/domain are configurable so web+admin can sit on sibling origins.
-  // 'strict' breaks cross-origin refresh; default is 'lax'. 'none' requires secure.
-  private refreshCookieOptions() {
-    const sameSite = this.configService.getOrThrow('app.cookieSameSite', {
-      infer: true,
-    });
-    const secure =
-      sameSite === 'none' ||
-      this.configService.getOrThrow('app.cookieSecure', { infer: true });
-    const domain = this.configService.get('app.cookieDomain', { infer: true });
-    return { httpOnly: true as const, secure, sameSite, domain, path: '/' };
-  }
-
-  private setRefreshCookie(response: Response, token: string): void {
-    const maxAge = Number(
-      ms(this.configService.getOrThrow('auth.refreshExpires', { infer: true })),
-    );
-    response.cookie('refresh_token', token, {
-      ...this.refreshCookieOptions(),
-      maxAge,
-    });
-  }
-
-  private clearRefreshCookie(response: Response): void {
-    response.clearCookie('refresh_token', this.refreshCookieOptions());
-  }
-
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Throttle(SENSITIVE_THROTTLE)
   @ApiPublic({ type: LoginResponseDto, summary: 'Login with email/password' })
   @SerializeOptions({ groups: ['me'] })
   @Post('email/login')
@@ -88,10 +67,11 @@ export class AuthController {
       loginDto,
       getSecurityContext(req),
     );
-    this.setRefreshCookie(response, refreshToken);
+    setRefreshCookie(response, this.configService, refreshToken);
     return result;
   }
 
+  @Throttle(SENSITIVE_THROTTLE)
   @ApiPublic({ summary: 'Register new account' })
   @Post('email/register')
   async register(
@@ -100,6 +80,7 @@ export class AuthController {
     return this.service.register(createUserDto);
   }
 
+  @Throttle(SENSITIVE_THROTTLE)
   @ApiPublic({ summary: 'Confirm email address' })
   @Post('email/confirm')
   async confirmEmail(
@@ -108,6 +89,7 @@ export class AuthController {
     return this.service.confirmEmail(confirmEmailDto.hash);
   }
 
+  @Throttle(SENSITIVE_THROTTLE)
   @ApiPublic({ summary: 'Confirm new email address' })
   @Post('email/confirm/new')
   async confirmNewEmail(
@@ -116,6 +98,7 @@ export class AuthController {
     return this.service.confirmNewEmail(confirmEmailDto.hash);
   }
 
+  @Throttle(SENSITIVE_THROTTLE)
   @ApiPublic({ summary: 'Request password reset' })
   @Post('forgot/password')
   async forgotPassword(
@@ -124,6 +107,7 @@ export class AuthController {
     return this.service.forgotPassword(forgotPasswordDto.email);
   }
 
+  @Throttle(SENSITIVE_THROTTLE)
   @ApiPublic({ summary: 'Reset password with token' })
   @Post('reset/password')
   resetPassword(
@@ -150,6 +134,7 @@ export class AuthController {
     return this.service.me(request.user);
   }
 
+  @Throttle(REFRESH_THROTTLE)
   @ApiAuth({ type: RefreshResponseDto, summary: 'Refresh access token' })
   @UseGuards(AuthGuard('jwt-refresh'))
   @Post('refresh')
@@ -161,7 +146,7 @@ export class AuthController {
       sessionId: request.user.sessionId,
       hash: request.user.hash,
     });
-    this.setRefreshCookie(response, refreshToken);
+    setRefreshCookie(response, this.configService, refreshToken);
     return result;
   }
 
@@ -172,7 +157,7 @@ export class AuthController {
     @Request() request: { user: JwtRefreshPayloadType },
     @Res({ passthrough: true }) response: Response,
   ): Promise<{ message: string }> {
-    this.clearRefreshCookie(response);
+    clearRefreshCookie(response, this.configService);
     return this.service.logout({ sessionId: request.user.sessionId });
   }
 
