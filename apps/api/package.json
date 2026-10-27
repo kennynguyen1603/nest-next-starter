@@ -10,7 +10,7 @@
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "dev": "nest start --watch",
-    "kill": "pkill -f 'nest-next-starter/apps/api/node_modules/.*nest.js start --watch' || true",
+    "kill": "pkill -9 -f \"$(pwd)/node_modules/.*nest.js start\"; pkill -f \"$(pwd)/dist/main\"; true",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\" --max-warnings 0",

@@ -32,10 +32,14 @@ describe("getLocale", () => {
     expect(getLocale()).toBe("vi");
   });
 
-  it('falls back to "en" for an unrecognized cookie value', () => {
-    // getLocale returns whatever is in the cookie; routing config
-    // is responsible for validation. Here we verify it reads faithfully.
+  it('falls back to "en" for an unsupported cookie value', () => {
+    // Unsupported locales must not be forwarded to the API as x-custom-lang.
     document.cookie = "NEXT_LOCALE=fr";
-    expect(getLocale()).toBe("fr");
+    expect(getLocale()).toBe("en");
+  });
+
+  it('falls back to "en" for an empty cookie value', () => {
+    document.cookie = "NEXT_LOCALE=";
+    expect(getLocale()).toBe("en");
   });
 });

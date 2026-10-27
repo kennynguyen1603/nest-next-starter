@@ -1,3 +1,4 @@
+import { routing } from "@/i18n/routing";
 import { useAuthStore } from "@/lib/auth-store";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
@@ -5,9 +6,13 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 type RequestOptions = Omit<RequestInit, "body"> & { body?: unknown };
 
 export function getLocale(): string {
-  if (typeof document === "undefined") return "en";
+  if (typeof document === "undefined") return routing.defaultLocale;
   const match = document.cookie.match(/(?:^|;)\s*NEXT_LOCALE=([^;]+)/);
-  return match?.[1] ?? "en";
+  const locale = match?.[1];
+  return locale &&
+    routing.locales.includes(locale as (typeof routing.locales)[number])
+    ? locale
+    : routing.defaultLocale;
 }
 
 async function request<T>(
