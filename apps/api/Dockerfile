@@ -1,34 +1,40 @@
-ARG NODE_IMAGE=node:22-slim
+# syntax=docker/dockerfile:1
+# Build from the repo root: docker build -f apps/api/Dockerfile .
+ARG NODE_IMAGE=node:22-alpine
 
 FROM ${NODE_IMAGE} AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN apt-get update && apt-get install -y procps python3 make g++ \
-    && rm -rf /var/lib/apt/lists/*
+ENV TURBO_TELEMETRY_DISABLED=1
 RUN corepack enable
-
-FROM base AS builder
 WORKDIR /repo
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY apps/api/package.json ./apps/api/
-COPY apps/web/package.json ./apps/web/
-COPY packages/eslint-config/package.json ./packages/eslint-config/
-COPY packages/typescript-config/package.json ./packages/typescript-config/
-COPY packages/types/package.json ./packages/types/
-COPY packages/ui/package.json ./packages/ui/
-RUN --mount=type=cache,id=pnpm-api,target=/pnpm/store pnpm install --frozen-lockfile
 
+# 1. Prune the monorepo down to `api` and its workspace dependencies.
+FROM base AS pruner
+ARG TURBO_VERSION=2.9.4
 COPY . .
-RUN pnpm --filter ./apps/api build
-RUN --mount=type=cache,id=pnpm-api,target=/pnpm/store pnpm --filter ./apps/api deploy --prod /standalone
+RUN pnpm dlx turbo@${TURBO_VERSION} prune api --docker
 
-FROM node:22-alpine AS production
-RUN apk update && apk upgrade --no-cache && npm install -g pm2
+# 2. Install from manifests only, so this layer is reused until a lockfile/package.json changes.
+FROM base AS builder
+COPY --from=pruner /repo/out/json/ .
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store pnpm install --frozen-lockfile
+
+# 3. Build with full sources, then produce a production-only node_modules.
+COPY --from=pruner /repo/out/full/ .
+RUN pnpm turbo run build --filter=api
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    pnpm --filter=api deploy --prod /prod/api
+
+# 4. Runtime: no pnpm, no sources, no devDependencies.
+FROM ${NODE_IMAGE} AS runner
+RUN apk upgrade --no-cache && apk add --no-cache tini
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --chown=node:node --from=builder /standalone/node_modules ./node_modules
+COPY --chown=node:node --from=builder /prod/api/package.json ./
+COPY --chown=node:node --from=builder /prod/api/node_modules ./node_modules
 COPY --chown=node:node --from=builder /repo/apps/api/dist ./dist
-COPY --chown=node:node --from=builder /standalone/package.json ./
 USER node
 EXPOSE 8080
-CMD ["pm2-runtime", "start", "dist/main.js"]
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["node", "dist/main.js"]

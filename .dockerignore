@@ -1,11 +1,13 @@
 Dockerfile
 Dockerfile.*
 .dockerignore
-node_modules
+**/node_modules
 **/.env
-**/.env.local
-**/.env.*.local
-*.log
+**/.env.*
+**/*.pem
+**/*.key
+**/*.log
+**/*.tsbuildinfo
 **/dist
 **/build
 **/.next
@@ -21,3 +23,7 @@ docs
 .vscode
 .idea
 .agent
+.agents
+.claude
+.github
+.husky
