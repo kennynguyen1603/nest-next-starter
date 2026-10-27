@@ -38,6 +38,12 @@ services:
         condition: service_healthy
       seed:
         condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:8080/api/v1/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     restart: unless-stopped
 
   web:
@@ -111,6 +117,10 @@ services:
     volumes:
       - ./prometheus.config.yml:/etc/prometheus/prometheus.yaml:ro
       - ./.docker/prometheus-data:/prometheus
+    # /api/metrics is behind basic auth; must match BASIC_AUTH_* in apps/api/.env.
+    secrets:
+      - metrics_username
+      - metrics_password
     profiles:
       - monitoring
     depends_on:
@@ -182,3 +192,9 @@ services:
 
 volumes:
   redis_data:
+
+secrets:
+  metrics_username:
+    environment: BASIC_AUTH_USERNAME
+  metrics_password:
+    environment: BASIC_AUTH_PASSWORD

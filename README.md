@@ -301,15 +301,17 @@ docker compose --profile monitoring --profile monitoring-postgres up --build
 
 ### Access
 
-| URL                                         | Credential                              |
-| ------------------------------------------- | --------------------------------------- |
-| Grafana — http://localhost:3001             | `GRAFANA_USERNAME` / `GRAFANA_PASSWORD` |
-| Prometheus — http://localhost:9090          | No auth                                 |
-| API metrics — http://localhost:8080/metrics | No auth                                 |
+| URL                                             | Credential                                    |
+| ----------------------------------------------- | --------------------------------------------- |
+| Grafana — http://localhost:3001                 | `GRAFANA_USERNAME` / `GRAFANA_PASSWORD`       |
+| Prometheus — http://localhost:9090              | No auth                                       |
+| API metrics — http://localhost:8080/api/metrics | `BASIC_AUTH_USERNAME` / `BASIC_AUTH_PASSWORD` |
 
 ### Metrics endpoint
 
-The API exposes `/metrics` automatically via `@willsoto/nestjs-prometheus`. Prometheus scrapes it every 15 seconds. No code changes are needed.
+The API exposes `/api/metrics` via `@willsoto/nestjs-prometheus`: process CPU/memory/event-loop defaults, `http_request_duration_seconds` (labelled by route pattern) and `bullmq_queue_jobs` (job counts per queue and state). Prometheus scrapes it every 15 seconds.
+
+The endpoint is protected by the same basic auth as Swagger and Bull Board. Prometheus reads the credentials from Docker secrets sourced from `BASIC_AUTH_USERNAME` / `BASIC_AUTH_PASSWORD` in the **root** `.env`, so keep them in sync with `apps/api/.env` (Compose refuses to start the `monitoring` profile if they are unset).
 
 ### Data persistence
 

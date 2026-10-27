@@ -51,6 +51,7 @@ import { SessionModule } from './session/session.module';
 import { MailModule } from './mail/mail.module';
 import { MailerModule } from './mailer/mailer.module';
 import { HealthModule } from './health/health.module';
+import { MetricsModule } from './metrics/metrics.module';
 import redisConfig from './config/redis/redis.config';
 import bullConfig, { BULL_BOARD_PATH } from './config/bull/bull.config';
 import useBullFactory from './config/bull/bull.factory';
@@ -172,6 +173,7 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
       adapter: ExpressAdapter,
     }),
     PrometheusModule.register(),
+    MetricsModule,
     GracefulShutdownModule.forRoot({
       cleanup: (...args) => {
         // eslint-disable-next-line no-console

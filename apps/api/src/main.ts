@@ -21,6 +21,7 @@ import { ResolvePromisesInterceptor } from '@/utils/serializer.interceptor';
 import validationOptions from '@/utils/validation-options';
 import { AllConfigType } from './config/config.type';
 import { BULL_BOARD_PATH } from './config/bull/bull.config';
+import { HttpMetricsMiddleware } from './metrics/http-metrics.middleware';
 import { basicAuthMiddleware } from './middlewares/basic-auth.middleware';
 import { RedisIoAdapter } from './socket/socket.adapter';
 
@@ -49,6 +50,10 @@ async function bootstrap() {
       }
     ).set('trust proxy', value);
   }
+
+  // Registered first so latency covers every middleware and handler.
+  const httpMetrics = app.get(HttpMetricsMiddleware);
+  app.use(httpMetrics.use.bind(httpMetrics));
 
   // Fail closed: when no allowed origins are configured we deny cross-origin
   // rather than reflecting any origin with credentials (a credential-leak risk).
@@ -95,9 +100,13 @@ async function bootstrap() {
     `/api${BULL_BOARD_PATH}`,
     SWAGGER_PATH,
     `/api/auth/reference`,
+    // Metrics leak internals and each scrape queries Redis for queue counts.
+    `/api/metrics`,
   ];
   app.use((req: Request, res: Response, next: NextFunction) => {
-    if (pathsToIntercept.some((path) => req.url.startsWith(path))) {
+    // Express routing is case-insensitive, so `/API/metrics` must not slip past.
+    const url = req.path.toLowerCase();
+    if (pathsToIntercept.some((path) => url.startsWith(path))) {
       basicAuthMiddleware(req, res, next);
     } else {
       next();
