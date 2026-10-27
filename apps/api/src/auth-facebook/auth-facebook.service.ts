@@ -1,3 +1,4 @@
+import { createHmac } from 'crypto';
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
@@ -33,8 +34,10 @@ export class AuthFacebookService {
   ): Promise<SocialInterface> {
     this.logger.debug('Fetching Facebook user profile');
     try {
+      const credentials = this.getAppCredentials();
+
       // Step 1: Verify that the token is valid and belongs to our app
-      await this.verifyAccessToken(loginDto.accessToken);
+      await this.verifyAccessToken(loginDto.accessToken, credentials);
 
       // Step 2: Construct the profile URL and query Facebook for user data
       const profileUrl = new URL(`${this.baseUrl}/${this.apiVersion}/me`);
@@ -42,12 +45,21 @@ export class AuthFacebookService {
         'fields',
         'id,last_name,email,first_name,picture.width(200)',
       );
-      profileUrl.searchParams.set('access_token', loginDto.accessToken);
+      // appsecret_proof proves the call comes from our server, so a leaked
+      // user token cannot be replayed against Graph with our app identity.
+      profileUrl.searchParams.set(
+        'appsecret_proof',
+        createHmac('sha256', credentials.appSecret)
+          .update(loginDto.accessToken)
+          .digest('hex'),
+      );
 
       const response = await fetch(profileUrl.toString(), {
         method: 'GET',
         headers: {
           Accept: 'application/json',
+          // Header rather than query string keeps the token out of URL logs.
+          Authorization: `Bearer ${loginDto.accessToken}`,
         },
         signal: AbortSignal.timeout(10000), // Abort request if it exceeds 10 seconds
       });
@@ -113,36 +125,40 @@ export class AuthFacebookService {
     }
   }
 
+  private getAppCredentials(): { appId: string; appSecret: string } {
+    const appId = this.configService.get('facebook.appId', { infer: true });
+    const appSecret = this.configService.get('facebook.appSecret', {
+      infer: true,
+    });
+
+    if (!appId || !appSecret) {
+      throw new HttpException(
+        'Facebook app credentials not configured',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+    return { appId, appSecret };
+  }
+
   /**
    * Validates the Facebook access token by calling the /debug_token endpoint.
    * Also ensures the token belongs to our application.
    * @param accessToken The user's short-lived access token to be verified.
    */
-  private async verifyAccessToken(accessToken: string): Promise<void> {
+  private async verifyAccessToken(
+    accessToken: string,
+    { appId, appSecret }: { appId: string; appSecret: string },
+  ): Promise<void> {
     try {
-      const appId = this.configService.get('facebook.appId', { infer: true });
-      const appSecret = this.configService.get('facebook.appSecret', {
-        infer: true,
-      });
-
-      // Application credentials must be configured properly
-      if (!appId || !appSecret) {
-        throw new HttpException(
-          'Facebook app credentials not configured',
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        );
-      }
-
       const debugUrl = new URL(`${this.baseUrl}/debug_token`);
-      const appAccessToken = `${appId}|${appSecret}`;
-
       debugUrl.searchParams.set('input_token', accessToken);
-      debugUrl.searchParams.set('access_token', appAccessToken);
 
       const response = await fetch(debugUrl.toString(), {
         method: 'GET',
         headers: {
           Accept: 'application/json',
+          // App access token; sent as a header so the secret never lands in URLs.
+          Authorization: `Bearer ${appId}|${appSecret}`,
         },
         signal: AbortSignal.timeout(5000), // 5 second timeout for validation
       });
@@ -158,7 +174,7 @@ export class AuthFacebookService {
       const tokenData = result.data;
 
       // Check if the token is valid and active
-      if (!tokenData.is_valid) {
+      if (!tokenData?.is_valid) {
         throw new HttpException(
           'Invalid Facebook access token',
           HttpStatus.UNAUTHORIZED,
@@ -191,17 +207,7 @@ export class AuthFacebookService {
    */
   async exchangeForLongLivedToken(shortLivedToken: string): Promise<string> {
     try {
-      const appId = this.configService.get('facebook.appId', { infer: true });
-      const appSecret = this.configService.get('facebook.appSecret', {
-        infer: true,
-      });
-
-      if (!appId || !appSecret) {
-        throw new HttpException(
-          'Facebook app credentials not configured',
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        );
-      }
+      const { appId, appSecret } = this.getAppCredentials();
 
       const tokenUrl = new URL(`${this.baseUrl}/oauth/access_token`);
       tokenUrl.searchParams.set('grant_type', 'fb_exchange_token');
@@ -214,6 +220,7 @@ export class AuthFacebookService {
         headers: {
           Accept: 'application/json',
         },
+        signal: AbortSignal.timeout(10000),
       });
 
       if (!response.ok) {

@@ -70,8 +70,13 @@ export class SessionDocumentRepository implements SessionRepository {
       Omit<Session, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>
     >,
   ): Promise<Session | null> {
+    // A revoked session must never rotate again, even if the old hash matches.
     const sessionObject = await this.sessionModel.findOneAndUpdate(
-      { _id: conditions.id.toString(), hash: conditions.hash },
+      {
+        _id: conditions.id.toString(),
+        hash: conditions.hash,
+        revokeAt: { $exists: false },
+      },
       { $set: { hash: payload.hash, lastUsedAt: new Date() } },
       { returnDocument: 'after' },
     );

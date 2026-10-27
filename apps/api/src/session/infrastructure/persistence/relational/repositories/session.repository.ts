@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Not, Repository } from 'typeorm';
+import { In, IsNull, Not, Repository } from 'typeorm';
 import { SessionEntity } from '../entities/session.entity';
 import { NullableType } from '@/utils/types/nullable.type';
 
@@ -31,7 +31,7 @@ export class SessionRelationalRepository implements SessionRepository {
 
   async findByUserId(userId: User['id']): Promise<Session[]> {
     const entities = await this.sessionRepository.find({
-      where: { user: { id: userId } },
+      where: { user: { id: userId }, revokeAt: IsNull() },
       order: { lastUsedAt: 'DESC', createdAt: 'DESC' },
     });
     return entities.map((entity) => SessionMapper.toDomain(entity));
@@ -82,8 +82,9 @@ export class SessionRelationalRepository implements SessionRepository {
       Omit<Session, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>
     >,
   ): Promise<Session | null> {
+    // A revoked session must never rotate again, even if the old hash matches.
     const result = await this.sessionRepository.update(
-      { id: Number(conditions.id), hash: conditions.hash },
+      { id: Number(conditions.id), hash: conditions.hash, revokeAt: IsNull() },
       { hash: payload.hash, lastUsedAt: new Date() },
     );
 
@@ -106,7 +107,7 @@ export class SessionRelationalRepository implements SessionRepository {
     revokeReason?: RevokeReason,
   ): Promise<void> {
     await this.sessionRepository.update(
-      { id: Number(id) },
+      { id: Number(id), revokeAt: IsNull() },
       { revokeAt: new Date(), revokeReason: revokeReason ?? 'logout' },
     );
   }
@@ -116,7 +117,7 @@ export class SessionRelationalRepository implements SessionRepository {
     revokeReason?: RevokeReason,
   ): Promise<void> {
     await this.sessionRepository.update(
-      { user: { id: conditions.userId } },
+      { user: { id: conditions.userId }, revokeAt: IsNull() },
       { revokeAt: new Date(), revokeReason: revokeReason ?? 'logout' },
     );
   }
@@ -132,6 +133,7 @@ export class SessionRelationalRepository implements SessionRepository {
       {
         user: { id: conditions.userId },
         id: Not(Number(conditions.excludeSessionId)),
+        revokeAt: IsNull(),
       },
       { revokeAt: new Date(), revokeReason: revokeReason ?? 'logout' },
     );
@@ -145,6 +147,7 @@ export class SessionRelationalRepository implements SessionRepository {
       .createQueryBuilder('session')
       .select('session.id')
       .where('"session"."userId" = :userId', { userId })
+      .andWhere('session.revokeAt IS NULL')
       .orderBy('session.createdAt', 'ASC')
       .getMany();
     if (sessions.length >= maxSessions) {

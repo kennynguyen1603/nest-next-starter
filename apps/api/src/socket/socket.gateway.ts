@@ -12,14 +12,27 @@ import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { AllConfigType } from '@/config/config.type';
 import { JwtPayloadType } from '@/auth/strategies/types/jwt-payload.type';
 import { CacheService } from '@/shared/cache/cache.service';
+import { SessionService } from '@/session/session.service';
 import { AuthenticatedSocket } from './types/authenticated-socket.type';
 import { SocketEvent } from './types/socket-event.enum';
 
 const USER_SOCKET_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
+// Same allowlist as HTTP CORS (see main.ts). Fail closed: with no configured
+// origin, cross-origin handshakes are rejected instead of reflecting any origin
+// with credentials.
+export function resolveSocketCorsOrigin(
+  env: NodeJS.ProcessEnv = process.env,
+): string[] | false {
+  const origins = [env.FRONTEND_DOMAIN, env.ADMIN_DOMAIN].filter(
+    (origin): origin is string => !!origin,
+  );
+  return origins.length ? origins : false;
+}
+
 @WebSocketGateway({
   cors: {
-    origin: process.env.FRONTEND_DOMAIN ?? '*',
+    origin: resolveSocketCorsOrigin(),
     credentials: true,
   },
   transports: ['websocket', 'polling'],
@@ -34,14 +47,15 @@ export class SocketGateway
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService<AllConfigType>,
     private readonly cacheService: CacheService,
+    private readonly sessionService: SessionService,
     @InjectPinoLogger(SocketGateway.name)
     private readonly logger: PinoLogger,
   ) {}
 
   async handleConnection(socket: AuthenticatedSocket): Promise<void> {
-    const token =
-      (socket.handshake.auth?.token as string | undefined) ??
-      (socket.handshake.query?.token as string | undefined);
+    // Only the handshake auth payload is accepted: query-string tokens end up
+    // in proxy/access logs and browser history.
+    const token = socket.handshake.auth?.token as string | undefined;
 
     if (!token) {
       socket.emit(SocketEvent.Error, { message: 'Unauthorized' });
@@ -56,6 +70,18 @@ export class SocketGateway
       const payload = await this.jwtService.verifyAsync<JwtPayloadType>(token, {
         secret,
       });
+
+      // Bind the socket to a live session, like the HTTP JWT strategy does.
+      const isActive =
+        !!payload.id &&
+        !!payload.sessionId &&
+        (await this.sessionService.isActiveForUser(
+          payload.sessionId,
+          payload.id,
+        ));
+      if (!isActive) {
+        throw new Error('Session is not active');
+      }
 
       socket.data.user = payload;
       const userId = payload.id;

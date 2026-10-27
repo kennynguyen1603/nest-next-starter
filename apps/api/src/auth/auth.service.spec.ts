@@ -33,6 +33,7 @@ const mockUsersService = {
 };
 const mockSessionService = {
   create: jest.fn(),
+  findById: jest.fn(),
   deleteById: jest.fn(),
   deleteByUserId: jest.fn(),
   deleteByUserIdWithExclude: jest.fn(),
@@ -482,6 +483,10 @@ describe('AuthService', () => {
   describe('confirmNewEmail', () => {
     const validPayload = { confirmEmailUserId: 'user1', newEmail: 'new@x.com' };
 
+    beforeEach(() => {
+      mockUsersService.findByEmail.mockResolvedValue(null);
+    });
+
     it('throws UnprocessableEntityException when hash is invalid', async () => {
       mockJwtService.verifyAsync.mockRejectedValue(new Error('expired'));
 
@@ -532,6 +537,120 @@ describe('AuthService', () => {
         'auth.NEW_EMAIL_CONFIRM_SUCCESS',
         expect.any(Object),
       );
+    });
+
+    it('rejects when the new email was claimed by another account', async () => {
+      mockJwtService.verifyAsync.mockResolvedValue(validPayload);
+      mockUsersService.findById.mockResolvedValue({ id: 'user1' });
+      mockUsersService.findByEmail.mockResolvedValue({ id: 'user2' });
+
+      await expect(service.confirmNewEmail('valid-hash')).rejects.toThrow(
+        UnprocessableEntityException,
+      );
+      expect(mockUsersService.update).not.toHaveBeenCalled();
+      expect(mockCacheService.set).not.toHaveBeenCalled();
+    });
+
+    it('rejects a token that was already used', async () => {
+      mockJwtService.verifyAsync.mockResolvedValue(validPayload);
+      mockCacheService.get.mockResolvedValueOnce(true);
+
+      await expect(service.confirmNewEmail('valid-hash')).rejects.toThrow(
+        UnprocessableEntityException,
+      );
+      expect(mockUsersService.findById).not.toHaveBeenCalled();
+      expect(mockUsersService.update).not.toHaveBeenCalled();
+    });
+
+    it('marks the token as used until it expires', async () => {
+      const exp = Math.floor(Date.now() / 1000) + 600;
+      mockJwtService.verifyAsync.mockResolvedValue({ ...validPayload, exp });
+      mockUsersService.findById.mockResolvedValue({ id: 'user1' });
+
+      await service.confirmNewEmail('valid-hash');
+
+      expect(mockCacheService.get).toHaveBeenCalledWith({
+        key: 'UsedAuthToken',
+        args: [expect.stringMatching(/^[a-f0-9]{64}$/)],
+      });
+      const [param, value, options] = mockCacheService.set.mock.calls[0];
+      expect(param).toEqual(mockCacheService.get.mock.calls[0][0]);
+      expect(value).toBe(true);
+      expect(options.ttl).toBeGreaterThan(0);
+      expect(options.ttl).toBeLessThanOrEqual(600_000);
+    });
+  });
+
+  describe('resetPassword', () => {
+    const exp = () => Math.floor(Date.now() / 1000) + 600;
+
+    it('throws UnprocessableEntityException when hash is invalid', async () => {
+      mockJwtService.verifyAsync.mockRejectedValue(new Error('expired'));
+
+      await expect(
+        service.resetPassword('bad-hash', 'new-pass'),
+      ).rejects.toThrow(UnprocessableEntityException);
+      expect(mockUsersService.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects a token that was already used', async () => {
+      mockJwtService.verifyAsync.mockResolvedValue({
+        forgotUserId: 'user1',
+        exp: exp(),
+      });
+      mockCacheService.get.mockResolvedValueOnce(true);
+
+      await expect(service.resetPassword('hash', 'new-pass')).rejects.toThrow(
+        UnprocessableEntityException,
+      );
+      expect(mockUsersService.update).not.toHaveBeenCalled();
+      expect(mockSessionService.deleteByUserId).not.toHaveBeenCalled();
+    });
+
+    it('throws UnprocessableEntityException when user does not exist', async () => {
+      mockJwtService.verifyAsync.mockResolvedValue({
+        forgotUserId: 'ghost',
+        exp: exp(),
+      });
+      mockUsersService.findById.mockResolvedValue(null);
+
+      await expect(service.resetPassword('hash', 'new-pass')).rejects.toThrow(
+        UnprocessableEntityException,
+      );
+      expect(mockCacheService.set).not.toHaveBeenCalled();
+    });
+
+    it('updates the password, revokes all sessions and burns the token', async () => {
+      mockJwtService.verifyAsync.mockResolvedValue({
+        forgotUserId: 'user1',
+        exp: exp(),
+      });
+      mockUsersService.findById.mockResolvedValue({ id: 'user1' });
+
+      const result = await service.resetPassword('hash', 'new-pass');
+
+      expect(mockSessionService.deleteByUserId).toHaveBeenCalledWith(
+        { userId: 'user1' },
+        'logout',
+      );
+      expect(mockUsersService.update).toHaveBeenCalledWith('user1', {
+        password: 'new-pass',
+      });
+      expect(mockCacheService.set).toHaveBeenCalledWith(
+        { key: 'UsedAuthToken', args: [expect.any(String)] },
+        true,
+        { ttl: expect.any(Number) },
+      );
+      expect(result).toEqual({ message: 'mocked' });
+    });
+
+    it('skips burning a token that carries no expiry', async () => {
+      mockJwtService.verifyAsync.mockResolvedValue({ forgotUserId: 'user1' });
+      mockUsersService.findById.mockResolvedValue({ id: 'user1' });
+
+      await service.resetPassword('hash', 'new-pass');
+
+      expect(mockCacheService.set).not.toHaveBeenCalled();
     });
   });
 
@@ -605,12 +724,65 @@ describe('AuthService', () => {
   });
 
   describe('refreshToken', () => {
-    it('throws UnauthorizedException when session not found or hash mismatch', async () => {
+    it('throws UnauthorizedException when session not found', async () => {
       mockSessionService.updateByHash.mockResolvedValue(null);
+      mockSessionService.findById.mockResolvedValue(null);
 
       await expect(
         service.refreshToken({ sessionId: 'session1', hash: 'badhash' }),
       ).rejects.toThrow(UnauthorizedException);
+      expect(mockSessionService.deleteById).not.toHaveBeenCalled();
+    });
+
+    it('revokes a live session when a rotated refresh token is replayed', async () => {
+      mockSessionService.updateByHash.mockResolvedValue(null);
+      mockSessionService.findById.mockResolvedValue({
+        id: 'session1',
+        user: { id: 'user1' },
+      });
+
+      await expect(
+        service.refreshToken({ sessionId: 'session1', hash: 'stale' }),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(mockSessionService.deleteById).toHaveBeenCalledWith(
+        'session1',
+        'suspicious',
+      );
+    });
+
+    it('does not revoke again when the session is already revoked', async () => {
+      mockSessionService.updateByHash.mockResolvedValue(null);
+      mockSessionService.findById.mockResolvedValue({
+        id: 'session1',
+        user: { id: 'user1' },
+        revokeAt: new Date(),
+      });
+
+      await expect(
+        service.refreshToken({ sessionId: 'session1', hash: 'stale' }),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(mockSessionService.deleteById).not.toHaveBeenCalled();
+    });
+
+    it('rejects and revokes the session of a banned user', async () => {
+      mockSessionService.updateByHash.mockResolvedValue({
+        id: 'session1',
+        user: { id: 'user1' },
+      });
+      mockUsersService.findById.mockResolvedValue({
+        id: 'user1',
+        status: UserStatus.BANNED,
+        roles: [{ name: 'user' }],
+      });
+
+      await expect(
+        service.refreshToken({ sessionId: 'session1', hash: 'hash1' }),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(mockSessionService.deleteById).toHaveBeenCalledWith(
+        'session1',
+        'suspicious',
+      );
+      expect(mockJwtService.signAsync).not.toHaveBeenCalled();
     });
 
     it('throws UnauthorizedException when user has no roles', async () => {
