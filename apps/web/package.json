@@ -15,7 +15,6 @@
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@repo/types": "workspace:*",
-    "@repo/ui": "workspace:*",
     "@tailwindcss/postcss": "^4.2.4",
     "autoprefixer": "^10.5.0",
     "next": "16.2.6",
@@ -35,7 +34,6 @@
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
     "@vitejs/plugin-react": "^6.0.1",
-    "@vitest/coverage-v8": "^4.1.6",
     "eslint": "^9.39.1",
     "jsdom": "^29.1.1",
     "typescript": "5.9.2",

@@ -7,17 +7,18 @@ This document describes how to obtain real tokens for testing 3 providers: **Fac
 ## Prerequisites
 
 The API must be running:
+
 ```bash
 pnpm --filter api dev
 ```
 
 The corresponding env vars must be set in `.env`:
 
-| Provider  | Env vars                                      |
-|-----------|-----------------------------------------------|
-| Facebook  | `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET`      |
-| GitHub    | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`    |
-| Twitter   | `TWITTER_CLIENT_ID`, `TWITTER_CLIENT_SECRET`  |
+| Provider | Env vars                                     |
+| -------- | -------------------------------------------- |
+| Facebook | `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET`     |
+| GitHub   | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`   |
+| Twitter  | `TWITTER_CLIENT_ID`, `TWITTER_CLIENT_SECRET` |
 
 All are optional — if not set, the server still starts but the endpoint will return an error when called.
 
@@ -58,21 +59,28 @@ Content-Type: application/json
 ```
 
 Successful response:
+
 ```json
 {
   "token": "<jwt_access_token>",
   "tokenExpires": 1234567890,
-  "user": { "id": "...", "email": "...", "firstName": "...", "provider": "facebook" }
+  "user": {
+    "id": "...",
+    "email": "...",
+    "firstName": "...",
+    "provider": "facebook"
+  }
 }
 ```
+
 The server also sets a `refresh_token` cookie (HttpOnly, SameSite=Strict).
 
 ### Common errors
 
-| Error | Cause |
-|-------|-------|
-| `422 Facebook app credentials not configured` | `FACEBOOK_APP_ID` or `FACEBOOK_APP_SECRET` not set |
-| `401 Invalid Facebook access token` | Token expired or invalid |
+| Error                                          | Cause                                                           |
+| ---------------------------------------------- | --------------------------------------------------------------- |
+| `422 Facebook app credentials not configured`  | `FACEBOOK_APP_ID` or `FACEBOOK_APP_SECRET` not set              |
+| `401 Invalid Facebook access token`            | Token expired or invalid                                        |
 | `401 Access token does not belong to this app` | Token was generated from a different App, does not match App ID |
 
 ---
@@ -108,6 +116,7 @@ The server also sets a `refresh_token` cookie (HttpOnly, SameSite=Strict).
 **Option 2 — Full OAuth flow (production flow):**
 
 Frontend redirects the user to GitHub:
+
 ```
 https://github.com/login/oauth/authorize
   ?client_id=<GITHUB_CLIENT_ID>
@@ -116,6 +125,7 @@ https://github.com/login/oauth/authorize
 ```
 
 GitHub redirects back to the frontend (`localhost:3000`) with `?code=...`. The frontend exchanges the code for an access token **server-side** (because `client_secret` is required):
+
 ```bash
 curl -X POST https://github.com/login/oauth/access_token \
   -H "Accept: application/json" \
@@ -123,6 +133,7 @@ curl -X POST https://github.com/login/oauth/access_token \
 ```
 
 Frontend receives the `access_token` → sends it to the API:
+
 ```
 POST http://localhost:8080/api/v1/auth/github/login
 { "accessToken": "<access_token>" }
@@ -141,9 +152,9 @@ Content-Type: application/json
 
 ### Common errors
 
-| Error | Cause |
-|-------|-------|
-| `401 GitHub API error` | Token invalid or expired |
+| Error                            | Cause                                        |
+| -------------------------------- | -------------------------------------------- |
+| `401 GitHub API error`           | Token invalid or expired                     |
 | `408 GitHub API request timeout` | GitHub API did not respond within 10 seconds |
 
 ---
@@ -172,6 +183,7 @@ Content-Type: application/json
 Twitter has no Explorer tool like Facebook. Perform the **Authorization Code Flow with PKCE** manually:
 
 **Step 1 — Generate PKCE:**
+
 ```bash
 CODE_VERIFIER=$(openssl rand -base64 32 | tr -d '=+/' | head -c 43)
 CODE_CHALLENGE=$(echo -n "$CODE_VERIFIER" | openssl dgst -sha256 -binary | openssl base64 | tr -d '=' | tr '+/' '-_')
@@ -181,6 +193,7 @@ echo "challenge: $CODE_CHALLENGE"
 ```
 
 **Step 2 — Open the URL in a browser:**
+
 ```
 https://twitter.com/i/oauth2/authorize
   ?response_type=code
@@ -195,6 +208,7 @@ https://twitter.com/i/oauth2/authorize
 The browser redirects to `localhost:3000/auth/twitter/callback?code=...` — copy the `code` value from the URL.
 
 **Step 3 — Exchange the code for a token (run in terminal):**
+
 ```bash
 curl -X POST https://api.twitter.com/2/oauth2/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
@@ -217,11 +231,11 @@ Content-Type: application/json
 
 ### Common errors
 
-| Error | Cause |
-|-------|-------|
-| `401 Twitter API error` | Token invalid or expired |
-| `400 Invalid Twitter profile data` | API response did not return `id` |
-| `408 Twitter API request timeout` | Twitter API did not respond within 10 seconds |
+| Error                              | Cause                                         |
+| ---------------------------------- | --------------------------------------------- |
+| `401 Twitter API error`            | Token invalid or expired                      |
+| `400 Invalid Twitter profile data` | API response did not return `id`              |
+| `408 Twitter API request timeout`  | Twitter API did not respond within 10 seconds |
 
 ---
 
@@ -242,12 +256,14 @@ Client                    API Server                 Provider API
 ```
 
 After a successful login, use `token` to call authenticated endpoints:
+
 ```
 GET /api/v1/auth/me
 Authorization: Bearer <token>
 ```
 
 And refresh when the token expires (default 15 minutes):
+
 ```
 POST /api/v1/auth/refresh
 # refresh_token cookie is sent automatically by the browser/Postman

@@ -12,23 +12,24 @@
 
 ## File Map
 
-| Thao tác | Path |
-|---|---|
-| **Tạo mới** | `src/utils/interceptors/serialize.ts` |
-| **Tạo mới (test)** | `src/utils/interceptors/serialize.spec.ts` |
-| **Xóa** | `src/utils/transformers/lower-case.transformer.ts` |
-| **Sửa** | `src/auth/dto/auth-email-login.dto.ts` |
-| **Sửa** | `src/auth/dto/auth-forgot-password.dto.ts` |
-| **Sửa** | `src/auth/dto/auth-register-login.dto.ts` |
-| **Sửa** | `src/auth/dto/auth-update.dto.ts` |
-| **Sửa** | `src/users/dto/create-user.dto.ts` |
-| **Sửa** | `src/users/dto/update-user.dto.ts` |
+| Thao tác           | Path                                               |
+| ------------------ | -------------------------------------------------- |
+| **Tạo mới**        | `src/utils/interceptors/serialize.ts`              |
+| **Tạo mới (test)** | `src/utils/interceptors/serialize.spec.ts`         |
+| **Xóa**            | `src/utils/transformers/lower-case.transformer.ts` |
+| **Sửa**            | `src/auth/dto/auth-email-login.dto.ts`             |
+| **Sửa**            | `src/auth/dto/auth-forgot-password.dto.ts`         |
+| **Sửa**            | `src/auth/dto/auth-register-login.dto.ts`          |
+| **Sửa**            | `src/auth/dto/auth-update.dto.ts`                  |
+| **Sửa**            | `src/users/dto/create-user.dto.ts`                 |
+| **Sửa**            | `src/users/dto/update-user.dto.ts`                 |
 
 ---
 
 ## Task 1: Tạo `SerializeInterceptor` và `Serialize()` factory
 
 **Files:**
+
 - Create: `apps/api/src/utils/interceptors/serialize.spec.ts`
 - Create: `apps/api/src/utils/interceptors/serialize.ts`
 
@@ -39,50 +40,48 @@
 Tạo file `apps/api/src/utils/interceptors/serialize.spec.ts`:
 
 ```ts
-import { ExecutionContext, CallHandler } from '@nestjs/common';
-import { of } from 'rxjs';
-import { plainToInstance } from 'class-transformer';
-import { Expose } from 'class-transformer';
-import { Serialize } from './serialize';
+import { ExecutionContext, CallHandler } from "@nestjs/common";
+import { of } from "rxjs";
+import { plainToInstance } from "class-transformer";
+import { Expose } from "class-transformer";
+import { Serialize } from "./serialize";
 
 class UserResponseDto {
   @Expose()
   name: string;
 }
 
-describe('Serialize', () => {
-  it('strips fields not declared in the DTO', (done) => {
+describe("Serialize", () => {
+  it("strips fields not declared in the DTO", (done) => {
     const decorator = Serialize(UserResponseDto);
 
     // minimal mock context — not used by the interceptor
     const mockContext = {} as ExecutionContext;
     const mockNext: CallHandler = {
-      handle: () => of({ name: 'Alice', secret: 'hidden' }),
+      handle: () => of({ name: "Alice", secret: "hidden" }),
     };
 
     // extract the interceptor instance from UseInterceptors metadata
-    const interceptors: any[] = Reflect.getMetadata(
-      '__interceptors__',
-      decorator,
-    ) ?? [];
+    const interceptors: any[] =
+      Reflect.getMetadata("__interceptors__", decorator) ?? [];
 
     // fallback: instantiate directly for unit testing
-    const { SerializeInterceptor } = require('./serialize');
+    const { SerializeInterceptor } = require("./serialize");
     const interceptor = new SerializeInterceptor(UserResponseDto);
 
     interceptor.intercept(mockContext, mockNext).subscribe((result: any) => {
-      expect(result).toEqual({ name: 'Alice' });
+      expect(result).toEqual({ name: "Alice" });
       expect(result.secret).toBeUndefined();
       done();
     });
   });
 
-  it('returns empty object when no @Expose fields match', (done) => {
+  it("returns empty object when no @Expose fields match", (done) => {
     class EmptyDto {}
-    const { SerializeInterceptor } = require('./serialize');
+    const { SerializeInterceptor } = require("./serialize");
     const interceptor = new SerializeInterceptor(EmptyDto);
     const mockContext = {} as ExecutionContext;
-    const mockNext: CallHandler = { handle: () => of({ name: 'Alice' }) };
+    const mockNext: CallHandler = { handle: () => of({ name: "Alice" }) };
 
     interceptor.intercept(mockContext, mockNext).subscribe((result: any) => {
       expect(result).toEqual({});
@@ -112,10 +111,10 @@ import {
   NestInterceptor,
   Type,
   UseInterceptors,
-} from '@nestjs/common';
-import { plainToInstance } from 'class-transformer';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+} from "@nestjs/common";
+import { plainToInstance } from "class-transformer";
+import { Observable } from "rxjs";
+import { map } from "rxjs/operators";
 
 @Injectable()
 export class SerializeInterceptor implements NestInterceptor {
@@ -166,6 +165,7 @@ git commit -m "feat(utils): add SerializeInterceptor and Serialize factory"
 ## Task 2: Thay `lowerCaseTransformer` bằng `@ToLowerCase()` trong 6 DTOs
 
 **Files:**
+
 - Delete: `apps/api/src/utils/transformers/lower-case.transformer.ts`
 - Modify: `apps/api/src/auth/dto/auth-email-login.dto.ts`
 - Modify: `apps/api/src/auth/dto/auth-forgot-password.dto.ts`
@@ -182,24 +182,24 @@ git commit -m "feat(utils): add SerializeInterceptor and Serialize factory"
 Tạo file `apps/api/src/auth/dto/auth-email-login.dto.spec.ts`:
 
 ```ts
-import { plainToInstance } from 'class-transformer';
-import { AuthEmailLoginDto } from './auth-email-login.dto';
+import { plainToInstance } from "class-transformer";
+import { AuthEmailLoginDto } from "./auth-email-login.dto";
 
-describe('AuthEmailLoginDto — email transform', () => {
-  it('lowercases email on deserialization', () => {
+describe("AuthEmailLoginDto — email transform", () => {
+  it("lowercases email on deserialization", () => {
     const dto = plainToInstance(AuthEmailLoginDto, {
-      email: 'USER@EXAMPLE.COM',
-      password: 'secret',
+      email: "USER@EXAMPLE.COM",
+      password: "secret",
     });
-    expect(dto.email).toBe('user@example.com');
+    expect(dto.email).toBe("user@example.com");
   });
 
-  it('trims whitespace from email', () => {
+  it("trims whitespace from email", () => {
     const dto = plainToInstance(AuthEmailLoginDto, {
-      email: '  User@Example.COM  ',
-      password: 'secret',
+      email: "  User@Example.COM  ",
+      password: "secret",
     });
-    expect(dto.email).toBe('user@example.com');
+    expect(dto.email).toBe("user@example.com");
   });
 });
 ```
@@ -217,12 +217,12 @@ Expected: `PASS` — đây là baseline trước khi thay đổi. Nếu fail, ki
 Thay nội dung file `apps/api/src/auth/dto/auth-email-login.dto.ts`:
 
 ```ts
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty } from 'class-validator';
-import { ToLowerCase } from '@/decorators/transform.decorators';
+import { ApiProperty } from "@nestjs/swagger";
+import { IsEmail, IsNotEmpty } from "class-validator";
+import { ToLowerCase } from "@/decorators/transform.decorators";
 
 export class AuthEmailLoginDto {
-  @ApiProperty({ example: 'test1@example.com', type: String })
+  @ApiProperty({ example: "test1@example.com", type: String })
   @ToLowerCase()
   @IsEmail()
   @IsNotEmpty()
@@ -239,12 +239,12 @@ export class AuthEmailLoginDto {
 Thay nội dung file `apps/api/src/auth/dto/auth-forgot-password.dto.ts`:
 
 ```ts
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail } from 'class-validator';
-import { ToLowerCase } from '@/decorators/transform.decorators';
+import { ApiProperty } from "@nestjs/swagger";
+import { IsEmail } from "class-validator";
+import { ToLowerCase } from "@/decorators/transform.decorators";
 
 export class AuthForgotPasswordDto {
-  @ApiProperty({ example: 'test1@example.com', type: String })
+  @ApiProperty({ example: "test1@example.com", type: String })
   @ToLowerCase()
   @IsEmail()
   email: string;
@@ -256,12 +256,12 @@ export class AuthForgotPasswordDto {
 Thay nội dung file `apps/api/src/auth/dto/auth-register-login.dto.ts`:
 
 ```ts
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, MinLength } from 'class-validator';
-import { ToLowerCase } from '@/decorators/transform.decorators';
+import { ApiProperty } from "@nestjs/swagger";
+import { IsEmail, IsNotEmpty, MinLength } from "class-validator";
+import { ToLowerCase } from "@/decorators/transform.decorators";
 
 export class AuthRegisterLoginDto {
-  @ApiProperty({ example: 'test1@example.com', type: String })
+  @ApiProperty({ example: "test1@example.com", type: String })
   @ToLowerCase()
   @IsEmail()
   email: string;
@@ -270,11 +270,11 @@ export class AuthRegisterLoginDto {
   @MinLength(6)
   password: string;
 
-  @ApiProperty({ example: 'John' })
+  @ApiProperty({ example: "John" })
   @IsNotEmpty()
   firstName: string;
 
-  @ApiProperty({ example: 'Doe' })
+  @ApiProperty({ example: "Doe" })
   @IsNotEmpty()
   lastName: string;
 }
@@ -285,27 +285,27 @@ export class AuthRegisterLoginDto {
 Thay nội dung file `apps/api/src/auth/dto/auth-update.dto.ts`:
 
 ```ts
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsOptional, MinLength } from 'class-validator';
-import { FileDto } from '../../files/dto/file.dto';
-import { ToLowerCase } from '@/decorators/transform.decorators';
+import { ApiPropertyOptional } from "@nestjs/swagger";
+import { IsEmail, IsNotEmpty, IsOptional, MinLength } from "class-validator";
+import { FileDto } from "../../files/dto/file.dto";
+import { ToLowerCase } from "@/decorators/transform.decorators";
 
 export class AuthUpdateDto {
   @ApiPropertyOptional({ type: () => FileDto })
   @IsOptional()
   photo?: FileDto | null;
 
-  @ApiPropertyOptional({ example: 'John' })
+  @ApiPropertyOptional({ example: "John" })
   @IsOptional()
-  @IsNotEmpty({ message: 'mustBeNotEmpty' })
+  @IsNotEmpty({ message: "mustBeNotEmpty" })
   firstName?: string;
 
-  @ApiPropertyOptional({ example: 'Doe' })
+  @ApiPropertyOptional({ example: "Doe" })
   @IsOptional()
-  @IsNotEmpty({ message: 'mustBeNotEmpty' })
+  @IsNotEmpty({ message: "mustBeNotEmpty" })
   lastName?: string;
 
-  @ApiPropertyOptional({ example: 'new.email@example.com' })
+  @ApiPropertyOptional({ example: "new.email@example.com" })
   @IsOptional()
   @IsNotEmpty()
   @IsEmail()
@@ -320,7 +320,7 @@ export class AuthUpdateDto {
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsNotEmpty({ message: 'mustBeNotEmpty' })
+  @IsNotEmpty({ message: "mustBeNotEmpty" })
   oldPassword?: string;
 }
 ```
@@ -330,16 +330,16 @@ export class AuthUpdateDto {
 Thay nội dung file `apps/api/src/users/dto/create-user.dto.ts`:
 
 ```ts
-import { Type } from 'class-transformer';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsOptional, MinLength } from 'class-validator';
-import { FileDto } from '../../files/dto/file.dto';
-import { RoleDto } from '../../roles/dto/role.dto';
-import { StatusDto } from '../../statuses/dto/status.dto';
-import { ToLowerCase } from '@/decorators/transform.decorators';
+import { Type } from "class-transformer";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { IsEmail, IsNotEmpty, IsOptional, MinLength } from "class-validator";
+import { FileDto } from "../../files/dto/file.dto";
+import { RoleDto } from "../../roles/dto/role.dto";
+import { StatusDto } from "../../statuses/dto/status.dto";
+import { ToLowerCase } from "@/decorators/transform.decorators";
 
 export class CreateUserDto {
-  @ApiProperty({ example: 'test1@example.com', type: String })
+  @ApiProperty({ example: "test1@example.com", type: String })
   @ToLowerCase()
   @IsNotEmpty()
   @IsEmail()
@@ -353,11 +353,11 @@ export class CreateUserDto {
 
   socialId?: string | null;
 
-  @ApiProperty({ example: 'John', type: String })
+  @ApiProperty({ example: "John", type: String })
   @IsNotEmpty()
   firstName: string | null;
 
-  @ApiProperty({ example: 'Doe', type: String })
+  @ApiProperty({ example: "Doe", type: String })
   @IsNotEmpty()
   lastName: string | null;
 
@@ -382,17 +382,17 @@ export class CreateUserDto {
 Thay nội dung file `apps/api/src/users/dto/update-user.dto.ts`:
 
 ```ts
-import { PartialType, ApiPropertyOptional } from '@nestjs/swagger';
-import { CreateUserDto } from './create-user.dto';
-import { Type } from 'class-transformer';
-import { IsEmail, IsOptional, MinLength } from 'class-validator';
-import { FileDto } from '../../files/dto/file.dto';
-import { RoleDto } from '../../roles/dto/role.dto';
-import { StatusDto } from '../../statuses/dto/status.dto';
-import { ToLowerCase } from '@/decorators/transform.decorators';
+import { PartialType, ApiPropertyOptional } from "@nestjs/swagger";
+import { CreateUserDto } from "./create-user.dto";
+import { Type } from "class-transformer";
+import { IsEmail, IsOptional, MinLength } from "class-validator";
+import { FileDto } from "../../files/dto/file.dto";
+import { RoleDto } from "../../roles/dto/role.dto";
+import { StatusDto } from "../../statuses/dto/status.dto";
+import { ToLowerCase } from "@/decorators/transform.decorators";
 
 export class UpdateUserDto extends PartialType(CreateUserDto) {
-  @ApiPropertyOptional({ example: 'test1@example.com', type: String })
+  @ApiPropertyOptional({ example: "test1@example.com", type: String })
   @ToLowerCase()
   @IsOptional()
   @IsEmail()
@@ -407,11 +407,11 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
 
   socialId?: string | null;
 
-  @ApiPropertyOptional({ example: 'John', type: String })
+  @ApiPropertyOptional({ example: "John", type: String })
   @IsOptional()
   firstName?: string | null;
 
-  @ApiPropertyOptional({ example: 'Doe', type: String })
+  @ApiPropertyOptional({ example: "Doe", type: String })
   @IsOptional()
   lastName?: string | null;
 
@@ -483,6 +483,7 @@ git commit -m "refactor(dto): replace lowerCaseTransformer with @ToLowerCase() d
 ## Self-Review
 
 **Spec coverage:**
+
 - ✅ `lower-case.transformer.ts` bị xóa (Task 2, Step 2.9)
 - ✅ 6 DTOs cập nhật sang `@ToLowerCase()` (Steps 2.3–2.8)
 - ✅ `serialize.ts` được tạo với `SerializeInterceptor` + `Serialize()` (Task 1)

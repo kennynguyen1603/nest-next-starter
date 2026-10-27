@@ -30,14 +30,14 @@ Sau khi cấu hình `src/decorators`, phát hiện 2 vấn đề:
 
 **Cập nhật 6 DTOs** — thay `@Transform(lowerCaseTransformer)` bằng `@ToLowerCase()`:
 
-| File |
-|---|
-| `src/auth/dto/auth-email-login.dto.ts` |
+| File                                       |
+| ------------------------------------------ |
+| `src/auth/dto/auth-email-login.dto.ts`     |
 | `src/auth/dto/auth-forgot-password.dto.ts` |
-| `src/auth/dto/auth-register-login.dto.ts` |
-| `src/auth/dto/auth-update.dto.ts` |
-| `src/users/dto/create-user.dto.ts` |
-| `src/users/dto/update-user.dto.ts` |
+| `src/auth/dto/auth-register-login.dto.ts`  |
+| `src/auth/dto/auth-update.dto.ts`          |
+| `src/users/dto/create-user.dto.ts`         |
+| `src/users/dto/update-user.dto.ts`         |
 
 > **Hành vi thay đổi nhỏ**: `lowerCaseTransformer` trước đây không có `toClassOnly: true`. Sau thay đổi, transform chỉ chạy khi deserialize vào class. Đây là hành vi đúng cho email/username input.
 
@@ -53,9 +53,13 @@ class SerializeInterceptor implements NestInterceptor {
   constructor(private readonly dto: Type<any>) {}
 
   intercept(_: ExecutionContext, next: CallHandler): Observable<any> {
-    return next.handle().pipe(
-      map((data) => plainToInstance(this.dto, data, { excludeExtraneousValues: true })),
-    );
+    return next
+      .handle()
+      .pipe(
+        map((data) =>
+          plainToInstance(this.dto, data, { excludeExtraneousValues: true }),
+        ),
+      );
   }
 }
 
@@ -70,15 +74,15 @@ Dùng `plainToInstance` với `excludeExtraneousValues: true` để đảm bảo
 
 ## Tổng kết thay đổi
 
-| Thao tác | File |
-|---|---|
-| Xóa | `src/utils/transformers/lower-case.transformer.ts` |
-| Tạo mới | `src/utils/interceptors/serialize.ts` |
-| Cập nhật | `src/auth/dto/auth-email-login.dto.ts` |
-| Cập nhật | `src/auth/dto/auth-forgot-password.dto.ts` |
-| Cập nhật | `src/auth/dto/auth-register-login.dto.ts` |
-| Cập nhật | `src/auth/dto/auth-update.dto.ts` |
-| Cập nhật | `src/users/dto/create-user.dto.ts` |
-| Cập nhật | `src/users/dto/update-user.dto.ts` |
+| Thao tác | File                                               |
+| -------- | -------------------------------------------------- |
+| Xóa      | `src/utils/transformers/lower-case.transformer.ts` |
+| Tạo mới  | `src/utils/interceptors/serialize.ts`              |
+| Cập nhật | `src/auth/dto/auth-email-login.dto.ts`             |
+| Cập nhật | `src/auth/dto/auth-forgot-password.dto.ts`         |
+| Cập nhật | `src/auth/dto/auth-register-login.dto.ts`          |
+| Cập nhật | `src/auth/dto/auth-update.dto.ts`                  |
+| Cập nhật | `src/users/dto/create-user.dto.ts`                 |
+| Cập nhật | `src/users/dto/update-user.dto.ts`                 |
 
 **Không thay đổi:** `decorators/transform.decorators.ts`, `utils/types/`, `utils/pagination/`, `utils/serializer.interceptor.ts`, các file còn lại.

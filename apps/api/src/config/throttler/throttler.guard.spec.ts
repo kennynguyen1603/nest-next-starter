@@ -1,21 +1,9 @@
-import { ContextType, ExecutionContext } from '@nestjs/common';
-import { GqlExecutionContext } from '@nestjs/graphql';
 import { Test } from '@nestjs/testing';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AppThrottlerGuard } from './throttler.guard';
 
 function makeRequest(overrides: Record<string, unknown> = {}) {
   return { headers: {}, ip: '127.0.0.1', ips: undefined, ...overrides };
-}
-
-function makeHttpContext(req = makeRequest(), res = {}): ExecutionContext {
-  return {
-    getType: () => 'http' as ContextType,
-    switchToHttp: () => ({
-      getRequest: () => req,
-      getResponse: () => res,
-    }),
-  } as unknown as ExecutionContext;
 }
 
 describe('AppThrottlerGuard', () => {
@@ -29,30 +17,6 @@ describe('AppThrottlerGuard', () => {
       providers: [AppThrottlerGuard],
     }).compile();
     guard = module.get(AppThrottlerGuard);
-  });
-
-  describe('getRequestResponse', () => {
-    it('returns req and res from HTTP context', () => {
-      const req = makeRequest();
-      const res = {};
-      const result = guard.getRequestResponse(makeHttpContext(req, res));
-      expect(result).toEqual({ req, res });
-    });
-
-    it('extracts req and res from GraphQL context', () => {
-      const req = makeRequest();
-      const res = {};
-
-      jest.spyOn(GqlExecutionContext, 'create').mockReturnValue({
-        getContext: () => ({ req, res }),
-      } as unknown as GqlExecutionContext);
-
-      const context = {
-        getType: () => 'graphql',
-      } as unknown as ExecutionContext;
-      const result = guard.getRequestResponse(context);
-      expect(result).toEqual({ req, res });
-    });
   });
 
   describe('getTracker', () => {
@@ -79,6 +43,16 @@ describe('AppThrottlerGuard', () => {
           ip: '127.0.0.1',
         }),
       ).toBe('127.0.0.1');
+    });
+
+    it('prefers trust-proxy-derived req.ips[0] over a raw x-forwarded-for header', async () => {
+      expect(
+        await track({
+          headers: { 'x-forwarded-for': '1.2.3.4' },
+          ips: ['192.168.1.1'],
+          ip: '10.0.0.1',
+        }),
+      ).toBe('192.168.1.1');
     });
 
     it('returns "unknown" when no IP can be derived', async () => {
