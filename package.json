@@ -8,6 +8,8 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
     "test": "turbo run test",
+    "clean": "rm -rf .turbo apps/*/.next apps/*/dist apps/*/coverage packages/*/dist packages/*/.turbo && find . -name '*.tsbuildinfo' -not -path '*/node_modules/*' -delete",
+    "clean:all": "pnpm clean && rm -rf node_modules apps/*/node_modules packages/*/node_modules",
     "prepare": "husky"
   },
   "devDependencies": {

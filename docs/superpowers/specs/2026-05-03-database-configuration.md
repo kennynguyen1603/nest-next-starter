@@ -9,10 +9,10 @@
 
 The API supports two database backends, selected via the `DATABASE_TYPE` environment variable:
 
-| Value | Database | ORM / Driver |
-|---|---|---|
-| `mongodb` | MongoDB | Mongoose (`@nestjs/mongoose`) |
-| `postgres` | PostgreSQL | TypeORM (`@nestjs/typeorm`) |
+| Value      | Database   | ORM / Driver                  |
+| ---------- | ---------- | ----------------------------- |
+| `mongodb`  | MongoDB    | Mongoose (`@nestjs/mongoose`) |
+| `postgres` | PostgreSQL | TypeORM (`@nestjs/typeorm`)   |
 
 The decision happens at **startup** in `app.module.ts`:
 
@@ -94,6 +94,7 @@ src/database/
 ```
 
 `database.config.ts` uses the shared `validateConfig` utility (wrapping `class-validator`) to enforce:
+
 - When `DATABASE_URL` is absent → `DATABASE_TYPE`, `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_PASSWORD`, `DATABASE_NAME`, and `DATABASE_USERNAME` are all required.
 - When `DATABASE_URL` is present → the individual fields above are ignored.
 

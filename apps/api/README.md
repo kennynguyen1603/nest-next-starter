@@ -360,10 +360,6 @@ transports: ['websocket'],
 - Scraped by Prometheus every 15 seconds when the monitoring stack is running
 - No configuration required — active as long as `PrometheusModule` is registered in `AppModule`
 
-### 📊 GraphQL (Optional)
-
-- Apollo Server pre-integrated (`@nestjs/graphql`, `@nestjs/apollo`)
-
 ---
 
 ## Directory Structure
@@ -406,7 +402,6 @@ src/
 ├── mail/                   ← High-level mail service
 ├── mailer/                 ← Nodemailer + Handlebars adapter
 ├── health/                 ← Health check endpoint
-├── graphql/                ← GraphQL setup
 ├── i18n/                   ← Translation files
 ├── social/                 ← Shared social profile interface
 ├── middlewares/            ← Express middlewares (Basic Auth)
