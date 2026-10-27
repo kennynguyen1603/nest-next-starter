@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -172,10 +173,13 @@ export function EditProfileDialog({ user, currentPhotoUrl, onClose }: Props) {
           {/* Avatar preview + picker */}
           <div className="flex items-center gap-4">
             {displayPhoto ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <Image
                 src={displayPhoto}
                 alt="Avatar"
+                width={56}
+                height={56}
+                // Local previews are blob: URLs the optimizer can't fetch.
+                unoptimized={displayPhoto.startsWith("blob:")}
                 className="w-14 h-14 object-cover shrink-0"
               />
             ) : (

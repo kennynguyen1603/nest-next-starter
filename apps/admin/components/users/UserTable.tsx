@@ -1,11 +1,16 @@
 "use client";
 
 import { memo, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import type { AdminUser } from "@repo/types";
 import { api } from "@/lib/api";
-import ConfirmModal from "@/components/shared/ConfirmModal";
+
+// Only mounted after a delete click, so keep it out of the table's bundle.
+const ConfirmModal = dynamic(() => import("@/components/shared/ConfirmModal"), {
+  ssr: false,
+});
 
 interface Props {
   users: AdminUser[];
