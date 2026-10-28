@@ -841,7 +841,7 @@ REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_PASSWORD=                    # optional
 REDIS_TLS=false                    # set true if your Redis requires TLS
-REDIS_REJECT_UNAUTHORIZED=false    # set true to enforce TLS certificate verification
+REDIS_REJECT_UNAUTHORIZED=true     # set false only to skip TLS certificate verification
 # Mutual TLS (only needed when REDIS_TLS=true and the server requires client certs):
 REDIS_CA=                          # path or PEM string for the CA certificate
 REDIS_KEY=                         # path or PEM string for the client private key
@@ -906,7 +906,7 @@ QUEUE_FAILED_RETRY_ATTEMPTS=3   # number of automatic retries before marking a j
 ```env
 DATABASE_MAX_CONNECTIONS=100        # TypeORM connection pool size (SQL only)
 DATABASE_SSL_ENABLED=false          # enable SSL/TLS for the database connection
-DATABASE_REJECT_UNAUTHORIZED=false  # reject connections with unverifiable certificates
+DATABASE_REJECT_UNAUTHORIZED=true   # reject connections with unverifiable certificates
 ```
 
 ### Rate Limiting (Throttler)

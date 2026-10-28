@@ -57,7 +57,7 @@ export function getConfig(): RedisConfig {
       process.env.REDIS_TLS === 'true'
         ? {
             rejectUnauthorized:
-              process.env.REDIS_REJECT_UNAUTHORIZED === 'true',
+              process.env.REDIS_REJECT_UNAUTHORIZED !== 'false',
             ca: process.env.REDIS_CA ?? undefined,
             key: process.env.REDIS_KEY ?? undefined,
             cert: process.env.REDIS_CERT ?? undefined,
