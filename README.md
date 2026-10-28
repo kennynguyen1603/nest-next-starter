@@ -388,14 +388,15 @@ docker compose run --rm seed
 
 **Settings → Secrets and variables → Actions → Secrets**
 
-| Secret                         | Value                                        |
-| ------------------------------ | -------------------------------------------- |
-| `PRODUCTION_EC2_HOST`          | EC2 public IP or domain                      |
-| `PRODUCTION_EC2_USERNAME`      | SSH user (e.g. `ubuntu`)                     |
-| `PRODUCTION_EC2_PORT`          | SSH port (usually `22`)                      |
-| `PRODUCTION_EC2_PRIVATESSHKEY` | Full contents of the `.pem` private key file |
-| `TURBO_TOKEN`                  | _(optional)_ Turborepo remote cache token    |
-| `TURBO_TEAM`                   | _(optional)_ Turborepo team slug             |
+| Secret                         | Value                                                                                       |
+| ------------------------------ | ------------------------------------------------------------------------------------------- |
+| `PRODUCTION_EC2_HOST`          | EC2 public IP or domain                                                                     |
+| `PRODUCTION_EC2_USERNAME`      | SSH user (e.g. `ubuntu`)                                                                    |
+| `PRODUCTION_EC2_PORT`          | SSH port (usually `22`)                                                                     |
+| `PRODUCTION_EC2_PRIVATESSHKEY` | Full contents of the `.pem` private key file                                                |
+| `PRODUCTION_EC2_FINGERPRINT`   | SSH host key fingerprint (`ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub` on the server) |
+| `TURBO_TOKEN`                  | _(optional)_ Turborepo remote cache token                                                   |
+| `TURBO_TEAM`                   | _(optional)_ Turborepo team slug                                                            |
 
 #### Step 3 — Add Variables
 
