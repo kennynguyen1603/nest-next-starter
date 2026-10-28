@@ -28,6 +28,8 @@ export const loggingRedactPaths = [
 ];
 
 export const IS_PUBLIC = 'is-public';
+
+export const SWAGGER_PATH = '/docs';
 export const IS_AUTH_OPTIONAL = 'is-auth-optional';
 
 export const DEFAULT_PAGE_LIMIT = 10;

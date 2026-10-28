@@ -24,8 +24,7 @@ import { BULL_BOARD_PATH } from './config/bull/bull.config';
 import { HttpMetricsMiddleware } from './metrics/http-metrics.middleware';
 import { basicAuthMiddleware } from './middlewares/basic-auth.middleware';
 import { RedisIoAdapter } from './socket/socket.adapter';
-
-export const SWAGGER_PATH = '/docs';
+import { SWAGGER_PATH } from './constants/app.constant';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
