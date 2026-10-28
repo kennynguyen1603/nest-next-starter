@@ -3,6 +3,10 @@ import { InjectModel } from '@nestjs/mongoose';
 import bcrypt from 'bcryptjs';
 import { Model } from 'mongoose';
 import { RoleEnum } from '@/roles/roles.enum';
+import {
+  seedAdminPassword,
+  seedDemoUser,
+} from '@/database/seeds/seed-credentials';
 import { UserStatus } from '@/users/user-status.enum';
 import { UserSchemaClass } from '@/users/infrastructure/persistence/document/entities/user.schema';
 import { UserRoleSchemaClass } from '@/roles/infrastructure/persistence/document/entities/user-role.schema';
@@ -29,9 +33,9 @@ export class UserSeedService {
 
     const admin = await this.userModel.findOne({ email: 'admin@example.com' });
 
-    if (!admin && adminRoleDoc) {
+    if (!admin && adminRoleDoc && seedAdminPassword) {
       const salt = await bcrypt.genSalt();
-      const password = await bcrypt.hash('secret', salt);
+      const password = await bcrypt.hash(seedAdminPassword, salt);
 
       const data = new this.userModel({
         email: 'admin@example.com',
@@ -52,7 +56,7 @@ export class UserSeedService {
       email: 'john.doe@example.com',
     });
 
-    if (!user && userRoleDoc) {
+    if (!user && userRoleDoc && seedDemoUser) {
       const salt = await bcrypt.genSalt();
       const password = await bcrypt.hash('secret', salt);
 
