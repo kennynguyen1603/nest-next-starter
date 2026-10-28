@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/auth-store";
+import { isAdmin, revokeSession } from "@/lib/api";
 import type { AuthUser } from "@repo/types";
 import { Spinner } from "@/components/shared/spinner";
 
@@ -50,13 +51,11 @@ export default function LoginPage() {
       const { token, tokenExpires, user } = (await res.json()) as {
         token: string;
         tokenExpires: number;
-        user: AuthUser & { roles?: { name: string }[] };
+        user: AuthUser;
       };
 
-      const isAdmin = user?.roles?.some(
-        (r) => r.name === "admin" || r.name === "super_admin",
-      );
-      if (!isAdmin) {
+      if (!isAdmin(user)) {
+        await revokeSession();
         setServerError("Access denied. Admin role required.");
         return;
       }

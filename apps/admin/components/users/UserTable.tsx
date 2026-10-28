@@ -37,7 +37,14 @@ function UserTable({ users, onRefresh }: Props) {
   const [bulkStatus, setBulkStatus] = useState<string>("active");
   const [bulkRole, setBulkRole] = useState<string>("user");
   const [bulkWorking, setBulkWorking] = useState(false);
-  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  // A new page of users invalidates ids selected on the previous one.
+  const [prevUsers, setPrevUsers] = useState(users);
+  if (users !== prevUsers) {
+    setPrevUsers(users);
+    setSelected(new Set());
+  }
 
   // ─── Selection helpers ────────────────────────────────────────────────────────
 
@@ -64,7 +71,7 @@ function UserTable({ users, onRefresh }: Props) {
   function clearSelection() {
     setSelected(new Set());
     setBulkAction(null);
-    setBulkError(null);
+    setActionError(null);
   }
 
   // ─── Single delete ────────────────────────────────────────────────────────────
@@ -72,11 +79,12 @@ function UserTable({ users, onRefresh }: Props) {
   async function confirmDelete() {
     if (!deleteTarget) return;
     setDeleting(true);
+    setActionError(null);
     try {
       await api.delete(`/api/v1/users/${deleteTarget}`);
       onRefresh();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Delete failed");
+      setActionError(e instanceof Error ? e.message : "Delete failed");
     } finally {
       setDeleting(false);
       setDeleteTarget(null);
@@ -90,7 +98,7 @@ function UserTable({ users, onRefresh }: Props) {
   // how many items failed instead of leaving the table in a stale, partial state.
   async function runBulk(op: (id: string) => Promise<unknown>, label: string) {
     setBulkWorking(true);
-    setBulkError(null);
+    setActionError(null);
     try {
       const ids = [...selected];
       const results = await Promise.allSettled(ids.map((id) => op(id)));
@@ -98,7 +106,7 @@ function UserTable({ users, onRefresh }: Props) {
       clearSelection();
       onRefresh();
       if (failed > 0) {
-        setBulkError(`${failed} of ${ids.length} ${label} failed`);
+        setActionError(`${failed} of ${ids.length} ${label} failed`);
       }
     } finally {
       setBulkWorking(false);
@@ -191,10 +199,6 @@ function UserTable({ users, onRefresh }: Props) {
             Delete selected
           </button>
 
-          {bulkError && (
-            <span className="text-red-600 text-xs">{bulkError}</span>
-          )}
-
           <button
             onClick={clearSelection}
             className="ml-auto text-xs text-indigo-500 hover:text-indigo-700 transition-colors"
@@ -202,6 +206,10 @@ function UserTable({ users, onRefresh }: Props) {
             Clear selection
           </button>
         </div>
+      )}
+
+      {actionError && (
+        <p className="px-4 py-2 text-xs text-red-600">{actionError}</p>
       )}
 
       <div className="overflow-x-auto rounded-xl border border-gray-200">

@@ -17,7 +17,7 @@ export default function UserDetailPage() {
     api
       .get<AdminUser>(`/api/v1/users/${id}`)
       .then(setUser)
-      .catch(console.error)
+      .catch(() => setUser(null))
       .finally(() => setLoading(false));
   }, [id]);
 
