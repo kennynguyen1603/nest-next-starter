@@ -44,6 +44,7 @@ import { AuthEmailLoginDto } from './dto/auth-email-login.dto';
 import { AuthRegisterLoginDto } from './dto/auth-register-login.dto';
 import { AuthUpdateDto } from './dto/auth-update.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
+import { SessionResponseDto } from './dto/session-response.dto';
 import { JwtPayloadType } from './strategies/types/jwt-payload.type';
 import { JwtRefreshPayloadType } from './strategies/types/jwt-refresh-payload.type';
 
@@ -823,10 +824,18 @@ export class AuthService {
   async getSessions(
     userId: User['id'],
     currentSessionId: Session['id'],
-  ): Promise<Array<Session & { isCurrent: boolean }>> {
+  ): Promise<SessionResponseDto[]> {
     const sessions = await this.sessionService.findByUserId(userId);
+    // Explicit mapping keeps the refresh-token hash and the populated user out
+    // of the response.
     return sessions.map((s) => ({
-      ...s,
+      id: s.id,
+      deviceId: s.deviceId,
+      deviceName: s.deviceName,
+      ipAddress: s.ipAddress,
+      platform: s.platform,
+      lastUsedAt: s.lastUsedAt,
+      createdAt: s.createdAt,
       isCurrent: String(s.id) === String(currentSessionId),
     }));
   }

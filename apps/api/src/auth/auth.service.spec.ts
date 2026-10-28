@@ -1173,7 +1173,10 @@ describe('AuthService', () => {
 
   describe('session management', () => {
     it('getSessions flags the current session', async () => {
-      mockSessionService.findByUserId.mockResolvedValue([{ id: 1 }, { id: 2 }]);
+      mockSessionService.findByUserId.mockResolvedValue([
+        { id: 1, hash: 'h1' },
+        { id: 2, hash: 'h2' },
+      ]);
 
       const result = await service.getSessions('u1', '2');
 
@@ -1181,6 +1184,7 @@ describe('AuthService', () => {
         { id: 1, isCurrent: false },
         { id: 2, isCurrent: true },
       ]);
+      expect(result[0]).not.toHaveProperty('hash');
     });
 
     it('revokeSession refuses to revoke another user’s session', async () => {
