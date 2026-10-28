@@ -18,7 +18,7 @@ export const AppDataSource = new DataSource({
   database: dbConfig.name,
   synchronize: dbConfig.synchronize,
   dropSchema: false,
-  logging: process.env.NODE_ENV !== 'production',
+  logging: process.env.NODE_ENV === 'development',
   entities: [__dirname + '/../**/*.entity{.ts,.js}'],
   migrations: [__dirname + '/migrations/**/*{.ts,.js}'],
   extra: {

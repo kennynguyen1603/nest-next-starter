@@ -18,7 +18,7 @@ export class AdminDocumentRepository implements AdminRepository {
 
   async getStats(): Promise<AdminStatsDto> {
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setUTCHours(0, 0, 0, 0);
 
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -104,8 +104,10 @@ export class AdminDocumentRepository implements AdminRepository {
   }
 
   async getUserGrowth(): Promise<UserGrowthDto[]> {
+    // Rows are grouped by UTC day, so start the window at UTC midnight.
     const from = new Date();
-    from.setDate(from.getDate() - 30);
+    from.setUTCHours(0, 0, 0, 0);
+    from.setUTCDate(from.getUTCDate() - 30);
 
     const rows = await this.userModel.aggregate<{
       _id: { year: number; month: number; day: number };
@@ -126,7 +128,7 @@ export class AdminDocumentRepository implements AdminRepository {
     ]);
 
     return rows.map((r) => {
-      const d = new Date(r._id.year, r._id.month - 1, r._id.day);
+      const d = new Date(Date.UTC(r._id.year, r._id.month - 1, r._id.day));
       return {
         date: d.toISOString().split('T')[0] as string,
         count: r.count,
