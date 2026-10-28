@@ -128,7 +128,14 @@ function LoginPageContent() {
 
   useEffect(() => {
     const error = searchParams.get("error");
-    if (error) setServerError(decodeURIComponent(error).replace(/_/g, " "));
+    if (!error) return;
+    let message = error;
+    try {
+      message = decodeURIComponent(error);
+    } catch {
+      // Malformed escape sequence: show the raw value.
+    }
+    setServerError(message.replace(/_/g, " "));
   }, [searchParams]);
 
   const {
