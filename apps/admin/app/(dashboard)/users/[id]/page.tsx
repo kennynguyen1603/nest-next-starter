@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Pencil } from "lucide-react";
 import { api } from "@/lib/api";
 import type { AdminUser } from "@repo/types";
-import { Spinner } from "@/components/shared/spinner";
+import { Spinner } from "@repo/ui/spinner";
 
 export default function UserDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -24,7 +24,7 @@ export default function UserDetailPage() {
   if (loading)
     return (
       <div className="flex items-center gap-2 text-sm text-gray-500">
-        <Spinner />
+        <Spinner variant="neutral" />
         Loading…
       </div>
     );

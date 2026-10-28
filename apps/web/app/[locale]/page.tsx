@@ -8,7 +8,7 @@ import { api, tryRefresh } from "@/lib/api";
 import type { AuthUser } from "@repo/types";
 import Image from "next/image";
 import { LanguageSwitcher } from "./_components/language-switcher";
-import { Spinner } from "@/components/spinner";
+import { Spinner } from "@repo/ui/spinner";
 
 const EditProfileDialog = lazy(() =>
   import("./_components/edit-profile-dialog").then((m) => ({

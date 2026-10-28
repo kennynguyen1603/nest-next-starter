@@ -6,6 +6,7 @@ const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 const nextConfig = {
   output: 'standalone',
   poweredByHeader: false,
+  transpilePackages: ['@repo/ui'],
   async headers() {
     return [
       {

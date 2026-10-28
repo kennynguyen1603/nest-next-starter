@@ -7,7 +7,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ArrowLeft } from "lucide-react";
 import { api } from "@/lib/api";
-import { FormField, inputCls } from "@/components/shared/form-field";
+import { Alert } from "@repo/ui/alert";
+import { Button } from "@repo/ui/button";
+import { FormField } from "@repo/ui/form-field";
+import { Input, Select } from "@repo/ui/input";
 import type { AdminUser } from "@repo/types";
 
 const schema = z.object({
@@ -131,105 +134,108 @@ export default function EditUserPage() {
         >
           <div className="grid grid-cols-2 gap-4">
             <FormField
+              id="firstName"
               label="First name"
               error={errors.firstName?.message}
               required
             >
-              <input
+              <Input
+                id="firstName"
                 {...register("firstName")}
                 placeholder="John"
                 disabled={isLoading}
-                className={inputCls(!!errors.firstName)}
+                invalid={!!errors.firstName}
               />
             </FormField>
             <FormField
+              id="lastName"
               label="Last name"
               error={errors.lastName?.message}
               required
             >
-              <input
+              <Input
+                id="lastName"
                 {...register("lastName")}
                 placeholder="Doe"
                 disabled={isLoading}
-                className={inputCls(!!errors.lastName)}
+                invalid={!!errors.lastName}
               />
             </FormField>
           </div>
 
-          <FormField label="Email" error={errors.email?.message} required>
-            <input
+          <FormField
+            id="email"
+            label="Email"
+            error={errors.email?.message}
+            required
+          >
+            <Input
+              id="email"
               {...register("email")}
               type="email"
               placeholder="you@example.com"
               disabled={isLoading}
-              className={inputCls(!!errors.email)}
+              invalid={!!errors.email}
             />
           </FormField>
 
           <FormField
+            id="password"
             label="New password"
             error={errors.password?.message}
             hint="Leave blank to keep current password"
           >
-            <input
+            <Input
+              id="password"
               {...register("password")}
               type="password"
               placeholder="Min. 8 characters"
               disabled={isLoading}
-              className={inputCls(!!errors.password)}
+              invalid={!!errors.password}
             />
           </FormField>
 
           <div className="grid grid-cols-2 gap-4">
-            <FormField label="Role" error={errors.role?.message}>
-              <select
+            <FormField id="role" label="Role" error={errors.role?.message}>
+              <Select
+                id="role"
                 {...register("role")}
                 disabled={isLoading}
-                className={inputCls(!!errors.role)}
+                invalid={!!errors.role}
               >
                 <option value="user">User</option>
                 <option value="manager">Manager</option>
                 <option value="admin">Admin</option>
-              </select>
+              </Select>
             </FormField>
-            <FormField label="Status" error={errors.status?.message}>
-              <select
+            <FormField
+              id="status"
+              label="Status"
+              error={errors.status?.message}
+            >
+              <Select
+                id="status"
                 {...register("status")}
                 disabled={isLoading}
-                className={inputCls(!!errors.status)}
+                invalid={!!errors.status}
               >
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
                 <option value="pending">Pending</option>
                 <option value="banned">Banned</option>
-              </select>
+              </Select>
             </FormField>
           </div>
 
-          {serverError && (
-            <p
-              role="alert"
-              className="text-xs text-red-700 bg-red-50 border border-red-200 px-3 py-2.5 rounded-lg"
-            >
-              {serverError}
-            </p>
-          )}
+          {serverError && <Alert>{serverError}</Alert>}
 
           <div className="flex items-center gap-3 pt-2">
-            <button
-              type="submit"
-              disabled={isSubmitting || isLoading}
-              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-            >
+            <Button type="submit" loading={isSubmitting} disabled={isLoading}>
               {isSubmitting ? "Saving…" : "Save changes"}
-            </button>
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="px-4 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
-            >
+            </Button>
+            <Button variant="secondary" onClick={() => router.back()}>
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
       </div>

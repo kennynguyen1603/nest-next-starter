@@ -8,9 +8,10 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/lib/navigation";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
-import { Spinner } from "@/components/spinner";
-import { FormField } from "@/components/form-field";
-import { ServerError } from "@/components/server-error";
+import { Alert } from "@repo/ui/alert";
+import { Button } from "@repo/ui/button";
+import { FormField } from "@repo/ui/form-field";
+import { Input } from "@repo/ui/input";
 import { AuthSuccessState } from "@/components/auth-success-state";
 
 type FormValues = { password: string };
@@ -46,14 +47,12 @@ function ResetPasswordContent() {
     return (
       <>
         <div className="mb-8">
-          <h1 className="text-3xl font-semibold tracking-tight">
-            {t("title")}
-          </h1>
-          <p className="mt-2 text-sm text-red-600">{t("errorMissingHash")}</p>
+          <h1 className="text-h1">{t("title")}</h1>
+          <Alert className="mt-2">{t("errorMissingHash")}</Alert>
         </div>
         <Link
           href="/login"
-          className="text-sm font-medium underline underline-offset-2 hover:text-neutral-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
+          className="text-small font-medium text-foreground underline underline-offset-4 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground"
         >
           {t("backToSignIn")}
         </Link>
@@ -84,8 +83,8 @@ function ResetPasswordContent() {
   return (
     <>
       <div className="mb-8">
-        <h1 className="text-3xl font-semibold tracking-tight">{t("title")}</h1>
-        <p className="mt-2 text-sm text-neutral-500">{t("description")}</p>
+        <h1 className="text-h1">{t("title")}</h1>
+        <p className="mt-2 text-small text-muted">{t("description")}</p>
       </div>
 
       <form
@@ -98,32 +97,27 @@ function ResetPasswordContent() {
           label={t("password")}
           error={errors.password?.message}
         >
-          <input
+          <Input
             id="password"
             type="password"
             autoComplete="new-password"
             placeholder={t("passwordPlaceholder")}
-            className="border border-[#D0D0D0] px-4 py-3.5 text-sm transition-colors focus-visible:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black"
+            invalid={!!errors.password}
             {...register("password")}
           />
         </FormField>
 
-        {serverError && <ServerError message={serverError} />}
+        {serverError && <Alert>{serverError}</Alert>}
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="bg-black text-white text-sm font-medium py-3.5 hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 flex items-center justify-center gap-2 mt-1"
-        >
-          {isSubmitting && <Spinner variant="white" />}
+        <Button type="submit" fullWidth loading={isSubmitting} className="mt-1">
           {isSubmitting ? t("submitting") : t("submit")}
-        </button>
+        </Button>
       </form>
 
       <div className="mt-6">
         <Link
           href="/login"
-          className="text-sm font-medium underline underline-offset-2 hover:text-neutral-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
+          className="text-small font-medium text-foreground underline underline-offset-4 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground"
         >
           {t("backToSignIn")}
         </Link>

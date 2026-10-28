@@ -7,9 +7,11 @@ import { z } from "zod";
 import { useTranslations } from "next-intl";
 import { Link } from "@/lib/navigation";
 import { api } from "@/lib/api";
-import { Spinner } from "@/components/spinner";
-import { FormField } from "@/components/form-field";
-import { ServerError } from "@/components/server-error";
+import { Alert } from "@repo/ui/alert";
+import { Button } from "@repo/ui/button";
+import { FormField } from "@repo/ui/form-field";
+import { Input } from "@repo/ui/input";
+import { AuthSuccessState } from "@/components/auth-success-state";
 
 type FormValues = {
   firstName: string;
@@ -83,50 +85,23 @@ export default function RegisterPage() {
 
   if (success) {
     return (
-      <div className="flex flex-col gap-5">
-        <div className="w-10 h-10 bg-black flex items-center justify-center shrink-0">
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 20 20"
-            fill="none"
-            aria-hidden="true"
-          >
-            <path
-              d="M4 10l4.5 4.5L16 6"
-              stroke="white"
-              strokeWidth="2"
-              strokeLinecap="square"
-            />
-          </svg>
-        </div>
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight">
-            {t("successTitle")}
-          </h2>
-          <p className="mt-2 text-sm text-neutral-500 leading-relaxed">
-            {t("successMessage")}
-          </p>
-        </div>
-        <Link
-          href="/login"
-          className="text-sm text-black font-medium underline underline-offset-2 hover:text-neutral-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black self-start"
-        >
-          {t("backToSignIn")}
-        </Link>
-      </div>
+      <AuthSuccessState
+        title={t("successTitle")}
+        message={t("successMessage")}
+        backLabel={t("backToSignIn")}
+      />
     );
   }
 
   return (
     <>
       <div className="mb-8">
-        <h1 className="text-3xl font-semibold tracking-tight">{t("title")}</h1>
-        <p className="mt-2 text-sm text-neutral-500">
+        <h1 className="text-h1">{t("title")}</h1>
+        <p className="mt-2 text-small text-muted">
           {t("hasAccount")}{" "}
           <Link
             href="/login"
-            className="text-black font-medium underline underline-offset-2 hover:text-neutral-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
+            className="font-medium text-foreground underline underline-offset-4 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground"
           >
             {t("signIn")}
           </Link>
@@ -144,12 +119,12 @@ export default function RegisterPage() {
             label={t("firstName")}
             error={errors.firstName?.message}
           >
-            <input
+            <Input
               id="firstName"
               type="text"
               autoComplete="given-name"
               placeholder="John…"
-              className="border border-[#D0D0D0] px-4 py-3.5 text-sm transition-colors focus-visible:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black"
+              invalid={!!errors.firstName}
               {...register("firstName")}
             />
           </FormField>
@@ -158,25 +133,25 @@ export default function RegisterPage() {
             label={t("lastName")}
             error={errors.lastName?.message}
           >
-            <input
+            <Input
               id="lastName"
               type="text"
               autoComplete="family-name"
               placeholder="Doe…"
-              className="border border-[#D0D0D0] px-4 py-3.5 text-sm transition-colors focus-visible:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black"
+              invalid={!!errors.lastName}
               {...register("lastName")}
             />
           </FormField>
         </div>
 
         <FormField id="email" label={t("email")} error={errors.email?.message}>
-          <input
+          <Input
             id="email"
             type="email"
             autoComplete="email"
             spellCheck={false}
             placeholder="you@example.com…"
-            className="border border-[#D0D0D0] px-4 py-3.5 text-sm transition-colors focus-visible:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black"
+            invalid={!!errors.email}
             {...register("email")}
           />
         </FormField>
@@ -186,26 +161,21 @@ export default function RegisterPage() {
           label={t("password")}
           error={errors.password?.message}
         >
-          <input
+          <Input
             id="password"
             type="password"
             autoComplete="new-password"
             placeholder={t("passwordPlaceholder")}
-            className="border border-[#D0D0D0] px-4 py-3.5 text-sm transition-colors focus-visible:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black"
+            invalid={!!errors.password}
             {...register("password")}
           />
         </FormField>
 
-        {serverError && <ServerError message={serverError} />}
+        {serverError && <Alert>{serverError}</Alert>}
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="bg-black text-white text-sm font-medium py-3.5 hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 flex items-center justify-center gap-2 mt-1"
-        >
-          {isSubmitting && <Spinner variant="white" />}
+        <Button type="submit" fullWidth loading={isSubmitting} className="mt-1">
           {isSubmitting ? t("submitting") : t("submit")}
-        </button>
+        </Button>
       </form>
     </>
   );

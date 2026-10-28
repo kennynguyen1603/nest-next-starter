@@ -13,6 +13,7 @@
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@repo/types": "workspace:*",
+    "@repo/ui": "workspace:*",
     "@tailwindcss/postcss": "^4.2.4",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.511.0",

@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "@/lib/navigation";
 import { useAuthStore } from "@/lib/auth-store";
 import { api, tryRefresh } from "@/lib/api";
-import { Spinner } from "@/components/spinner";
+import { Spinner } from "@repo/ui/spinner";
 
 interface Notification {
   id: string;

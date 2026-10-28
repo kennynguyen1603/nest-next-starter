@@ -2,6 +2,7 @@
 const nextConfig = {
   output: 'standalone',
   poweredByHeader: false,
+  transpilePackages: ['@repo/ui'],
   async headers() {
     return [
       {

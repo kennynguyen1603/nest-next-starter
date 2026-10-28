@@ -8,7 +8,10 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/auth-store";
 import { isAdmin, revokeSession } from "@/lib/api";
 import type { AuthUser } from "@repo/types";
-import { Spinner } from "@/components/shared/spinner";
+import { Alert } from "@repo/ui/alert";
+import { Button } from "@repo/ui/button";
+import { FormField } from "@repo/ui/form-field";
+import { Input } from "@repo/ui/input";
 
 const schema = z.object({
   email: z.email("Invalid email"),
@@ -68,77 +71,54 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="w-full max-w-md bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+    <div className="w-full max-w-sm border border-border bg-white p-8">
       <div className="mb-8">
-        <div className="w-10 h-10 bg-indigo-600 rounded-lg mb-4" />
-        <h1 className="text-2xl font-semibold text-gray-900">Admin Login</h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <div className="mb-6 size-8 bg-foreground" aria-hidden="true" />
+        <h1 className="text-h2">Admin Login</h1>
+        <p className="mt-1 text-small text-muted">
           Sign in to access the admin panel
         </p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div>
-          <label
-            htmlFor="email"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Email
-          </label>
-          <input
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="flex flex-col gap-5"
+        noValidate
+      >
+        <FormField id="email" label="Email" error={errors.email?.message}>
+          <Input
             id="email"
             type="email"
             {...register("email")}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:border-transparent"
             placeholder="admin@example.com"
             autoComplete="email"
+            spellCheck={false}
+            invalid={!!errors.email}
           />
-          {errors.email && (
-            <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>
-          )}
-        </div>
+        </FormField>
 
-        <div>
-          <label
-            htmlFor="password"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Password
-          </label>
-          <input
+        <FormField
+          id="password"
+          label="Password"
+          error={errors.password?.message}
+        >
+          <Input
             id="password"
             type="password"
             {...register("password")}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:border-transparent"
             placeholder="••••••••"
             autoComplete="current-password"
             spellCheck={false}
             autoCorrect="off"
+            invalid={!!errors.password}
           />
-          {errors.password && (
-            <p className="mt-1 text-xs text-red-600">
-              {errors.password.message}
-            </p>
-          )}
-        </div>
+        </FormField>
 
-        {serverError && (
-          <div
-            role="alert"
-            className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"
-          >
-            {serverError}
-          </div>
-        )}
+        {serverError && <Alert>{serverError}</Alert>}
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-medium py-2.5 px-4 rounded-lg transition-colors text-sm flex items-center justify-center gap-2"
-        >
-          {isSubmitting && <Spinner variant="white" />}
+        <Button type="submit" fullWidth loading={isSubmitting} className="mt-1">
           {isSubmitting ? "Signing in…" : "Sign in"}
-        </button>
+        </Button>
       </form>
     </div>
   );
