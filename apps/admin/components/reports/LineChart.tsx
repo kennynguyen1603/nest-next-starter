@@ -3,7 +3,7 @@ import type { UserGrowthPoint } from "@repo/types";
 export default function LineChart({ data }: { data: UserGrowthPoint[] }) {
   if (data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-48 text-sm text-gray-400">
+      <div className="flex items-center justify-center h-48 text-small text-muted">
         No data available
       </div>
     );
@@ -47,7 +47,7 @@ export default function LineChart({ data }: { data: UserGrowthPoint[] }) {
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      className="w-full h-48"
+      className="w-full h-48 text-foreground"
       aria-label="User growth chart"
     >
       {/* Grid lines */}
@@ -58,33 +58,34 @@ export default function LineChart({ data }: { data: UserGrowthPoint[] }) {
           x2={W - PAD.right}
           y1={toY(v)}
           y2={toY(v)}
-          stroke="#f0f0f0"
+          stroke="var(--color-border)"
           strokeWidth={1}
         />
       ))}
 
       {/* Area fill */}
-      <polygon points={areaPoints} fill="#6366f1" fillOpacity={0.08} />
+      <polygon points={areaPoints} fill="currentColor" fillOpacity={0.05} />
 
       {/* Line */}
       <polyline
         points={points}
         fill="none"
-        stroke="#6366f1"
-        strokeWidth={2}
-        strokeLinejoin="round"
-        strokeLinecap="round"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        strokeLinejoin="miter"
+        strokeLinecap="square"
       />
 
       {/* Dots */}
       {data.map((d, i) => (
-        <circle
+        <rect
           key={i}
-          cx={toX(i)}
-          cy={toY(d.count)}
-          r={3}
-          fill="#6366f1"
-          stroke="white"
+          x={toX(i) - 2.5}
+          y={toY(d.count) - 2.5}
+          width={5}
+          height={5}
+          fill="currentColor"
+          stroke="var(--color-background)"
           strokeWidth={1.5}
         />
       ))}
@@ -97,7 +98,7 @@ export default function LineChart({ data }: { data: UserGrowthPoint[] }) {
           y={toY(v) + 4}
           textAnchor="end"
           fontSize={10}
-          fill="#9ca3af"
+          fill="var(--color-muted)"
         >
           {v}
         </text>
@@ -111,7 +112,7 @@ export default function LineChart({ data }: { data: UserGrowthPoint[] }) {
           y={H - 4}
           textAnchor="middle"
           fontSize={10}
-          fill="#9ca3af"
+          fill="var(--color-muted)"
         >
           {label}
         </text>

@@ -42,7 +42,7 @@ export default function DashboardPage() {
           {Array.from({ length: 4 }).map((_, i) => (
             <div
               key={i}
-              className="bg-white rounded-xl border border-gray-200 p-5 h-24 animate-pulse"
+              className="bg-background border border-border p-5 h-28 animate-pulse"
             />
           ))}
         </div>
@@ -52,9 +52,14 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold text-gray-900">Overview</h1>
+      <div>
+        <h1 className="text-h2">Overview</h1>
+        <p className="mt-1 text-small text-muted">
+          Key metrics and the latest activity across your users.
+        </p>
+      </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-border border border-border">
         <StatsCard
           label="Total Users"
           value={stats?.totalUsers ?? 0}
@@ -78,12 +83,12 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <h2 className="text-sm font-semibold text-gray-900 mb-4">
+      <section className="bg-background border border-border">
+        <h2 className="text-label uppercase text-muted px-5 py-4 border-b border-border">
           Recent Activity
         </h2>
         <RecentActivity items={activity} />
-      </div>
+      </section>
     </div>
   );
 }
