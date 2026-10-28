@@ -9,7 +9,7 @@ function useCacheFactory(config: ConfigService<GlobalConfig>) {
   const redis = new Redis({
     host: config.getOrThrow('redis.host', { infer: true }),
     port: config.getOrThrow('redis.port', { infer: true }),
-    password: config.getOrThrow('redis.password', { infer: true }),
+    password: config.get('redis.password', { infer: true }),
     tls: config.get('redis.tls', { infer: true }),
   });
 
