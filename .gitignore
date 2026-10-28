@@ -23,6 +23,7 @@ coverage
 
 # Build Outputs
 .next/
+next-env.d.ts
 out/
 build
 dist
@@ -44,3 +45,5 @@ yarn-error.log*
 
 .agents/
 .claude/
+skills-lock.json
+docs/superpowers/
