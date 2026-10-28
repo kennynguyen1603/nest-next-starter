@@ -16,7 +16,7 @@ export type UserSchemaDocument = HydratedDocument<UserSchemaClass>;
   },
 })
 export class UserSchemaClass extends EntityDocumentHelper {
-  @Prop({ type: String, unique: true })
+  @Prop({ type: String })
   email!: string | null;
 
   @Prop()
@@ -51,6 +51,11 @@ export class UserSchemaClass extends EntityDocumentHelper {
 }
 
 export const UserSchema = SchemaFactory.createForClass(UserSchemaClass);
+// Partial so social users without an email (null) do not collide with each other.
+UserSchema.index(
+  { email: 1 },
+  { unique: true, partialFilterExpression: { email: { $type: 'string' } } },
+);
 // Social login lookup; partial so the many email users (socialId null) stay out.
 UserSchema.index(
   { socialId: 1, provider: 1 },
