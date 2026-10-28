@@ -157,7 +157,7 @@ describe('GlobalExceptionFilter', () => {
   });
 
   describe('Stack trace behaviour', () => {
-    it('includes stack trace for 5xx errors in non-production environment', () => {
+    it('includes stack trace for 5xx errors in development environment', () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'development';
 
@@ -185,6 +185,18 @@ describe('GlobalExceptionFilter', () => {
     it('omits stack trace in production environment', () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'production';
+
+      filter.catch(new Error('crash'), makeHost());
+
+      const body = getBody(reply);
+      expect(body.stack).toBeUndefined();
+
+      process.env.NODE_ENV = originalEnv;
+    });
+
+    it('omits stack trace outside development (e.g. staging)', () => {
+      const originalEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'staging';
 
       filter.catch(new Error('crash'), makeHost());
 
