@@ -51,7 +51,10 @@ describe('EmailQueueService', () => {
 
       await service[method](data);
 
-      expect(mockQueue.add).toHaveBeenCalledWith(jobName, data);
+      expect(mockQueue.add).toHaveBeenCalledWith(jobName, data, {
+        removeOnComplete: true,
+        removeOnFail: true,
+      });
       expect(mockLogger.info).toHaveBeenCalledWith(
         { jobId: 'job-id', type: jobName },
         expect.any(String),
@@ -66,6 +69,7 @@ describe('EmailQueueService', () => {
       expect(mockQueue.add).toHaveBeenCalledWith(
         JobName.Email.ResetPassword,
         data,
+        { removeOnComplete: true, removeOnFail: true },
       );
     });
 

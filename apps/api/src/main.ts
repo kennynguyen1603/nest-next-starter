@@ -79,12 +79,10 @@ async function bootstrap() {
     }),
   );
 
-  app.setGlobalPrefix(
-    configService.getOrThrow('app.apiPrefix', { infer: true }),
-    {
-      exclude: ['/'],
-    },
-  );
+  const apiPrefix = configService.getOrThrow('app.apiPrefix', { infer: true });
+  app.setGlobalPrefix(apiPrefix, {
+    exclude: ['/'],
+  });
   app.enableVersioning({
     type: VersioningType.URI,
   });
@@ -96,12 +94,12 @@ async function bootstrap() {
     new ClassSerializerInterceptor(app.get(Reflector)),
   );
 
+  const prefixPath = `/${apiPrefix}`.toLowerCase();
   const pathsToIntercept = [
-    `/api${BULL_BOARD_PATH}`,
+    `${prefixPath}${BULL_BOARD_PATH}`,
     SWAGGER_PATH,
-    `/api/auth/reference`,
     // Metrics leak internals and each scrape queries Redis for queue counts.
-    `/api/metrics`,
+    `${prefixPath}/metrics`,
   ];
   app.use((req: Request, res: Response, next: NextFunction) => {
     // Express routing is case-insensitive, so `/API/metrics` must not slip past.

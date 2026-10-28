@@ -13,6 +13,10 @@ import {
   ResetPasswordJob,
 } from './email.type';
 
+// Payloads carry live auth tokens; drop jobs once settled so Redis and
+// bull-board never retain them (failures are still logged by the processor).
+const TOKEN_JOB_OPTIONS = { removeOnComplete: true, removeOnFail: true };
+
 @Injectable()
 export class EmailQueueService {
   constructor(
@@ -30,6 +34,7 @@ export class EmailQueueService {
     const job = await this.emailQueue.add(
       JobConstants.Email.EmailVerification,
       data,
+      TOKEN_JOB_OPTIONS,
     );
     this.logger.info(
       { jobId: job.id, type: JobConstants.Email.EmailVerification },
@@ -41,6 +46,7 @@ export class EmailQueueService {
     const job = await this.emailQueue.add(
       JobConstants.Email.ConfirmNewEmail,
       data,
+      TOKEN_JOB_OPTIONS,
     );
     this.logger.info(
       { jobId: job.id, type: JobConstants.Email.ConfirmNewEmail },
@@ -52,6 +58,7 @@ export class EmailQueueService {
     const job = await this.emailQueue.add(
       JobConstants.Email.ResetPassword,
       data,
+      TOKEN_JOB_OPTIONS,
     );
     this.logger.info(
       { jobId: job.id, type: JobConstants.Email.ResetPassword },
