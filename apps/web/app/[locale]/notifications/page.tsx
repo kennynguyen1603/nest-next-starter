@@ -5,6 +5,9 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "@/lib/navigation";
 import { useAuthStore } from "@/lib/auth-store";
 import { api, tryRefresh } from "@/lib/api";
+import { Alert } from "@repo/ui/alert";
+import { Button } from "@repo/ui/button";
+import { Dialog } from "@repo/ui/dialog";
 import { Spinner } from "@repo/ui/spinner";
 
 interface Notification {
@@ -144,86 +147,87 @@ export default function NotificationsPage() {
 
   if (!accessToken) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F8F8F8]">
+      <div className="min-h-screen flex items-center justify-center bg-surface">
         <Spinner size="md" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F8F8] flex flex-col">
-      <header className="bg-white border-b border-[#E8E8E8] sticky top-0 z-10">
+    <div className="min-h-screen bg-surface flex flex-col">
+      <header className="bg-background border-b border-border sticky top-0 z-10">
         <div className="flex items-center justify-between px-6 h-14 max-w-2xl mx-auto w-full">
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.back()}
-              className="text-xs text-neutral-500 hover:text-black transition-colors"
+              aria-label="Back"
+              className="size-8 flex items-center justify-center text-muted hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground"
             >
               ←
             </button>
-            <span className="font-semibold text-sm">
+            <h1 className="text-small font-semibold">
               {t("title")}
               {unreadCount > 0 && (
-                <span className="ml-2 text-xs bg-black text-white px-1.5 py-0.5">
+                <span className="ml-2 px-1.5 py-0.5 text-caption bg-foreground text-background">
                   {unreadCount}
                 </span>
               )}
-            </span>
+            </h1>
           </div>
           <div className="flex items-center gap-2">
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={handleMarkAllAsRead}
               disabled={actionLoading || notifications.every((n) => n.isRead)}
-              className="text-xs font-medium text-neutral-600 border border-[#D0D0D0] px-3 py-1.5 hover:bg-neutral-50 hover:border-neutral-400 hover:text-black transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {t("markAllRead")}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
               onClick={() => setConfirmClearAll(true)}
               disabled={actionLoading || notifications.length === 0}
-              className="text-xs font-medium text-red-600 border border-red-200 px-3 py-1.5 hover:bg-red-50 hover:border-red-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {t("clearAll")}
-            </button>
+            </Button>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 flex justify-center px-4 sm:px-6 py-6">
+      <main className="flex-1 flex justify-center px-4 sm:px-6 py-8">
         <div className="w-full max-w-2xl">
           {loading ? (
             <div className="flex items-center justify-center py-20">
               <Spinner size="md" />
             </div>
           ) : error ? (
-            <div className="text-sm text-red-600 text-center py-10">
-              {error}
-            </div>
+            <Alert>{error}</Alert>
           ) : notifications.length === 0 ? (
             <div className="text-center py-20">
-              <p className="text-neutral-400 text-sm">{t("empty")}</p>
+              <p className="text-small text-muted">{t("empty")}</p>
             </div>
           ) : (
             <>
-              <div className="bg-white border border-[#E8E8E8] divide-y divide-[#F0F0F0]">
+              <div className="bg-background border border-border divide-y divide-border">
                 {notifications.map((n) => (
                   <div
                     key={n.id}
-                    className={`flex items-start gap-3 px-5 py-4 ${!n.isRead ? "bg-white" : "bg-[#FAFAFA]"}`}
+                    className={`flex items-start gap-3 px-5 py-4 ${!n.isRead ? "bg-background" : "bg-surface"}`}
                   >
                     <span
-                      className={`mt-1.5 w-2 h-2 rounded-[9999px] shrink-0 ${!n.isRead ? "bg-black" : "bg-[#D0D0D0]"}`}
+                      className={`mt-1.5 size-2 shrink-0 ${!n.isRead ? "bg-foreground" : "bg-border-strong"}`}
                     />
                     <div className="flex-1 min-w-0">
                       <p
-                        className={`text-sm font-medium truncate ${!n.isRead ? "text-black" : "text-neutral-500"}`}
+                        className={`text-small font-medium truncate ${!n.isRead ? "text-foreground" : "text-muted"}`}
                       >
                         {n.title}
                       </p>
-                      <p className="text-xs text-neutral-500 mt-0.5 line-clamp-2">
+                      <p className="text-caption text-muted mt-0.5 line-clamp-2">
                         {n.message}
                       </p>
-                      <p className="text-[11px] text-neutral-400 mt-1">
+                      <p className="text-caption text-muted mt-1">
                         {formatTime(n.createdAt)}
                       </p>
                     </div>
@@ -232,7 +236,7 @@ export default function NotificationsPage() {
                         <button
                           onClick={() => handleMarkAsRead(n.id)}
                           title={t("markRead")}
-                          className="w-7 h-7 flex items-center justify-center text-neutral-400 hover:text-black transition-colors"
+                          className="size-7 flex items-center justify-center text-muted hover:text-foreground transition-colors"
                         >
                           ✓
                         </button>
@@ -240,7 +244,7 @@ export default function NotificationsPage() {
                       <button
                         onClick={() => handleDelete(n.id)}
                         title={t("delete")}
-                        className="w-7 h-7 flex items-center justify-center text-neutral-400 hover:text-red-600 transition-colors"
+                        className="size-7 flex items-center justify-center text-muted hover:text-red-600 transition-colors"
                       >
                         ✕
                       </button>
@@ -251,26 +255,28 @@ export default function NotificationsPage() {
 
               {pagination && pagination.totalPages > 1 && (
                 <div className="flex items-center justify-between mt-4">
-                  <button
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={() => setPage((p) => p - 1)}
                     disabled={!pagination.previousPage}
-                    className="text-xs font-medium text-neutral-600 border border-[#D0D0D0] px-3 py-1.5 hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {t("previous")}
-                  </button>
-                  <span className="text-xs text-neutral-400">
+                  </Button>
+                  <span className="text-caption text-muted">
                     {t("pageOf", {
                       current: pagination.currentPage,
                       total: pagination.totalPages,
                     })}
                   </span>
-                  <button
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={() => setPage((p) => p + 1)}
                     disabled={!pagination.nextPage}
-                    className="text-xs font-medium text-neutral-600 border border-[#D0D0D0] px-3 py-1.5 hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {t("next")}
-                  </button>
+                  </Button>
                 </div>
               )}
             </>
@@ -279,28 +285,23 @@ export default function NotificationsPage() {
       </main>
 
       {confirmClearAll && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-          <div className="bg-white border border-[#E8E8E8] w-full max-w-sm p-6">
-            <p className="text-sm font-medium">{t("clearAllConfirm")}</p>
-            <p className="text-xs text-neutral-500 mt-1">
-              {t("clearAllWarning")}
-            </p>
-            <div className="flex gap-2 mt-5">
-              <button
-                onClick={() => setConfirmClearAll(false)}
-                className="flex-1 text-xs font-medium text-neutral-600 border border-[#D0D0D0] px-3 py-2 hover:bg-neutral-50 transition-colors"
-              >
-                {t("cancel")}
-              </button>
-              <button
-                onClick={handleClearAll}
-                className="flex-1 text-xs font-medium text-white bg-red-600 px-3 py-2 hover:bg-red-700 transition-colors"
-              >
-                {t("confirmDelete")}
-              </button>
-            </div>
+        <Dialog
+          title={t("clearAllConfirm")}
+          onClose={() => setConfirmClearAll(false)}
+        >
+          <p className="text-small text-muted">{t("clearAllWarning")}</p>
+          <div className="mt-6 flex justify-end gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => setConfirmClearAll(false)}
+            >
+              {t("cancel")}
+            </Button>
+            <Button variant="danger" onClick={handleClearAll}>
+              {t("confirmDelete")}
+            </Button>
           </div>
-        </div>
+        </Dialog>
       )}
     </div>
   );

@@ -8,6 +8,7 @@ import { api, tryRefresh } from "@/lib/api";
 import type { AuthUser } from "@repo/types";
 import Image from "next/image";
 import { LanguageSwitcher } from "./_components/language-switcher";
+import { Button } from "@repo/ui/button";
 import { Spinner } from "@repo/ui/spinner";
 
 const EditProfileDialog = lazy(() =>
@@ -85,7 +86,7 @@ export default function Home() {
 
   if (!accessToken || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F8F8F8]">
+      <div className="min-h-screen flex items-center justify-center bg-surface">
         <Spinner size="md" role="status" aria-label={t("common.loading")} />
       </div>
     );
@@ -95,27 +96,24 @@ export default function Home() {
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ");
 
   return (
-    <div className="min-h-screen bg-[#F8F8F8] flex flex-col">
+    <div className="min-h-screen bg-surface flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-[#E8E8E8] sticky top-0 z-10">
+      <header className="bg-background border-b border-border sticky top-0 z-10">
         <div className="flex items-center justify-between px-6 h-14 max-w-2xl mx-auto w-full">
-          <span className="text-xs font-semibold tracking-[0.2em] uppercase text-neutral-400">
+          <span className="text-label uppercase text-muted">
             {t("common.appName")}
           </span>
           <div className="flex items-center gap-3">
             <LanguageSwitcher />
-            <button
-              onClick={handleLogout}
-              className="text-xs font-medium text-neutral-600 border border-[#D0D0D0] px-3 py-1.5 hover:bg-neutral-50 hover:border-neutral-400 hover:text-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-1"
-            >
+            <Button variant="secondary" size="sm" onClick={handleLogout}>
               {t("home.signOut")}
-            </button>
+            </Button>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 flex justify-center px-4 sm:px-6 py-10">
-        <div className="w-full max-w-2xl space-y-6">
+      <main className="flex-1 flex justify-center px-4 sm:px-6 py-12">
+        <div className="w-full max-w-2xl space-y-8">
           {/* Profile identity */}
           <div className="flex items-center gap-4">
             {photoUrl ? (
@@ -129,38 +127,37 @@ export default function Home() {
                 className="object-cover shrink-0"
               />
             ) : (
-              <div className="w-12 h-12 bg-black flex items-center justify-center shrink-0">
-                <span className="text-white text-base font-semibold leading-none select-none">
+              <div className="size-12 bg-foreground flex items-center justify-center shrink-0">
+                <span className="text-background text-h3 leading-none select-none">
                   {initial}
                 </span>
               </div>
             )}
             <div className="min-w-0">
-              <p className="font-semibold tracking-tight truncate">
+              <h1 className="text-h2 truncate">
                 {fullName || user.email || "—"}
-              </p>
+              </h1>
               {fullName && (
-                <p className="text-sm text-neutral-500 truncate">
-                  {user.email}
-                </p>
+                <p className="text-small text-muted truncate">{user.email}</p>
               )}
             </div>
           </div>
 
           {/* Account card */}
-          <div className="bg-white border border-[#E8E8E8]">
-            <div className="px-6 py-4 border-b border-[#E8E8E8] flex items-center justify-between">
-              <span className="text-[11px] font-semibold tracking-widest uppercase text-neutral-400">
+          <section className="bg-background border border-border">
+            <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+              <h2 className="text-label uppercase text-muted">
                 {t("home.accountInfo")}
-              </span>
-              <button
+              </h2>
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => setShowEdit(true)}
-                className="text-xs font-medium text-neutral-600 border border-[#D0D0D0] px-3 py-1.5 hover:bg-neutral-50 hover:border-neutral-400 hover:text-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-1"
               >
                 {t("user.editProfile")}
-              </button>
+              </Button>
             </div>
-            <div className="divide-y divide-[#F0F0F0]">
+            <div className="divide-y divide-border">
               <InfoRow label={t("home.fullName")} value={fullName || "—"} />
               <InfoRow label={t("home.email")} value={user.email ?? "—"} />
               <InfoRow
@@ -170,7 +167,7 @@ export default function Home() {
               />
               {user.status && (
                 <div className="flex items-center px-6 py-4 gap-6">
-                  <span className="w-28 shrink-0 text-xs font-medium text-neutral-400 uppercase tracking-wide">
+                  <span className="w-28 shrink-0 text-label uppercase text-muted">
                     {t("home.status")}
                   </span>
                   <StatusBadge status={user.status} t={t} />
@@ -190,16 +187,17 @@ export default function Home() {
                 />
               )}
             </div>
-          </div>
+          </section>
 
           {/* Danger zone */}
-          <div className="pt-2 border-t border-[#E8E8E8]">
-            <button
+          <div className="pt-6 border-t border-border">
+            <Button
+              variant="danger"
+              size="sm"
               onClick={() => setShowDelete(true)}
-              className="text-xs font-medium text-red-600 border border-red-200 px-3 py-1.5 hover:bg-red-50 hover:border-red-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-1"
             >
               {t("user.deleteAccount")}
-            </button>
+            </Button>
           </div>
         </div>
       </main>
@@ -224,7 +222,7 @@ export default function Home() {
 
 const STATUS_STYLES: Record<string, string> = {
   active: "bg-green-50 text-green-700 border border-green-200",
-  inactive: "bg-neutral-100 text-neutral-500 border border-neutral-200",
+  inactive: "bg-surface text-muted border border-border",
   pending: "bg-yellow-50 text-yellow-700 border border-yellow-200",
   banned: "bg-red-50 text-red-600 border border-red-200",
 };
@@ -241,12 +239,10 @@ function StatusBadge({
       typeof t
     >[0];
   const label = t(key);
-  const style =
-    STATUS_STYLES[status] ??
-    "bg-neutral-100 text-neutral-500 border border-neutral-200";
+  const style = STATUS_STYLES[status] ?? STATUS_STYLES.inactive;
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 text-xs font-medium ${style}`}
+      className={`inline-flex items-center px-2 py-0.5 text-caption font-medium ${style}`}
     >
       {label}
     </span>
@@ -264,11 +260,11 @@ function InfoRow({
 }) {
   return (
     <div className="flex items-center px-6 py-4 gap-6">
-      <span className="w-28 shrink-0 text-xs font-medium text-neutral-400 uppercase tracking-wide">
+      <span className="w-28 shrink-0 text-label uppercase text-muted">
         {label}
       </span>
       <span
-        className={`text-sm text-neutral-800 truncate ${capitalize ? "capitalize" : ""}`}
+        className={`text-small text-foreground truncate ${capitalize ? "capitalize" : ""}`}
       >
         {value}
       </span>

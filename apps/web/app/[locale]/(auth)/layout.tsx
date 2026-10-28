@@ -9,27 +9,23 @@ export default function AuthLayout({
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[480px_1fr]">
-      <div className="hidden lg:flex flex-col justify-between bg-black text-white p-12">
-        <span className="text-xs font-semibold tracking-[0.2em] uppercase text-neutral-400">
-          Starter
-        </span>
+      <div className="hidden lg:flex flex-col justify-between bg-foreground text-background p-12">
+        <span className="text-label uppercase text-white/50">Starter</span>
         <div>
-          <p className="text-[2rem] font-semibold leading-tight tracking-tight text-balance whitespace-pre-line">
+          <p className="text-display text-balance whitespace-pre-line">
             {t("tagline")}
           </p>
-          <p className="mt-4 text-sm text-neutral-500 leading-relaxed max-w-xs">
+          <p className="mt-4 max-w-xs text-small text-white/50">
             {t("description")}
           </p>
         </div>
-        <p className="text-xs text-neutral-700">{t("copyright")}</p>
+        <p className="text-caption text-white/40">{t("copyright")}</p>
       </div>
 
-      <div className="flex min-h-screen items-center justify-center bg-white px-6 py-20">
+      <div className="flex min-h-screen items-center justify-center bg-background px-6 py-20">
         <div className="w-full max-w-110">
           <div className="lg:hidden mb-10">
-            <span className="text-xs font-semibold tracking-[0.2em] uppercase text-neutral-400">
-              Starter
-            </span>
+            <span className="text-label uppercase text-muted">Starter</span>
           </div>
           {children}
         </div>
