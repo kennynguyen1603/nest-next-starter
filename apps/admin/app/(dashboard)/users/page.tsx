@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import UserTable from "@/components/users/UserTable";
 import type { AdminUser } from "@repo/types";
+import { Button } from "@repo/ui/button";
+import { Input } from "@repo/ui/input";
 import { Spinner } from "@repo/ui/spinner";
 
 interface UsersApiResponse {
@@ -68,35 +70,36 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-900">Users</h1>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-500">{total} total</span>
-          <button
-            onClick={() => router.push("/users/new")}
-            className="flex items-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-          >
-            <UserPlus size={15} />
-            New User
-          </button>
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <h1 className="text-h2">Users</h1>
+          <p className="mt-1 text-small text-muted tabular-nums">
+            {total} total
+          </p>
         </div>
+        <Button onClick={() => router.push("/users/new")}>
+          <UserPlus size={16} aria-hidden="true" />
+          New User
+        </Button>
       </div>
 
       <div className="relative max-w-xs">
         <Search
           size={16}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+          aria-hidden="true"
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
         />
-        <input
+        <Input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search users…"
-          className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          aria-label="Search users"
+          className="pl-9"
         />
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 gap-2 text-sm text-gray-400">
+        <div className="flex items-center justify-center py-10 gap-2 text-small text-muted">
           <Spinner variant="neutral" />
           Loading…
         </div>
@@ -105,25 +108,27 @@ export default function UsersPage() {
       )}
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-gray-600">
-          <span>
+        <div className="flex items-center justify-between text-small text-muted">
+          <span className="tabular-nums">
             Page {page} of {totalPages}
           </span>
           <div className="flex gap-2">
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               disabled={page === 1}
               onClick={() => setPage((p) => p - 1)}
-              className="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 transition-colors"
             >
               Previous
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
               disabled={page === totalPages}
               onClick={() => setPage((p) => p + 1)}
-              className="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 transition-colors"
             >
               Next
-            </button>
+            </Button>
           </div>
         </div>
       )}

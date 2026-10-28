@@ -19,7 +19,7 @@ export function LanguageSwitcher() {
       value={locale}
       onChange={handleChange}
       aria-label={t("switchLanguage")}
-      className="h-8 border border-border-strong bg-white px-2 text-caption hover:border-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground cursor-pointer"
+      className="h-8 border border-border-strong bg-background px-2 text-caption hover:border-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground cursor-pointer"
     >
       {SUPPORTED_LOCALES.map((l) => (
         <option key={l} value={l}>

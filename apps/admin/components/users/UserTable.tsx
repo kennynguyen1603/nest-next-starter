@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import type { AdminUser } from "@repo/types";
 import { api } from "@/lib/api";
+import { Alert } from "@repo/ui/alert";
+import { Button } from "@repo/ui/button";
 
 // Only mounted after a delete click, so keep it out of the table's bundle.
 const ConfirmModal = dynamic(() => import("@/components/shared/ConfirmModal"), {
@@ -21,6 +23,12 @@ const STATUS_OPTIONS = ["active", "inactive", "pending", "banned"] as const;
 const ROLE_OPTIONS = ["user", "manager", "admin"] as const;
 
 type BulkAction = "delete" | "status" | "role";
+
+const SELECT_CLASS =
+  "h-8 border border-border-strong bg-background px-2 text-caption focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground";
+const CHECKBOX_CLASS = "size-4 accent-foreground";
+const ICON_BUTTON_CLASS =
+  "p-1.5 text-muted hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground";
 
 function UserTable({ users, onRefresh }: Props) {
   const router = useRouter();
@@ -141,8 +149,8 @@ function UserTable({ users, onRefresh }: Props) {
     <>
       {/* Bulk action bar */}
       {selected.size > 0 && (
-        <div className="flex flex-wrap items-center gap-3 px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-xl text-sm">
-          <span className="font-medium text-indigo-700 shrink-0">
+        <div className="flex flex-wrap items-center gap-3 px-4 py-3 bg-background border border-foreground text-small">
+          <span className="font-medium shrink-0 tabular-nums">
             {selected.size} selected
           </span>
 
@@ -151,7 +159,8 @@ function UserTable({ users, onRefresh }: Props) {
             <select
               value={bulkStatus}
               onChange={(e) => setBulkStatus(e.target.value)}
-              className="border border-gray-300 rounded-lg px-2 py-1 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              aria-label="Status"
+              className={SELECT_CLASS}
             >
               {STATUS_OPTIONS.map((s) => (
                 <option key={s} value={s}>
@@ -159,13 +168,14 @@ function UserTable({ users, onRefresh }: Props) {
                 </option>
               ))}
             </select>
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={executeBulkStatus}
               disabled={bulkWorking}
-              className="px-2.5 py-1 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
             >
               Set status
-            </button>
+            </Button>
           </div>
 
           {/* Change role */}
@@ -173,7 +183,8 @@ function UserTable({ users, onRefresh }: Props) {
             <select
               value={bulkRole}
               onChange={(e) => setBulkRole(e.target.value)}
-              className="border border-gray-300 rounded-lg px-2 py-1 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              aria-label="Role"
+              className={SELECT_CLASS}
             >
               {ROLE_OPTIONS.map((r) => (
                 <option key={r} value={r}>
@@ -181,40 +192,41 @@ function UserTable({ users, onRefresh }: Props) {
                 </option>
               ))}
             </select>
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={executeBulkRole}
               disabled={bulkWorking}
-              className="px-2.5 py-1 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
             >
               Set role
-            </button>
+            </Button>
           </div>
 
           {/* Delete */}
-          <button
+          <Button
+            variant="danger"
+            size="sm"
             onClick={() => setBulkAction("delete")}
             disabled={bulkWorking}
-            className="px-2.5 py-1 bg-white border border-red-300 rounded-lg text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
           >
             Delete selected
-          </button>
+          </Button>
 
           <button
+            type="button"
             onClick={clearSelection}
-            className="ml-auto text-xs text-indigo-500 hover:text-indigo-700 transition-colors"
+            className="ml-auto text-caption text-muted underline underline-offset-4 hover:text-foreground transition-colors"
           >
             Clear selection
           </button>
         </div>
       )}
 
-      {actionError && (
-        <p className="px-4 py-2 text-xs text-red-600">{actionError}</p>
-      )}
+      {actionError && <Alert>{actionError}</Alert>}
 
-      <div className="overflow-x-auto rounded-xl border border-gray-200">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
+      <div className="overflow-x-auto bg-background border border-border">
+        <table className="w-full text-small">
+          <thead className="bg-surface border-b border-border">
             <tr>
               <th className="px-4 py-3 w-10">
                 <input
@@ -224,24 +236,24 @@ function UserTable({ users, onRefresh }: Props) {
                     if (el) el.indeterminate = someSelected;
                   }}
                   onChange={toggleAll}
-                  className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  className={CHECKBOX_CLASS}
                   aria-label="Select all"
                 />
               </th>
               {["Name", "Email", "Role", "Status", "Joined", ""].map((h) => (
                 <th
                   key={h}
-                  className="text-left px-4 py-3 font-medium text-gray-600"
+                  className="text-left px-4 py-3 text-label uppercase text-muted"
                 >
                   {h}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 bg-white">
+          <tbody className="divide-y divide-border">
             {users.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={7} className="px-4 py-10 text-center text-muted">
                   No users found
                 </td>
               </tr>
@@ -251,64 +263,76 @@ function UserTable({ users, onRefresh }: Props) {
               return (
                 <tr
                   key={user.id}
-                  className={`hover:bg-gray-50 ${isSelected ? "bg-indigo-50/50" : ""}`}
+                  className={isSelected ? "bg-surface" : "hover:bg-surface"}
                 >
                   <td className="px-4 py-3">
                     <input
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => toggleOne(user.id)}
-                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      className={CHECKBOX_CLASS}
                       aria-label={`Select ${user.email ?? user.id}`}
                     />
                   </td>
-                  <td className="px-4 py-3 font-medium text-gray-900">
+                  <td className="px-4 py-3 font-medium">
                     {[user.firstName, user.lastName]
                       .filter(Boolean)
                       .join(" ") || "—"}
                   </td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {user.email ?? "—"}
-                  </td>
+                  <td className="px-4 py-3 text-muted">{user.email ?? "—"}</td>
                   <td className="px-4 py-3">
-                    <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">
+                    <span className="inline-flex px-2 py-0.5 border border-border text-caption font-medium capitalize">
                       {user.roles?.[0]?.name ?? "user"}
                     </span>
                   </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                      className={`inline-flex items-center gap-1.5 text-caption font-medium capitalize ${
                         user.status === "active"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-red-100 text-red-700"
+                          ? "text-green-700"
+                          : "text-red-700"
                       }`}
                     >
+                      <span
+                        aria-hidden="true"
+                        className={`size-1.5 ${
+                          user.status === "active"
+                            ? "bg-green-600"
+                            : "bg-red-600"
+                        }`}
+                      />
                       {user.status ?? "unknown"}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-gray-500">
+                  <td className="px-4 py-3 text-muted tabular-nums">
                     {new Date(user.createdAt).toLocaleDateString()}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-2 justify-end">
+                    <div className="flex items-center gap-1 justify-end">
                       <button
+                        type="button"
                         onClick={() => router.push(`/users/${user.id}`)}
-                        className="p-1.5 text-gray-400 hover:text-indigo-600 rounded transition-colors"
+                        className={ICON_BUTTON_CLASS}
                         title="View"
+                        aria-label="View"
                       >
                         <Eye size={16} />
                       </button>
                       <button
+                        type="button"
                         onClick={() => router.push(`/users/${user.id}/edit`)}
-                        className="p-1.5 text-gray-400 hover:text-amber-600 rounded transition-colors"
+                        className={ICON_BUTTON_CLASS}
                         title="Edit"
+                        aria-label="Edit"
                       >
                         <Pencil size={16} />
                       </button>
                       <button
+                        type="button"
                         onClick={() => setDeleteTarget(user.id)}
-                        className="p-1.5 text-gray-400 hover:text-red-600 rounded transition-colors"
+                        className={`${ICON_BUTTON_CLASS} hover:text-red-600`}
                         title="Delete"
+                        aria-label="Delete"
                       >
                         <Trash2 size={16} />
                       </button>

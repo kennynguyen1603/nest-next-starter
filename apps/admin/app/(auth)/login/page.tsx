@@ -71,7 +71,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="w-full max-w-sm border border-border bg-white p-8">
+    <div className="w-full max-w-sm border border-border bg-background p-8">
       <div className="mb-8">
         <div className="mb-6 size-8 bg-foreground" aria-hidden="true" />
         <h1 className="text-h2">Admin Login</h1>

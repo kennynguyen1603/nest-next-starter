@@ -85,17 +85,16 @@ export default function NewUserPage() {
     <div className="max-w-2xl space-y-6">
       <div className="flex items-center justify-between">
         <button
+          type="button"
           onClick={() => router.back()}
-          className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+          className="flex items-center gap-2 text-small text-muted hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground"
         >
-          <ArrowLeft size={16} /> Back to Users
+          <ArrowLeft size={16} aria-hidden="true" /> Back to Users
         </button>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h1 className="text-lg font-semibold text-gray-900 mb-6">
-          Create new user
-        </h1>
+      <div className="bg-background border border-border p-6">
+        <h1 className="text-h2 mb-6">Create new user</h1>
 
         <form
           onSubmit={handleSubmit(onSubmit)}
