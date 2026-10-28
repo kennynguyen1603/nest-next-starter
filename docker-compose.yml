@@ -96,7 +96,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: redis-server --requirepass ${REDIS_PASSWORD} --maxmemory ${REDIS_MAXMEMORY:-256mb} --maxmemory-policy noeviction
+    command: redis-server --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required} --maxmemory ${REDIS_MAXMEMORY:-256mb} --maxmemory-policy noeviction
     volumes:
       - redis_data:/data
     healthcheck:

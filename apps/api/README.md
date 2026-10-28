@@ -824,13 +824,14 @@ APP_FALLBACK_LANGUAGE=en           # default language when Accept-Language heade
 APP_HEADER_LANGUAGE=x-custom-lang  # request header used by nestjs-i18n
 DATABASE_TYPE=mongodb              # mongodb | postgres | mysql | sqlite
 DATABASE_URL=mongodb://localhost:27017/nest_starter
-AUTH_JWT_SECRET=change_me_jwt_secret
+# Each secret: at least 32 chars and unique (openssl rand -base64 48)
+AUTH_JWT_SECRET=
 AUTH_JWT_TOKEN_EXPIRES_IN=15m
-AUTH_REFRESH_SECRET=change_me_refresh_secret
+AUTH_REFRESH_SECRET=
 AUTH_REFRESH_TOKEN_EXPIRES_IN=7d
-AUTH_FORGOT_SECRET=change_me_forgot_secret
+AUTH_FORGOT_SECRET=
 AUTH_FORGOT_TOKEN_EXPIRES_IN=30m
-AUTH_CONFIRM_EMAIL_SECRET=change_me_confirm_secret
+AUTH_CONFIRM_EMAIL_SECRET=
 AUTH_CONFIRM_EMAIL_TOKEN_EXPIRES_IN=1d
 ```
 
