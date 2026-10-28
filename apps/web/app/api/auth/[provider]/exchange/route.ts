@@ -139,7 +139,7 @@ export async function POST(
   const redirectUri = `${origin}/auth/${provider}/callback`;
   const browserUserAgent = request.headers.get("user-agent") ?? "";
 
-  let body: ExchangeBody;
+  let body: Partial<ExchangeBody> | null;
   try {
     body = await request.json();
   } catch {
@@ -149,7 +149,10 @@ export async function POST(
     );
   }
 
-  const { code, codeVerifier } = body;
+  // Valid JSON may still be null, a primitive, or carry non-string fields.
+  const code = typeof body?.code === "string" ? body.code : "";
+  const codeVerifier =
+    typeof body?.codeVerifier === "string" ? body.codeVerifier : "";
   if (!code) {
     return NextResponse.json({ error: "Missing code" }, { status: 400 });
   }
