@@ -124,6 +124,8 @@ export default function Home() {
                 alt={fullName || "Avatar"}
                 width={48}
                 height={48}
+                // Presigned S3 URLs change on every request, so the optimizer can't cache them.
+                unoptimized
                 className="object-cover shrink-0"
               />
             ) : (

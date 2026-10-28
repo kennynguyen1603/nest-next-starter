@@ -178,8 +178,9 @@ export function EditProfileDialog({ user, currentPhotoUrl, onClose }: Props) {
                 alt="Avatar"
                 width={56}
                 height={56}
-                // Local previews are blob: URLs the optimizer can't fetch.
-                unoptimized={displayPhoto.startsWith("blob:")}
+                // Local previews are blob: URLs the optimizer can't fetch, and presigned
+                // S3 URLs change on every request, so the optimizer can't cache them.
+                unoptimized
                 className="w-14 h-14 object-cover shrink-0"
               />
             ) : (
