@@ -6,6 +6,8 @@
   "scripts": {
     "test:e2e": "playwright test",
     "test:e2e:api": "E2E_API=1 playwright test --project=api",
+    "api:up": "./scripts/api-up.sh",
+    "api:down": "./scripts/api-down.sh",
     "check-types": "tsc --noEmit"
   },
   "devDependencies": {

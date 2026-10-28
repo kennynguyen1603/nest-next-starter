@@ -22,7 +22,17 @@ export default defineConfig({
     { name: "web", testDir: "tests/web", use: { baseURL: WEB_URL } },
     { name: "admin", testDir: "tests/admin", use: { baseURL: ADMIN_URL } },
     ...(withApi
-      ? [{ name: "api", testDir: "tests/api", use: { baseURL: API_URL } }]
+      ? [
+          {
+            name: "api",
+            testDir: "tests/api",
+            use: { baseURL: API_URL },
+            // Specs share seed users, and "revoke all sessions" is global per
+            // user, so parallel workers would revoke each other's sessions.
+            fullyParallel: false,
+            workers: 1,
+          },
+        ]
       : []),
   ],
   webServer: withApi
