@@ -10,7 +10,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN corepack enable
 WORKDIR /repo
 
-# 1. Prune the monorepo down to `admin` and its workspace dependencies (@repo/ui, @repo/types, configs).
+# 1. Prune the monorepo down to `admin` and its workspace dependencies (@repo/types, configs).
 FROM base AS pruner
 ARG TURBO_VERSION=2.9.4
 COPY . .
