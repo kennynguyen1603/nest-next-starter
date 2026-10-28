@@ -937,7 +937,6 @@ GRAFANA_PASSWORD=your-secure-password
 DOCKER_PROMETHEUS_PORT=9090    # host port for Prometheus UI
 DOCKER_GRAFANA_PORT=3001       # host port for Grafana UI (3001 avoids conflict with web on 3000)
 DOCKER_PG_EXPORTER=9187        # host port for postgres-exporter (SQL users only)
-DOCKER_MONGO_EXPORTER=9216     # host port for mongodb-exporter (MongoDB users only)
 ```
 
 These variables are only required when running the monitoring Docker Compose profile. See the [Monitoring section in the root README](../../README.md#monitoring-prometheus--grafana) for the full setup guide.
@@ -1055,12 +1054,11 @@ Dashboard files live in `src/tools/grafana/dashboards/` and are auto-loaded by G
 
 Configured in `prometheus.config.yml` at the project root:
 
-| Job          | Target                   | Description                     |
-| ------------ | ------------------------ | ------------------------------- |
-| `prometheus` | `localhost:9090`         | Prometheus self-monitoring      |
-| `server`     | `api:8080`               | NestJS API metrics              |
-| `database`   | `postgres-exporter:9187` | PostgreSQL metrics (SQL users)  |
-| `mongodb`    | `mongodb-exporter:9216`  | MongoDB metrics (MongoDB users) |
+| Job          | Target                   | Description                    |
+| ------------ | ------------------------ | ------------------------------ |
+| `prometheus` | `localhost:9090`         | Prometheus self-monitoring     |
+| `server`     | `api:8080`               | NestJS API metrics             |
+| `database`   | `postgres-exporter:9187` | PostgreSQL metrics (SQL users) |
 
 ### Data persistence
 
