@@ -999,6 +999,52 @@ describe('AuthService', () => {
       );
     });
 
+    it('rejects an unconfirmed account matched by email', async () => {
+      mockUsersService.findByEmail.mockResolvedValue({
+        id: 'email1',
+        status: UserStatus.INACTIVE,
+        roles: [{ name: 'user' }],
+      });
+
+      await expect(
+        service.validateSocialLogin('google', social),
+      ).rejects.toThrow(UnprocessableEntityException);
+      expect(mockSessionService.create).not.toHaveBeenCalled();
+    });
+
+    it('skips upload when the avatar is not an image', async () => {
+      fetchSpy.mockResolvedValue({
+        ok: true,
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(4)),
+        headers: { get: () => 'text/html' },
+      } as unknown as Response);
+
+      await service.validateSocialLogin('google', {
+        ...social,
+        photoUrl: 'https://cdn/x.png',
+      });
+
+      expect(mockFileUploadService.uploadFromBuffer).not.toHaveBeenCalled();
+      expect(mockUsersService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ photo: undefined }),
+      );
+    });
+
+    it('skips upload when the avatar is too large', async () => {
+      fetchSpy.mockResolvedValue({
+        ok: true,
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(6 * 1024 * 1024)),
+        headers: { get: () => 'image/png' },
+      } as unknown as Response);
+
+      await service.validateSocialLogin('google', {
+        ...social,
+        photoUrl: 'https://cdn/x.png',
+      });
+
+      expect(mockFileUploadService.uploadFromBuffer).not.toHaveBeenCalled();
+    });
+
     it('skips upload when the avatar response is not ok', async () => {
       fetchSpy.mockResolvedValue({ ok: false } as Response);
 

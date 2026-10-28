@@ -48,6 +48,8 @@ import { JwtPayloadType } from './strategies/types/jwt-payload.type';
 import { JwtRefreshPayloadType } from './strategies/types/jwt-refresh-payload.type';
 
 const MAX_SESSIONS_PER_USER = 10;
+const AVATAR_FETCH_TIMEOUT_MS = 5000;
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 
 @Injectable()
 export class AuthService {
@@ -79,6 +81,13 @@ export class AuthService {
       status: HttpStatus.UNPROCESSABLE_ENTITY,
       errors: { hash: this.t('auth.INVALID_HASH') },
     });
+  }
+
+  private generateSessionHash(): string {
+    return crypto
+      .createHash('sha256')
+      .update(randomStringGenerator())
+      .digest('hex');
   }
 
   /**
@@ -168,10 +177,7 @@ export class AuthService {
       });
     }
 
-    const hash = crypto
-      .createHash('sha256')
-      .update(randomStringGenerator())
-      .digest('hex');
+    const hash = this.generateSessionHash();
 
     const roleNames = (user.roles ?? []).map((r) => r.name);
     await this.sessionService.enforceSessionLimit(
@@ -216,6 +222,39 @@ export class AuthService {
     };
   }
 
+  /**
+   * Bounded download of a provider avatar: times out, accepts only images and
+   * caps the size. Returns undefined when the response is not usable.
+   */
+  private async uploadSocialAvatar(
+    url: string,
+  ): Promise<{ id: string } | undefined> {
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(AVATAR_FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) return undefined;
+
+    const contentType = (res.headers.get('content-type') ?? '')
+      .split(';')[0]
+      .trim();
+    if (
+      !contentType.startsWith('image/') ||
+      Number(res.headers.get('content-length')) > MAX_AVATAR_BYTES
+    ) {
+      return undefined;
+    }
+
+    const buffer = Buffer.from(await res.arrayBuffer());
+    if (buffer.byteLength > MAX_AVATAR_BYTES) return undefined;
+
+    const ext = contentType.split('/')[1]?.split('+')[0] || 'jpg';
+    const file = await this.fileUploadService.uploadFromBuffer(buffer, {
+      filename: `avatar.${ext}`,
+      mimetype: contentType,
+    });
+    return { id: file.id };
+  }
+
   async validateSocialLogin(
     authProvider: string,
     socialData: SocialInterface,
@@ -246,17 +285,7 @@ export class AuthService {
       let photoDto: { id: string } | undefined;
       if (socialData.photoUrl) {
         try {
-          const res = await fetch(socialData.photoUrl);
-          if (res.ok) {
-            const buffer = Buffer.from(await res.arrayBuffer());
-            const contentType = res.headers.get('content-type') ?? 'image/jpeg';
-            const ext = contentType.split('/')[1]?.split('+')[0] ?? 'jpg';
-            const file = await this.fileUploadService.uploadFromBuffer(buffer, {
-              filename: `avatar.${ext}`,
-              mimetype: contentType,
-            });
-            photoDto = { id: file.id };
-          }
+          photoDto = await this.uploadSocialAvatar(socialData.photoUrl);
         } catch {
           this.logger.warn(
             { provider: authProvider, socialId: socialData.id },
@@ -306,10 +335,7 @@ export class AuthService {
       });
     }
 
-    const hash = crypto
-      .createHash('sha256')
-      .update(randomStringGenerator())
-      .digest('hex');
+    const hash = this.generateSessionHash();
 
     this.logger.debug(
       {
@@ -697,10 +723,7 @@ export class AuthService {
   async refreshToken(
     data: Pick<JwtRefreshPayloadType, 'sessionId' | 'hash'>,
   ): Promise<{ token: string; refreshToken: string; tokenExpires: number }> {
-    const hash = crypto
-      .createHash('sha256')
-      .update(randomStringGenerator())
-      .digest('hex');
+    const hash = this.generateSessionHash();
 
     const session = await this.sessionService.updateByHash(
       { id: data.sessionId, hash: data.hash },
