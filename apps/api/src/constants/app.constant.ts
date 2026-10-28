@@ -33,9 +33,7 @@ export const loggingRedactPaths = [
 export const IS_PUBLIC = 'is-public';
 
 export const SWAGGER_PATH = '/docs';
-export const IS_AUTH_OPTIONAL = 'is-auth-optional';
 
 export const DEFAULT_PAGE_LIMIT = 10;
 export const MAX_PAGE_LIMIT = 100;
 export const DEFAULT_CURRENT_PAGE = 1;
-export const SYSTEM_USER_ID = 'system';

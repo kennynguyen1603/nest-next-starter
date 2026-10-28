@@ -58,7 +58,6 @@ import useBullFactory from './config/bull/bull.factory';
 import useLoggerFactory from './tools/logger/logger-factory';
 import { GlobalExceptionFilter } from './filters/global-exception.filter';
 import throttlerConfig from './config/throttler/throttler.config';
-import grafanaConfig from './config/grafana/grafana.config';
 import useThrottlerFactory from './config/throttler/throttler.factory';
 import { AppThrottlerGuard } from './config/throttler/throttler.guard';
 
@@ -125,7 +124,6 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
         redisConfig,
         bullConfig,
         throttlerConfig,
-        grafanaConfig,
       ],
       envFilePath: ['.env'],
     }),

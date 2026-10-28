@@ -19,7 +19,6 @@ import { ApiPaginatedResponse } from './swagger.decorators';
 import { ErrorDto } from '@/common/dto/error.dto';
 
 type ApiResponseType = number;
-type PaginationType = 'offset' | 'cursor';
 
 interface IApiOptions<T extends Type<any>> {
   type?: T;
@@ -28,7 +27,6 @@ interface IApiOptions<T extends Type<any>> {
   errorResponses?: ApiResponseType[];
   statusCode?: HttpStatus;
   isPaginated?: boolean;
-  paginationType?: PaginationType;
   operations?: ApiOperationOptions;
 }
 
@@ -48,7 +46,6 @@ export const ApiPublic = (options: IApiPublicOptions = {}): MethodDecorator => {
   const ok = {
     type: options.type,
     description: options?.description ?? 'OK',
-    paginationType: options.paginationType || 'offset',
   };
 
   const errorResponses = (options.errorResponses || defaultErrorResponses)?.map(
@@ -91,7 +88,6 @@ export const ApiAuth = (options: IApiAuthOptions = {}): MethodDecorator => {
   const ok = {
     type: options.type,
     description: options?.description ?? 'OK',
-    paginationType: options.paginationType || 'offset',
   };
 
   const errorResponses = (options.errorResponses || defaultErrorResponses)?.map(

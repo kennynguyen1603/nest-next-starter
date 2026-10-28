@@ -258,9 +258,6 @@ importers:
       passport:
         specifier: ^0.7.0
         version: 0.7.0
-      passport-anonymous:
-        specifier: ^1.0.1
-        version: 1.0.1
       passport-jwt:
         specifier: ^4.0.1
         version: 4.0.1
@@ -337,9 +334,6 @@ importers:
       '@types/passport':
         specifier: ^1.0.17
         version: 1.0.17
-      '@types/passport-anonymous':
-        specifier: ^1.0.5
-        version: 1.0.5
       '@types/passport-jwt':
         specifier: ^4.0.1
         version: 4.0.1
@@ -2693,9 +2687,6 @@ packages:
 
   '@types/nodemailer@8.0.0':
     resolution: {integrity: sha512-fyf8jWULsCo0d0BuoQ75i6IeoHs47qcqxWc7yUdUcV0pOZGjUTTOvwdG1PRXUDqN/8A64yQdQdnA2pZgcdi+cA==}
-
-  '@types/passport-anonymous@1.0.5':
-    resolution: {integrity: sha512-RCn+UFc13LKmABj+GGGCGRIA2m2UcdjWQamFllOhIWXJGzbC2rDhVRU6/y8wgRalbXlpt/OXI/EyVNQTRDIJ4A==}
 
   '@types/passport-jwt@4.0.1':
     resolution: {integrity: sha512-Y0Ykz6nWP4jpxgEUYq8NoVZeCQPo1ZndJLfapI249g1jHChvRfZRO/LS3tqu26YgAS/laI1qx98sYGz0IalRXQ==}
@@ -5372,10 +5363,6 @@ packages:
   parseurl@1.3.3:
     resolution: {integrity: sha512-CiyeOxFT/JZyN5m0z9PfXw4SCBJ6Sygz1Dpl0wqjlhDEGGBP1GnsUVEL0p63hoG1fcj3fHynXi9NYO4nWOL+qQ==}
     engines: {node: '>= 0.8'}
-
-  passport-anonymous@1.0.1:
-    resolution: {integrity: sha512-Mk2dls97nLTzHpsWCYQ54IVGucWaiWSHHr3+IhWYAebg4dRgRQIfyoeYrixoxB2z2z4+EM7p9yjC+a3yMB5z5A==}
-    engines: {node: '>= 0.4.0'}
 
   passport-jwt@4.0.1:
     resolution: {integrity: sha512-UCKMDYhNuGOBE9/9Ycuoyh7vP6jpeTp/+sfMJl7nLff/t6dps+iaeE0hhNkKN8/HZHcJ7lCdOyDxHdDoxoSvdQ==}
@@ -9278,10 +9265,6 @@ snapshots:
     dependencies:
       '@types/node': 22.15.3
 
-  '@types/passport-anonymous@1.0.5':
-    dependencies:
-      '@types/passport': 1.0.17
-
   '@types/passport-jwt@4.0.1':
     dependencies:
       '@types/jsonwebtoken': 9.0.10
@@ -12319,10 +12302,6 @@ snapshots:
       entities: 8.0.0
 
   parseurl@1.3.3: {}
-
-  passport-anonymous@1.0.1:
-    dependencies:
-      passport-strategy: 1.0.0
 
   passport-jwt@4.0.1:
     dependencies:

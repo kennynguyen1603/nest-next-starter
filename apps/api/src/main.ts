@@ -17,7 +17,6 @@ import { Request, Response, NextFunction } from 'express';
 import { setupGracefulShutdown } from 'nestjs-graceful-shutdown';
 
 import { AppModule } from './app.module';
-import { ResolvePromisesInterceptor } from '@/utils/serializer.interceptor';
 import validationOptions from '@/utils/validation-options';
 import { AllConfigType } from './config/config.type';
 import { BULL_BOARD_PATH } from './config/bull/bull.config';
@@ -86,12 +85,7 @@ async function bootstrap() {
     type: VersioningType.URI,
   });
   app.useGlobalPipes(new ValidationPipe(validationOptions));
-  app.useGlobalInterceptors(
-    // ResolvePromisesInterceptor is used to resolve promises in responses because class-transformer can't do it
-    // https://github.com/typestack/class-transformer/issues/549
-    new ResolvePromisesInterceptor(),
-    new ClassSerializerInterceptor(app.get(Reflector)),
-  );
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
   const prefixPath = `/${apiPrefix}`.toLowerCase();
   const pathsToIntercept = [
