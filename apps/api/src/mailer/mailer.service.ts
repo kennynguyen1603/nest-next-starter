@@ -10,6 +10,10 @@ import MailerCustomLogger from './logger/mailer-custom-logger';
 @Injectable()
 export class MailerService {
   private readonly transporter: nodemailer.Transporter;
+  private readonly templates = new Map<
+    string,
+    Handlebars.TemplateDelegate<Record<string, unknown>>
+  >();
 
   constructor(
     private readonly configService: ConfigService<AllConfigType>,
@@ -40,10 +44,7 @@ export class MailerService {
   }): Promise<void> {
     let html: string | undefined;
     if (templatePath) {
-      const template = await fs.readFile(templatePath, 'utf-8');
-      html = Handlebars.compile(template, {
-        strict: true,
-      })(context);
+      html = (await this.getTemplate(templatePath))(context);
     }
 
     const from = mailOptions.from
@@ -69,5 +70,19 @@ export class MailerService {
       );
       throw err;
     }
+  }
+
+  private async getTemplate(
+    templatePath: string,
+  ): Promise<Handlebars.TemplateDelegate<Record<string, unknown>>> {
+    let template = this.templates.get(templatePath);
+    if (!template) {
+      template = Handlebars.compile<Record<string, unknown>>(
+        await fs.readFile(templatePath, 'utf-8'),
+        { strict: true },
+      );
+      this.templates.set(templatePath, template);
+    }
+    return template;
   }
 }
