@@ -179,6 +179,26 @@ describe('AuthService', () => {
       );
     });
 
+    it('rejects an account that is not active after a correct password', async () => {
+      mockUsersService.findByEmail.mockResolvedValue({
+        id: '1',
+        email: 'x@x.com',
+        provider: AuthProvidersEnum.EMAIL,
+        password: await bcrypt.hash('correctpass', 10),
+        status: UserStatus.INACTIVE,
+        roles: [{ name: 'user' }],
+      });
+
+      await expect(
+        service.validateLogin({ email: 'x@x.com', password: 'correctpass' }),
+      ).rejects.toThrow(UnprocessableEntityException);
+      expect(mockI18n.t).toHaveBeenCalledWith(
+        'auth.ACCOUNT_NOT_ACTIVE',
+        expect.any(Object),
+      );
+      expect(mockSessionService.create).not.toHaveBeenCalled();
+    });
+
     it('returns token data and message on success', async () => {
       const hash = await bcrypt.hash('correctpass', 10);
 
@@ -447,6 +467,10 @@ describe('AuthService', () => {
 
       expect(result).toEqual({ message: 'mocked' });
       expect(mockUsersService.remove).toHaveBeenCalledWith('user1');
+      expect(mockSessionService.deleteByUserId).toHaveBeenCalledWith(
+        { userId: 'user1' },
+        'logout',
+      );
       expect(mockI18n.t).toHaveBeenCalledWith(
         'auth.DELETE_SUCCESS',
         expect.any(Object),
@@ -787,6 +811,43 @@ describe('AuthService', () => {
       expect(mockJwtService.signAsync).not.toHaveBeenCalled();
     });
 
+    it('rejects and revokes the session of an inactive user', async () => {
+      mockSessionService.updateByHash.mockResolvedValue({
+        id: 'session1',
+        user: { id: 'user1' },
+      });
+      mockUsersService.findById.mockResolvedValue({
+        id: 'user1',
+        status: UserStatus.INACTIVE,
+        roles: [{ name: 'user' }],
+      });
+
+      await expect(
+        service.refreshToken({ sessionId: 'session1', hash: 'hash1' }),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(mockSessionService.deleteById).toHaveBeenCalledWith(
+        'session1',
+        'logout',
+      );
+      expect(mockJwtService.signAsync).not.toHaveBeenCalled();
+    });
+
+    it('rejects a session whose user no longer exists', async () => {
+      mockSessionService.updateByHash.mockResolvedValue({
+        id: 'session1',
+        user: null,
+      });
+
+      await expect(
+        service.refreshToken({ sessionId: 'session1', hash: 'hash1' }),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(mockUsersService.findById).not.toHaveBeenCalled();
+      expect(mockSessionService.deleteById).toHaveBeenCalledWith(
+        'session1',
+        'logout',
+      );
+    });
+
     it('throws UnauthorizedException when user has no roles', async () => {
       mockSessionService.updateByHash.mockResolvedValue({
         id: 'session1',
@@ -881,6 +942,19 @@ describe('AuthService', () => {
       expect(mockUsersService.findByEmail).toHaveBeenCalledWith('new@x.com');
       expect(mockUsersService.create).not.toHaveBeenCalled();
       expect(result.user).toEqual(expect.objectContaining({ id: 'email1' }));
+    });
+
+    it('rejects a banned account', async () => {
+      mockUsersService.findByEmail.mockResolvedValue({
+        id: 'email1',
+        status: UserStatus.BANNED,
+        roles: [{ name: 'user' }],
+      });
+
+      await expect(
+        service.validateSocialLogin('google', social),
+      ).rejects.toThrow(UnprocessableEntityException);
+      expect(mockSessionService.create).not.toHaveBeenCalled();
     });
 
     it('creates an active user with the downloaded avatar', async () => {

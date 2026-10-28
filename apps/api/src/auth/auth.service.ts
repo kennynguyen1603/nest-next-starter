@@ -157,6 +157,17 @@ export class AuthService {
       });
     }
 
+    if (this.isBlocked(user)) {
+      this.logger.warn(
+        { userId: user.id, status: user.status },
+        'Login failed: account not active',
+      );
+      throw new UnprocessableEntityException({
+        status: HttpStatus.UNPROCESSABLE_ENTITY,
+        errors: { email: this.t('auth.ACCOUNT_NOT_ACTIVE') },
+      });
+    }
+
     const hash = crypto
       .createHash('sha256')
       .update(randomStringGenerator())
@@ -281,6 +292,17 @@ export class AuthService {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
         errors: { user: this.t('auth.USER_NOT_FOUND') },
+      });
+    }
+
+    if (this.isBlocked(user)) {
+      this.logger.warn(
+        { userId: user.id, status: user.status },
+        'Social login failed: account not active',
+      );
+      throw new UnprocessableEntityException({
+        status: HttpStatus.UNPROCESSABLE_ENTITY,
+        errors: { user: this.t('auth.ACCOUNT_NOT_ACTIVE') },
       });
     }
 
@@ -690,21 +712,25 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
-    const user = await this.usersService.findById(session.user.id);
+    const userId = session.user?.id;
+    const user = userId ? await this.usersService.findById(userId) : null;
 
-    if (user?.status === UserStatus.BANNED) {
-      await this.sessionService.deleteById(session.id, 'suspicious');
+    if (!user || this.isBlocked(user)) {
+      await this.sessionService.deleteById(
+        session.id,
+        user?.status === UserStatus.BANNED ? 'suspicious' : 'logout',
+      );
       this.logger.warn(
-        { sessionId: session.id, userId: session.user.id },
-        'Token refresh rejected: user is banned — session revoked',
+        { sessionId: session.id, userId, status: user?.status },
+        'Token refresh rejected: user missing or not active — session revoked',
       );
       throw new UnauthorizedException();
     }
 
-    if (!user?.roles?.length) {
+    if (!user.roles?.length) {
       this.logger.warn(
-        { sessionId: data.sessionId, userId: session.user.id },
-        'Token refresh failed: user not found or has no roles',
+        { sessionId: data.sessionId, userId },
+        'Token refresh failed: user has no roles',
       );
       throw new UnauthorizedException();
     }
@@ -714,18 +740,23 @@ export class AuthService {
       await this.rolesService.getPermissionsForRoles(roleNames);
 
     const { token, refreshToken, tokenExpires } = await this.getTokensData({
-      id: session.user.id,
+      id: user.id,
       roles: roleNames,
       permissions,
       sessionId: session.id,
       hash,
     });
 
-    this.logger.debug(
-      { userId: session.user.id, sessionId: session.id },
-      'Token refreshed',
-    );
+    this.logger.debug({ userId, sessionId: session.id }, 'Token refreshed');
     return { token, refreshToken, tokenExpires };
+  }
+
+  /**
+   * Unconfirmed, pending and banned accounts may not hold sessions. Rows
+   * without a status (legacy or admin-created) stay allowed.
+   */
+  private isBlocked(user: User): boolean {
+    return !!user.status && user.status !== UserStatus.ACTIVE;
   }
 
   /**
@@ -753,6 +784,7 @@ export class AuthService {
 
   async softDelete(userId: User['id']): Promise<{ message: string }> {
     await this.usersService.remove(userId);
+    await this.sessionService.deleteByUserId({ userId }, 'logout');
     this.logger.info({ userId }, 'User account soft-deleted');
     return { message: this.t('auth.DELETE_SUCCESS') };
   }
