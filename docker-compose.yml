@@ -146,7 +146,7 @@ services:
       - setup_grafana
 
   postgres-exporter:
-    image: prometheuscommunity/postgres-exporter
+    image: prometheuscommunity/postgres-exporter:v0.20.1
     container_name: nest-next-starter-postgres-exporter
     ports:
       - 127.0.0.1:${DOCKER_PG_EXPORTER:-9187}:9187
