@@ -16,6 +16,7 @@ import ms from 'ms';
 import { I18nContext, I18nService } from 'nestjs-i18n';
 
 import { AllConfigType } from '@/config/config.type';
+import { FilesService } from '@/files/files.service';
 import { FILE_UPLOAD_SERVICE } from '@/files/infrastructure/uploader/uploader.interface';
 import type { IFileUploadService } from '@/files/infrastructure/uploader/uploader.interface';
 import { EmailQueueService } from '@/worker/queues/email/email.service';
@@ -62,6 +63,7 @@ export class AuthService {
     private readonly configService: ConfigService<AllConfigType>,
     private readonly rolesService: RolesService,
     private readonly cacheService: CacheService,
+    private readonly filesService: FilesService,
     private readonly i18n: I18nService,
     @Inject(FILE_UPLOAD_SERVICE)
     private readonly fileUploadService: IFileUploadService,
@@ -713,6 +715,18 @@ export class AuthService {
         email: userDto.email,
         hash,
       });
+    }
+
+    // Only files the user uploaded (or ownerless legacy files) may become their photo.
+    if (userDto.photo?.id && userDto.photo.id !== currentUser.photo?.id) {
+      const file = await this.filesService.findById(userDto.photo.id);
+
+      if (file?.ownerId && file.ownerId !== currentUser.id) {
+        throw new UnprocessableEntityException({
+          status: HttpStatus.UNPROCESSABLE_ENTITY,
+          errors: { photo: this.t('user.INVALID_PHOTO') },
+        });
+      }
     }
 
     delete userDto.email;

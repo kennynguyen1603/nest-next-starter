@@ -7,6 +7,8 @@ import { FILE_UPLOAD_SERVICE } from '@/files/infrastructure/uploader/uploader.in
 
 import { DocumentFilePersistenceModule } from '@/files/infrastructure/persistence/document/document-persistence.module';
 import { RelationalFilePersistenceModule } from '@/files/infrastructure/persistence/relational/relational-persistence.module';
+import { DocumentUserPersistenceModule } from '@/users/infrastructure/persistence/document/document-persistence.module';
+import { RelationalUserPersistenceModule } from '@/users/infrastructure/persistence/relational/relational-persistence.module';
 import { DatabaseConfig } from '@/config/database/database-config.type';
 import databaseConfig from '@/config/database/database.config';
 
@@ -15,11 +17,19 @@ const infrastructurePersistenceModule = (databaseConfig() as DatabaseConfig)
   .isDocumentDatabase
   ? DocumentFilePersistenceModule
   : RelationalFilePersistenceModule;
+const userPersistenceModule = (databaseConfig() as DatabaseConfig)
+  .isDocumentDatabase
+  ? DocumentUserPersistenceModule
+  : RelationalUserPersistenceModule;
 // </database-block>
 
 @Global()
 @Module({
-  imports: [infrastructurePersistenceModule, ConfigModule],
+  imports: [
+    infrastructurePersistenceModule,
+    userPersistenceModule,
+    ConfigModule,
+  ],
   controllers: [FilesS3PresignedController],
   providers: [
     FilesS3PresignedService,

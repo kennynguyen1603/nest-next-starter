@@ -17,12 +17,18 @@ import { DatabaseConfig } from '@/config/database/database-config.type';
 import { AllConfigType } from '@/config/config.type';
 import { DocumentFilePersistenceModule } from '@/files/infrastructure/persistence/document/document-persistence.module';
 import { RelationalFilePersistenceModule } from '@/files/infrastructure/persistence/relational/relational-persistence.module';
+import { DocumentUserPersistenceModule } from '@/users/infrastructure/persistence/document/document-persistence.module';
+import { RelationalUserPersistenceModule } from '@/users/infrastructure/persistence/relational/relational-persistence.module';
 
 // <database-block>
 const infrastructurePersistenceModule = (databaseConfig() as DatabaseConfig)
   .isDocumentDatabase
   ? DocumentFilePersistenceModule
   : RelationalFilePersistenceModule;
+const userPersistenceModule = (databaseConfig() as DatabaseConfig)
+  .isDocumentDatabase
+  ? DocumentUserPersistenceModule
+  : RelationalUserPersistenceModule;
 // </database-block>
 
 type FileFilterCallback = (error: Error | null, acceptFile: boolean) => void;
@@ -31,6 +37,7 @@ type FileFilterCallback = (error: Error | null, acceptFile: boolean) => void;
 @Module({
   imports: [
     infrastructurePersistenceModule,
+    userPersistenceModule,
     MulterModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

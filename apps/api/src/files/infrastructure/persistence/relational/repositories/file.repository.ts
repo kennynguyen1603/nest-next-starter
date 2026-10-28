@@ -17,7 +17,10 @@ export class FileRelationalRepository implements FileRepository {
 
   async create(data: Omit<FileType, 'id'>): Promise<FileType> {
     const entity = await this.fileRepository.save(
-      this.fileRepository.create({ path: data.path }),
+      this.fileRepository.create({
+        path: data.path,
+        ownerId: data.ownerId ?? null,
+      }),
     );
 
     return FileMapper.toDomain(entity);

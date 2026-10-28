@@ -16,6 +16,8 @@ import { FilesS3Service } from './files.service';
 
 import { DocumentFilePersistenceModule } from '@/files/infrastructure/persistence/document/document-persistence.module';
 import { RelationalFilePersistenceModule } from '@/files/infrastructure/persistence/relational/relational-persistence.module';
+import { DocumentUserPersistenceModule } from '@/users/infrastructure/persistence/document/document-persistence.module';
+import { RelationalUserPersistenceModule } from '@/users/infrastructure/persistence/relational/relational-persistence.module';
 import { AllConfigType } from '@/config/config.type';
 import databaseConfig from '@/config/database/database.config';
 import { DatabaseConfig } from '@/config/database/database-config.type';
@@ -25,6 +27,10 @@ const infrastructurePersistenceModule = (databaseConfig() as DatabaseConfig)
   .isDocumentDatabase
   ? DocumentFilePersistenceModule
   : RelationalFilePersistenceModule;
+const userPersistenceModule = (databaseConfig() as DatabaseConfig)
+  .isDocumentDatabase
+  ? DocumentUserPersistenceModule
+  : RelationalUserPersistenceModule;
 // </database-block>
 
 type FileFilterCallback = (error: Error | null, acceptFile: boolean) => void;
@@ -47,6 +53,7 @@ interface StorageEngine {
 @Module({
   imports: [
     infrastructurePersistenceModule,
+    userPersistenceModule,
     MulterModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

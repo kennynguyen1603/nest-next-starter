@@ -14,6 +14,7 @@ import bcrypt from 'bcryptjs';
 import { getLoggerToken } from 'nestjs-pino';
 import { AuthService } from './auth.service';
 import { UsersService } from '@/users/users.service';
+import { FilesService } from '@/files/files.service';
 import { SessionService } from '@/session/session.service';
 import { RolesService } from '@/roles/roles.service';
 import { FILE_UPLOAD_SERVICE } from '@/files/infrastructure/uploader/uploader.interface';
@@ -46,6 +47,9 @@ const mockEmailQueueService = {
   addEmailVerificationJob: jest.fn(),
   addConfirmNewEmailJob: jest.fn(),
   addResetPasswordJob: jest.fn(),
+};
+const mockFilesService = {
+  findById: jest.fn(),
 };
 const mockFileUploadService = {
   uploadFromBuffer: jest.fn(),
@@ -89,6 +93,7 @@ describe('AuthService', () => {
         { provide: ConfigService, useValue: mockConfigService },
         { provide: RolesService, useValue: mockRolesService },
         { provide: CacheService, useValue: mockCacheService },
+        { provide: FilesService, useValue: mockFilesService },
         { provide: FILE_UPLOAD_SERVICE, useValue: mockFileUploadService },
         { provide: getLoggerToken(AuthService.name), useValue: mockLogger },
       ],
@@ -1157,6 +1162,27 @@ describe('AuthService', () => {
         'u1',
         expect.not.objectContaining({ email: expect.anything() as unknown }),
       );
+    });
+
+    it('rejects a photo uploaded by another user', async () => {
+      mockUsersService.findById.mockResolvedValue({ id: 'u1', photo: null });
+      mockFilesService.findById.mockResolvedValue({ id: 'f1', ownerId: 'u2' });
+
+      await expect(
+        service.update(payload, { photo: { id: 'f1' } }),
+      ).rejects.toThrow(UnprocessableEntityException);
+      expect(mockUsersService.update).not.toHaveBeenCalled();
+    });
+
+    it('accepts a photo uploaded by the user', async () => {
+      mockUsersService.findById.mockResolvedValue({ id: 'u1', photo: null });
+      mockFilesService.findById.mockResolvedValue({ id: 'f1', ownerId: 'u1' });
+
+      await service.update(payload, { photo: { id: 'f1' } });
+
+      expect(mockUsersService.update).toHaveBeenCalledWith('u1', {
+        photo: { id: 'f1' },
+      });
     });
   });
 

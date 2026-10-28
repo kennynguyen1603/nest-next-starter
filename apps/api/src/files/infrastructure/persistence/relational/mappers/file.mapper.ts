@@ -6,6 +6,7 @@ export class FileMapper {
     const domainEntity = new FileType();
     domainEntity.id = raw.id;
     domainEntity.path = raw.path;
+    domainEntity.ownerId = raw.ownerId;
     return domainEntity;
   }
 
@@ -13,6 +14,7 @@ export class FileMapper {
     const entity = new FileEntity();
     entity.id = domainEntity.id;
     entity.path = domainEntity.path;
+    entity.ownerId = domainEntity.ownerId;
     return entity;
   }
 }
