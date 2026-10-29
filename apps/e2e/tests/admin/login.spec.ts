@@ -54,8 +54,18 @@ test("failed login shows the message without leaking internals", async ({
       path: LOGIN,
       reply: {
         status: 422,
+        // The API's real 422 shape: the reason is in details, not message.
         json: {
-          message: "Invalid credentials",
+          statusCode: 422,
+          error: "Unprocessable Entity",
+          message: "Validation failed",
+          details: [
+            {
+              property: "email",
+              code: "INVALID_CREDENTIALS",
+              message: "Invalid email or password",
+            },
+          ],
           stack: "Error: at AuthService.validateLogin (auth.service.ts:42)",
         },
       },
@@ -64,8 +74,9 @@ test("failed login shows the message without leaking internals", async ({
 
   await submitLogin(page, "admin@example.test", "wrong-password1");
   await expect(page.locator("form").getByRole("alert")).toHaveText(
-    "Invalid credentials",
+    "Invalid email or password",
   );
+  await expect(page.getByText("Validation failed")).toHaveCount(0);
   await expect(page.getByText("AuthService")).toHaveCount(0);
   await expect(page).toHaveURL(/\/login$/);
 });

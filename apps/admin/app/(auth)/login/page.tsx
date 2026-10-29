@@ -46,8 +46,12 @@ export default function LoginPage() {
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as {
           message?: string;
+          details?: { message: string }[];
         };
-        setServerError(body?.message ?? "Login failed");
+        // A 422 carries the real reason in details; message is "Validation failed".
+        setServerError(
+          body?.details?.[0]?.message ?? body?.message ?? "Login failed",
+        );
         return;
       }
 

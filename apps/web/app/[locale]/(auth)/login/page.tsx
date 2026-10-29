@@ -155,7 +155,12 @@ function LoginPageContent() {
       setAuth(data.token, data.tokenExpires, null);
       router.push("/");
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : t("errorDefault"));
+      // A 422 carries the real reason in details; message is "Validation failed".
+      const detail = (err as { details?: { message: string }[] })?.details?.[0];
+      setServerError(
+        detail?.message ??
+          (err instanceof Error ? err.message : t("errorDefault")),
+      );
     }
   }
 
