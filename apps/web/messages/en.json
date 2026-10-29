@@ -38,7 +38,7 @@
       "orContinueWith": "or continue with",
       "oauthOpening": "Opening…",
       "errorInvalidEmail": "Invalid email address",
-      "errorPasswordLength": "Password must be at least 8 characters",
+      "errorPasswordRequired": "Password is required",
       "errorDefault": "Sign in failed. Please try again.",
       "errorGeneric": "Something went wrong. Please try again."
     },

@@ -122,7 +122,7 @@ function LoginPageContent() {
     () =>
       z.object({
         email: z.string().email(t("errorInvalidEmail")),
-        password: z.string().min(8, t("errorPasswordLength")),
+        password: z.string().min(1, t("errorPasswordRequired")),
       }),
     [t],
   );

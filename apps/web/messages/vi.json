@@ -38,7 +38,7 @@
       "orContinueWith": "hoặc tiếp tục với",
       "oauthOpening": "Đang mở…",
       "errorInvalidEmail": "Địa chỉ email không hợp lệ",
-      "errorPasswordLength": "Mật khẩu phải có ít nhất 8 ký tự",
+      "errorPasswordRequired": "Vui lòng nhập mật khẩu",
       "errorDefault": "Đăng nhập thất bại. Vui lòng thử lại.",
       "errorGeneric": "Đã xảy ra lỗi. Vui lòng thử lại."
     },

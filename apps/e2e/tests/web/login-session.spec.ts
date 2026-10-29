@@ -142,3 +142,29 @@ test("session is restored from the refresh cookie, then logout clears it", async
   await page.goto("/en");
   await expect(page).toHaveURL(LOGIN_URL);
 });
+
+test("login only requires a password, not the registration length rule", async ({
+  page,
+}) => {
+  const calls = await mockApi(page, [
+    {
+      method: "POST",
+      path: "/api/v1/auth/email/login",
+      reply: { status: 422, json: { message: "Invalid credentials" } },
+    },
+  ]);
+
+  await page.goto("/en/login");
+  await page.locator("#email").fill("e2e.user@example.test");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page.getByText("Password is required")).toBeVisible();
+  expect(calls.some((c) => c.path === "/api/v1/auth/email/login")).toBe(false);
+
+  // Older accounts may have shorter passwords; the API decides, not the form.
+  await page.locator("#password").fill("short");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect.poll(() => calls.length).toBeGreaterThan(0);
+  expect(
+    calls.find((c) => c.path === "/api/v1/auth/email/login")?.body,
+  ).toEqual({ email: "e2e.user@example.test", password: "short" });
+});
