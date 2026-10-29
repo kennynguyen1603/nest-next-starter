@@ -160,5 +160,22 @@
     "switchLanguage": "Ngôn ngữ",
     "en": "English",
     "vi": "Tiếng Việt"
+  },
+  "security": {
+    "title": "Bảo mật",
+    "subtitle": "Các thiết bị đang đăng nhập vào tài khoản của bạn.",
+    "sessionsHeading": "Phiên đăng nhập",
+    "thisDevice": "Thiết bị này",
+    "unknownDevice": "Thiết bị không xác định",
+    "ipAddress": "IP {ip}",
+    "lastActive": "Hoạt động lần cuối {time}",
+    "revoke": "Đăng xuất",
+    "revokeAll": "Đăng xuất mọi thiết bị khác",
+    "revokeAllConfirm": "Đăng xuất mọi thiết bị khác?",
+    "revokeAllWarning": "Mọi thiết bị khác sẽ phải đăng nhập lại.",
+    "noOtherSessions": "Không có thiết bị nào khác đang đăng nhập.",
+    "errorLoad": "Không tải được danh sách phiên.",
+    "errorRevoke": "Không thể đăng xuất thiết bị này. Vui lòng thử lại.",
+    "errorRevokeAll": "Không thể đăng xuất các thiết bị khác. Vui lòng thử lại."
   }
 }
