@@ -16,6 +16,12 @@ REDIS=e2e-redis
 "$(dirname "$0")/api-down.sh" >/dev/null 2>&1 || true
 mkdir -p "$RUN_DIR"
 
+# Never reuse a foreign server on 8080 (it may be a dev API on remote services).
+if lsof -ti tcp:8080 -sTCP:LISTEN >/dev/null; then
+  echo "Port 8080 is already in use; stop that server first." >&2
+  exit 1
+fi
+
 docker run --rm -d --name "$PG" -p 127.0.0.1:55432:5432 \
   -e POSTGRES_USER=e2e -e POSTGRES_PASSWORD=e2e -e POSTGRES_DB=e2e \
   postgres:17-alpine >/dev/null
@@ -59,10 +65,11 @@ run node "$API/node_modules/typeorm/cli.js" migration:run \
 run node "$API/dist/database/seeds/relational/run-seed.js" >"$RUN_DIR/seed.log" 2>&1
 
 run node "$API/dist/main.js" >"$RUN_DIR/api.log" 2>&1 &
-echo $! >"$RUN_DIR/api.pid"
 
 for _ in $(seq 1 60); do
   if curl -fsS http://localhost:8080/api/v1/health >/dev/null 2>&1; then
+    # $! is only the wrapper subshell; record the node process that listens.
+    lsof -ti tcp:8080 -sTCP:LISTEN >"$RUN_DIR/api.pid"
     echo "API ready on http://localhost:8080 (logs: $RUN_DIR)"
     exit 0
   fi
