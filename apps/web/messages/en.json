@@ -21,6 +21,12 @@
     "statusPending": "Pending",
     "statusBanned": "Banned"
   },
+  "nav": {
+    "label": "Main navigation",
+    "overview": "Overview",
+    "notifications": "Notifications",
+    "security": "Security"
+  },
   "auth": {
     "layout": {
       "tagline": "The modern platform\nfor your next project.",

@@ -21,6 +21,12 @@
     "statusPending": "Chờ xác nhận",
     "statusBanned": "Bị cấm"
   },
+  "nav": {
+    "label": "Điều hướng chính",
+    "overview": "Tổng quan",
+    "notifications": "Thông báo",
+    "security": "Bảo mật"
+  },
   "auth": {
     "layout": {
       "tagline": "Nền tảng hiện đại\ncho dự án tiếp theo của bạn.",
