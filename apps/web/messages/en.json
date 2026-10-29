@@ -154,7 +154,16 @@
     "timeJustNow": "Just now",
     "timeHoursAgo": "{count}h ago",
     "timeYesterday": "Yesterday",
-    "timeDaysAgo": "{count}d ago"
+    "timeDaysAgo": "{count}d ago",
+    "filterLabel": "Filter notifications",
+    "tabAll": "All",
+    "tabUnread": "Unread",
+    "emptyUnread": "No unread notifications",
+    "unreadCount": "{count} unread",
+    "errorMarkRead": "Could not mark that notification as read. Please try again.",
+    "errorDelete": "Could not delete that notification. Please try again.",
+    "errorMarkAllRead": "Could not mark all notifications as read. Please try again.",
+    "errorClearAll": "Could not clear your notifications. Please try again."
   },
   "locale": {
     "switchLanguage": "Language",

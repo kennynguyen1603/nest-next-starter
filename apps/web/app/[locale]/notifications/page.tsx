@@ -1,288 +1,342 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useTranslations } from "next-intl";
-import { useRouter } from "@/lib/navigation";
-import { useAuthStore } from "@/lib/auth-store";
-import { api, tryRefresh } from "@/lib/api";
+import { useState, useEffect } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { api } from "@/lib/api";
+import {
+  formatNotificationDate,
+  notificationsUrl,
+  timeAgo,
+  type Notification,
+  type NotificationFilter,
+  type NotificationsResponse,
+} from "@/lib/notifications";
+import { AppShell } from "../_components/app-shell";
 import { Alert } from "@repo/ui/alert";
 import { Button } from "@repo/ui/button";
 import { Dialog } from "@repo/ui/dialog";
 import { Spinner } from "@repo/ui/spinner";
 
-interface Notification {
-  id: string;
-  type: string;
-  title: string;
-  message: string;
-  isRead: boolean;
-  createdAt: string;
-}
-
-interface PaginationMeta {
-  currentPage: number;
-  totalPages: number;
-  totalRecords: number;
-  nextPage?: number;
-  previousPage?: number;
-}
-
-interface NotificationsResponse {
-  data: Notification[];
-  pagination: PaginationMeta;
-}
-
-const PAGE_SIZE = 20;
-
 export default function NotificationsPage() {
-  const router = useRouter();
-  const accessToken = useAuthStore((s) => s.accessToken);
-  const t = useTranslations("notifications");
+  return (
+    <AppShell>
+      <Notifications />
+    </AppShell>
+  );
+}
 
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
+function Notifications() {
+  const t = useTranslations("notifications");
+  const tCommon = useTranslations("common");
+  const locale = useLocale();
+  const [filter, setFilter] = useState<NotificationFilter>("all");
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
+  const [data, setData] = useState<NotificationsResponse | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const [unread, setUnread] = useState<number | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [pendingId, setPendingId] = useState<Notification["id"] | null>(null);
+  const [bulkPending, setBulkPending] = useState(false);
   const [confirmClearAll, setConfirmClearAll] = useState(false);
 
-  const fetchNotifications = useCallback(
-    async (p: number) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await api.get<NotificationsResponse>(
-          `/api/v1/notifications?page=${p}&limit=${PAGE_SIZE}`,
-        );
-        setNotifications(res.data);
-        setPagination(res.pagination);
-      } catch {
-        setError(t("errorLoad"));
-      } finally {
-        setLoading(false);
-      }
-    },
-    [t],
-  );
-
   useEffect(() => {
-    if (!accessToken) {
-      tryRefresh().then((ok) => {
-        if (!ok) router.replace("/login");
-      });
+    let cancelled = false;
+    api
+      .get<NotificationsResponse>(notificationsUrl(page, filter))
+      .then((d) => !cancelled && setData(d))
+      .catch(() => !cancelled && setLoadError(true));
+    return () => {
+      cancelled = true;
+    };
+  }, [page, filter, reload]);
+
+  // The badge counts every unread notification, not just the loaded page.
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get<NotificationsResponse>("/api/v1/notifications?isRead=false&limit=1")
+      .then((d) => !cancelled && setUnread(d.pagination.totalRecords))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function load(nextPage: number, nextFilter: NotificationFilter) {
+    setData(null);
+    setLoadError(false);
+    setActionError(null);
+    setPage(nextPage);
+    setFilter(nextFilter);
+  }
+
+  function removeRow(id: Notification["id"]) {
+    const remaining = (data?.pagination.totalRecords ?? 1) - 1;
+    if (data?.data.length === 1 && remaining > 0) {
+      // The page is now empty but others still have rows: load a neighbour.
+      setData(null);
+      if (page > 1) setPage(page - 1);
+      else setReload((r) => r + 1);
       return;
     }
-    fetchNotifications(page);
-  }, [accessToken, page]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  async function handleMarkAsRead(id: string) {
-    try {
-      const updated = await api.patch<Notification>(
-        `/api/v1/notifications/${id}/read`,
-      );
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, isRead: updated.isRead } : n)),
-      );
-    } catch {
-      // silently ignore
-    }
+    setData(
+      (prev) =>
+        prev && {
+          data: prev.data.filter((n) => n.id !== id),
+          pagination: { ...prev.pagination, totalRecords: remaining },
+        },
+    );
   }
 
-  async function handleDelete(id: string) {
+  async function handleMarkRead(id: Notification["id"]) {
+    setActionError(null);
+    setPendingId(id);
     try {
-      await api.delete(`/api/v1/notifications/${id}`);
-      setNotifications((prev) => prev.filter((n) => n.id !== id));
-      if (pagination) {
-        setPagination((p) =>
-          p ? { ...p, totalRecords: p.totalRecords - 1 } : p,
+      await api.patch(`/api/v1/notifications/${id}/read`);
+      if (filter === "unread") {
+        removeRow(id);
+      } else {
+        setData(
+          (prev) =>
+            prev && {
+              ...prev,
+              data: prev.data.map((n) =>
+                n.id === id ? { ...n, isRead: true } : n,
+              ),
+            },
         );
       }
+      setUnread((u) => (u === null ? u : Math.max(0, u - 1)));
     } catch {
-      // silently ignore
+      setActionError(t("errorMarkRead"));
+    } finally {
+      setPendingId(null);
     }
   }
 
-  async function handleMarkAllAsRead() {
-    setActionLoading(true);
+  async function handleDelete(target: Notification) {
+    setActionError(null);
+    setPendingId(target.id);
+    try {
+      await api.delete(`/api/v1/notifications/${target.id}`);
+      removeRow(target.id);
+      if (!target.isRead) {
+        setUnread((u) => (u === null ? u : Math.max(0, u - 1)));
+      }
+    } catch {
+      setActionError(t("errorDelete"));
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  async function handleMarkAllRead() {
+    setActionError(null);
+    setBulkPending(true);
     try {
       await api.patch("/api/v1/notifications/read-all");
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      if (filter === "unread") {
+        setData({
+          data: [],
+          pagination: { currentPage: 1, totalPages: 0, totalRecords: 0 },
+        });
+        setPage(1);
+      } else {
+        setData(
+          (prev) =>
+            prev && {
+              ...prev,
+              data: prev.data.map((n) => ({ ...n, isRead: true })),
+            },
+        );
+      }
+      setUnread(0);
     } catch {
-      // silently ignore
+      setActionError(t("errorMarkAllRead"));
     } finally {
-      setActionLoading(false);
+      setBulkPending(false);
     }
   }
 
   async function handleClearAll() {
     setConfirmClearAll(false);
-    setActionLoading(true);
+    setActionError(null);
+    setBulkPending(true);
     try {
       await api.delete("/api/v1/notifications");
-      setNotifications([]);
-      setPagination((p) => (p ? { ...p, totalRecords: 0, totalPages: 0 } : p));
+      setData({
+        data: [],
+        pagination: { currentPage: 1, totalPages: 0, totalRecords: 0 },
+      });
+      setPage(1);
+      setUnread(0);
     } catch {
-      // silently ignore
+      setActionError(t("errorClearAll"));
     } finally {
-      setActionLoading(false);
+      setBulkPending(false);
     }
   }
 
-  function formatTime(dateStr: string) {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffH = Math.floor(diffMs / 3600000);
-    const diffD = Math.floor(diffMs / 86400000);
-
-    if (diffH < 1) return t("timeJustNow");
-    if (diffH < 24) return t("timeHoursAgo", { count: diffH });
-    if (diffD === 1) return t("timeYesterday");
-    if (diffD < 7) return t("timeDaysAgo", { count: diffD });
-    return date.toLocaleDateString();
-  }
-
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
-
-  if (!accessToken) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-surface">
-        <Spinner size="md" />
-      </div>
-    );
-  }
+  const busy = bulkPending || pendingId !== null;
+  const pagination = data?.pagination;
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col">
-      <header className="bg-background border-b border-border sticky top-0 z-10">
-        <div className="flex items-center justify-between px-6 h-14 max-w-2xl mx-auto w-full">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => router.back()}
-              aria-label="Back"
-              className="size-8 flex items-center justify-center text-muted hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground"
-            >
-              ←
-            </button>
-            <h1 className="text-small font-semibold">
-              {t("title")}
-              {unreadCount > 0 && (
-                <span className="ml-2 px-1.5 py-0.5 text-caption bg-foreground text-background">
-                  {unreadCount}
-                </span>
-              )}
-            </h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleMarkAllAsRead}
-              disabled={actionLoading || notifications.every((n) => n.isRead)}
-            >
-              {t("markAllRead")}
-            </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={() => setConfirmClearAll(true)}
-              disabled={actionLoading || notifications.length === 0}
-            >
-              {t("clearAll")}
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-1 flex justify-center px-4 sm:px-6 py-8">
-        <div className="w-full max-w-2xl">
-          {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <Spinner size="md" />
-            </div>
-          ) : error ? (
-            <Alert>{error}</Alert>
-          ) : notifications.length === 0 ? (
-            <div className="text-center py-20">
-              <p className="text-small text-muted">{t("empty")}</p>
-            </div>
-          ) : (
-            <>
-              <div className="bg-background border border-border divide-y divide-border">
-                {notifications.map((n) => (
-                  <div
-                    key={n.id}
-                    className={`flex items-start gap-3 px-5 py-4 ${!n.isRead ? "bg-background" : "bg-surface"}`}
-                  >
-                    <span
-                      className={`mt-1.5 size-2 shrink-0 ${!n.isRead ? "bg-foreground" : "bg-border-strong"}`}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p
-                        className={`text-small font-medium truncate ${!n.isRead ? "text-foreground" : "text-muted"}`}
-                      >
-                        {n.title}
-                      </p>
-                      <p className="text-caption text-muted mt-0.5 line-clamp-2">
-                        {n.message}
-                      </p>
-                      <p className="text-caption text-muted mt-1">
-                        {formatTime(n.createdAt)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      {!n.isRead && (
-                        <button
-                          onClick={() => handleMarkAsRead(n.id)}
-                          title={t("markRead")}
-                          className="size-7 flex items-center justify-center text-muted hover:text-foreground transition-colors"
-                        >
-                          ✓
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleDelete(n.id)}
-                        title={t("delete")}
-                        className="size-7 flex items-center justify-center text-muted hover:text-red-600 transition-colors"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {pagination && pagination.totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setPage((p) => p - 1)}
-                    disabled={!pagination.previousPage}
-                  >
-                    {t("previous")}
-                  </Button>
-                  <span className="text-caption text-muted">
-                    {t("pageOf", {
-                      current: pagination.currentPage,
-                      total: pagination.totalPages,
-                    })}
-                  </span>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setPage((p) => p + 1)}
-                    disabled={!pagination.nextPage}
-                  >
-                    {t("next")}
-                  </Button>
-                </div>
-              )}
-            </>
+    <div className="max-w-2xl mx-auto space-y-8">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <h1 className="text-h2">{t("title")}</h1>
+          {unread !== null && unread > 0 && (
+            <span className="px-1.5 py-0.5 text-caption font-medium bg-foreground text-background">
+              {t("unreadCount", { count: unread })}
+            </span>
           )}
         </div>
-      </main>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleMarkAllRead}
+            disabled={busy || unread === 0}
+          >
+            {t("markAllRead")}
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={() => setConfirmClearAll(true)}
+            disabled={
+              busy || (filter === "all" && pagination?.totalRecords === 0)
+            }
+          >
+            {t("clearAll")}
+          </Button>
+        </div>
+      </div>
+
+      <section
+        aria-label={t("title")}
+        className="bg-background border border-border"
+      >
+        <div className="px-6 py-4 border-b border-border">
+          <div
+            role="group"
+            aria-label={t("filterLabel")}
+            className="flex gap-2"
+          >
+            {(["all", "unread"] as const).map((f) => (
+              <Button
+                key={f}
+                variant={filter === f ? "primary" : "ghost"}
+                size="sm"
+                aria-pressed={filter === f}
+                onClick={() => filter !== f && load(1, f)}
+              >
+                {f === "all" ? t("tabAll") : t("tabUnread")}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        {actionError && (
+          <div className="px-6 pt-4">
+            <Alert>{actionError}</Alert>
+          </div>
+        )}
+
+        {loadError ? (
+          <div className="px-6 py-4">
+            <Alert>{t("errorLoad")}</Alert>
+          </div>
+        ) : !data ? (
+          <div className="flex items-center justify-center py-12">
+            <Spinner size="md" role="status" aria-label={tCommon("loading")} />
+          </div>
+        ) : data.data.length === 0 ? (
+          <p className="px-6 py-12 text-center text-small text-muted">
+            {filter === "unread" ? t("emptyUnread") : t("empty")}
+          </p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {data.data.map((n) => {
+              const ago = timeAgo(n.createdAt);
+              return (
+                <li key={n.id} className="flex items-start gap-3 px-6 py-4">
+                  <span
+                    aria-hidden
+                    className={`mt-1.5 size-2 shrink-0 ${!n.isRead ? "bg-foreground" : "bg-border-strong"}`}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className={`text-small font-medium truncate ${!n.isRead ? "text-foreground" : "text-muted"}`}
+                    >
+                      {n.title}
+                    </p>
+                    <p className="text-caption text-muted mt-0.5 line-clamp-2">
+                      {n.message}
+                    </p>
+                    <time
+                      dateTime={n.createdAt}
+                      className="block text-caption text-muted mt-1"
+                    >
+                      {ago
+                        ? t(ago.key, { count: ago.count ?? 0 })
+                        : formatNotificationDate(n.createdAt, locale)}
+                    </time>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {!n.isRead && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleMarkRead(n.id)}
+                        disabled={busy}
+                      >
+                        {t("markRead")}
+                      </Button>
+                    )}
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleDelete(n)}
+                      disabled={busy}
+                    >
+                      {t("delete")}
+                    </Button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
+      {pagination && pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => load(page - 1, filter)}
+            disabled={!pagination.previousPage}
+          >
+            {t("previous")}
+          </Button>
+          <span className="text-caption text-muted">
+            {t("pageOf", {
+              current: pagination.currentPage,
+              total: pagination.totalPages,
+            })}
+          </span>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => load(page + 1, filter)}
+            disabled={!pagination.nextPage}
+          >
+            {t("next")}
+          </Button>
+        </div>
+      )}
 
       {confirmClearAll && (
         <Dialog
@@ -295,7 +349,7 @@ export default function NotificationsPage() {
               variant="secondary"
               onClick={() => setConfirmClearAll(false)}
             >
-              {t("cancel")}
+              {tCommon("cancel")}
             </Button>
             <Button variant="danger" onClick={handleClearAll}>
               {t("confirmDelete")}
