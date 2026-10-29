@@ -19,7 +19,13 @@
     "statusActive": "Hoạt động",
     "statusInactive": "Không hoạt động",
     "statusPending": "Chờ xác nhận",
-    "statusBanned": "Bị cấm"
+    "statusBanned": "Bị cấm",
+    "statUnread": "Thông báo chưa đọc",
+    "statSessions": "Phiên đăng nhập",
+    "statJoined": "Ngày tham gia",
+    "quickLinks": "Lối tắt",
+    "linkNotificationsDesc": "Đọc và quản lý thông báo của bạn.",
+    "linkSecurityDesc": "Xem các thiết bị đang đăng nhập vào tài khoản."
   },
   "nav": {
     "label": "Điều hướng chính",

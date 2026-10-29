@@ -109,7 +109,7 @@ export async function readableSecrets(page: Page) {
 }
 
 /** Routes that let the app shell restore a signed-in session from the refresh cookie. */
-export const sessionRoutes = (user = userFixture()) => [
+export const sessionRoutes = (user: object = userFixture()) => [
   { method: "POST", path: "/api/v1/auth/refresh", reply: loginReply() },
   { method: "GET", path: "/api/v1/auth/me", reply: { json: user } },
 ];

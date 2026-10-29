@@ -19,7 +19,13 @@
     "statusActive": "Active",
     "statusInactive": "Inactive",
     "statusPending": "Pending",
-    "statusBanned": "Banned"
+    "statusBanned": "Banned",
+    "statUnread": "Unread notifications",
+    "statSessions": "Active sessions",
+    "statJoined": "Joined",
+    "quickLinks": "Quick links",
+    "linkNotificationsDesc": "Read and manage your notifications.",
+    "linkSecurityDesc": "Review the devices signed in to your account."
   },
   "nav": {
     "label": "Main navigation",

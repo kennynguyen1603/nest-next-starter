@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, Suspense, lazy } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useAuthStore } from "@/lib/auth-store";
 import { api } from "@/lib/api";
+import { Link } from "@/lib/navigation";
+import { formatCount, formatJoinDate, type StatValue } from "@/lib/dashboard";
 import Image from "next/image";
 import { AppShell } from "./_components/app-shell";
 import { Button } from "@repo/ui/button";
@@ -31,9 +33,12 @@ function Overview() {
   // AppShell only mounts this once the user is loaded.
   const user = useAuthStore((s) => s.user)!;
   const t = useTranslations();
+  const locale = useLocale();
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [unread, setUnread] = useState<StatValue>(undefined);
+  const [sessions, setSessions] = useState<StatValue>(undefined);
 
   useEffect(() => {
     if (!user.photo?.id) {
@@ -45,6 +50,26 @@ function Overview() {
       .then((d) => setPhotoUrl(d.url))
       .catch(() => setPhotoUrl(null));
   }, [user.photo?.id]);
+
+  // A failed stat shows "—"; it never takes the page down.
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get<{ pagination: { totalRecords: number } }>(
+        "/api/v1/notifications?isRead=false&limit=1",
+      )
+      .then((d) => d.pagination.totalRecords)
+      .catch(() => null)
+      .then((n) => !cancelled && setUnread(n));
+    api
+      .get<unknown[]>("/api/v1/auth/sessions")
+      .then((d) => d.length)
+      .catch(() => null)
+      .then((n) => !cancelled && setSessions(n));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const initial = (user.firstName?.[0] ?? user.email?.[0] ?? "U").toUpperCase();
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ");
@@ -71,12 +96,47 @@ function Overview() {
           </div>
         )}
         <div className="min-w-0">
-          <h1 className="text-h2 truncate">{fullName || user.email || "—"}</h1>
-          {fullName && (
-            <p className="text-small text-muted truncate">{user.email}</p>
-          )}
+          <h1 className="text-h2 truncate">
+            {t("home.hello", { name: fullName || user.email || "—" })}
+          </h1>
+          <p className="text-small text-muted truncate">
+            {t("home.accountDashboard")}
+          </p>
         </div>
       </div>
+
+      {/* Stats */}
+      <dl className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-border border border-border">
+        <Stat label={t("home.statUnread")}>{formatCount(unread, locale)}</Stat>
+        <Stat label={t("home.statSessions")}>
+          {formatCount(sessions, locale)}
+        </Stat>
+        <Stat label={t("home.status")}>
+          {user.status ? <StatusBadge status={user.status} t={t} /> : "—"}
+        </Stat>
+        <Stat label={t("home.statJoined")}>
+          {formatJoinDate(user.createdAt, locale)}
+        </Stat>
+      </dl>
+
+      {/* Quick links */}
+      <section aria-labelledby="quick-links">
+        <h2 id="quick-links" className="text-label uppercase text-muted mb-3">
+          {t("home.quickLinks")}
+        </h2>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <QuickLink
+            href="/notifications"
+            title={t("nav.notifications")}
+            description={t("home.linkNotificationsDesc")}
+          />
+          <QuickLink
+            href="/security"
+            title={t("nav.security")}
+            description={t("home.linkSecurityDesc")}
+          />
+        </div>
+      </section>
 
       {/* Account card */}
       <section className="bg-background border border-border">
@@ -146,6 +206,41 @@ function Overview() {
         </Suspense>
       )}
     </div>
+  );
+}
+
+function Stat({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="bg-background px-5 py-4 min-w-0">
+      <dt className="text-label uppercase text-muted truncate">{label}</dt>
+      <dd className="mt-2 text-h3 text-foreground truncate">{children}</dd>
+    </div>
+  );
+}
+
+function QuickLink({
+  href,
+  title,
+  description,
+}: {
+  href: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="block bg-background border border-border px-5 py-4 hover:border-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground"
+    >
+      <span className="text-small font-medium text-foreground">{title} →</span>
+      <span className="block mt-1 text-small text-muted">{description}</span>
+    </Link>
   );
 }
 
