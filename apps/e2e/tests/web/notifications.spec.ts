@@ -529,7 +529,46 @@ test("a failed load shows an error instead of the list", async ({ page }) => {
   );
   await expect(rows(page)).toHaveCount(0);
   await expect(badge(page)).toHaveCount(0);
+  // Bulk actions stay off: there is nothing on screen for them to act on.
+  await expect(
+    page.getByRole("button", { name: "Mark all read" }),
+  ).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Clear all" })).toBeDisabled();
   await expect(page).toHaveURL(/\/en\/notifications$/);
+});
+
+test("bulk actions wait for the list to load", async ({ page }) => {
+  const { route } = getRoute(unreadOnly);
+  await mockApi(page, [...sessionRoutes(), route]);
+  // Hold the list request (not the badge) until the test releases it.
+  let release!: () => void;
+  const held = new Promise<void>((r) => (release = r));
+  await page.route(
+    (url) =>
+      url.pathname === NOTIFICATIONS_PATH &&
+      url.searchParams.get("limit") !== "1",
+    async (r) => {
+      if (r.request().method() === "GET") await held;
+      await r.fallback();
+    },
+  );
+  await page.goto("/en/notifications");
+
+  await expect(
+    card(page).getByRole("status", { name: "Loading…" }),
+  ).toBeVisible();
+  await expect(badge(page)).toHaveText("2 unread");
+  await expect(
+    page.getByRole("button", { name: "Mark all read" }),
+  ).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Clear all" })).toBeDisabled();
+
+  release();
+  await expect(rows(page)).toHaveCount(3);
+  await expect(
+    page.getByRole("button", { name: "Mark all read" }),
+  ).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Clear all" })).toBeEnabled();
 });
 
 test("notifications page is translated in Vietnamese", async ({ page }) => {

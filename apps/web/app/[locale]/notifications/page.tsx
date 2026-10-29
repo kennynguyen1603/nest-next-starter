@@ -197,7 +197,7 @@ function Notifications() {
             variant="secondary"
             size="sm"
             onClick={handleMarkAllRead}
-            disabled={busy || unread === 0}
+            disabled={busy || !data || unread === 0}
           >
             {t("markAllRead")}
           </Button>
@@ -206,7 +206,9 @@ function Notifications() {
             size="sm"
             onClick={() => setConfirmClearAll(true)}
             disabled={
-              busy || (filter === "all" && pagination?.totalRecords === 0)
+              busy ||
+              !data ||
+              (filter === "all" && pagination?.totalRecords === 0)
             }
           >
             {t("clearAll")}
