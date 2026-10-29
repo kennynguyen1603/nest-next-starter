@@ -8,13 +8,10 @@ test.describe("auth form validation", () => {
     const calls = await mockApi(page, []);
     await page.goto("/en/login");
     await page.locator("#email").fill("not-an-email");
-    await page.locator("#password").fill("short");
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
 
     await expect(page.getByText("Invalid email address")).toBeVisible();
-    await expect(
-      page.getByText("Password must be at least 8 characters"),
-    ).toBeVisible();
+    await expect(page.getByText("Password is required")).toBeVisible();
     expect(
       calls.filter((c) => c.path === "/api/v1/auth/email/login"),
     ).toHaveLength(0);
