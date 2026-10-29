@@ -6,6 +6,7 @@ import { ChevronRight } from "lucide-react";
 
 const LABELS: Record<string, string> = {
   users: "Users",
+  notifications: "Notifications",
   reports: "Reports",
   settings: "Settings",
 };
