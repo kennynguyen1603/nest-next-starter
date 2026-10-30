@@ -1,5 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
+import { AllConfigType } from '../config/config.type';
 import { SocialInterface } from '../social/interfaces/social.interface';
 import { AuthTwitterLoginDto } from './dto/auth-twitter-login.dto';
 import { TwitterInterface } from './interfaces/twitter.interface';
@@ -11,7 +13,53 @@ export class AuthTwitterService {
   constructor(
     @InjectPinoLogger(AuthTwitterService.name)
     private readonly logger: PinoLogger,
+    private readonly configService: ConfigService<AllConfigType>,
   ) {}
+
+  /**
+   * X access tokens carry no audience and X offers no introspection endpoint,
+   * so a bearer token from the client could have been issued to any app. The
+   * code exchange only succeeds with our client credentials, which proves the
+   * resulting token belongs to this app.
+   */
+  private async exchangeCode(loginDto: AuthTwitterLoginDto): Promise<string> {
+    const clientId = this.configService.getOrThrow('twitter.clientId', {
+      infer: true,
+    });
+    const clientSecret = this.configService.getOrThrow('twitter.clientSecret', {
+      infer: true,
+    });
+    const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString(
+      'base64',
+    );
+
+    const response = await fetch(`${this.apiUrl}/oauth2/token`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${credentials}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code: loginDto.code,
+        code_verifier: loginDto.codeVerifier,
+        redirect_uri: loginDto.redirectUri,
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+
+    const body = (await response.json().catch(() => ({}))) as {
+      access_token?: string;
+    };
+    if (!response.ok || !body.access_token) {
+      this.logger.warn(
+        { statusCode: response.status },
+        'Twitter authorization code exchange failed',
+      );
+      throw new HttpException('Invalid Twitter code', HttpStatus.UNAUTHORIZED);
+    }
+    return body.access_token;
+  }
 
   async getProfileByToken(
     loginDto: AuthTwitterLoginDto,
@@ -19,12 +67,14 @@ export class AuthTwitterService {
     this.logger.debug('Fetching Twitter user profile');
 
     try {
+      const accessToken = await this.exchangeCode(loginDto);
+
       const url = new URL(`${this.apiUrl}/users/me`);
       url.searchParams.set('user.fields', 'name,username,profile_image_url');
 
       const response = await fetch(url.toString(), {
         headers: {
-          Authorization: `Bearer ${loginDto.accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         signal: AbortSignal.timeout(10000),
       });
