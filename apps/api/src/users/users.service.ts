@@ -1,6 +1,7 @@
 import {
   HttpStatus,
   Injectable,
+  NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { I18nContext, I18nService } from 'nestjs-i18n';
@@ -114,6 +115,7 @@ export class UsersService {
     const [data, total] = await this.usersRepository.findManyWithPagination({
       filterOptions,
       sortOptions,
+      search: pageOptionsDto.q?.trim() || null,
       paginationOptions: {
         page: pageOptionsDto.page ?? 1,
         limit: pageOptionsDto.limit ?? 10,
@@ -127,6 +129,14 @@ export class UsersService {
 
   findById(id: User['id']): Promise<NullableType<User>> {
     return this.usersRepository.findById(id);
+  }
+
+  async findByIdOrFail(id: User['id']): Promise<User> {
+    const user = await this.usersRepository.findById(id);
+    if (!user) {
+      throw new NotFoundException(this.t('user.NOT_FOUND'));
+    }
+    return user;
   }
 
   findByIds(ids: User['id'][]): Promise<User[]> {
@@ -150,10 +160,7 @@ export class UsersService {
     });
   }
 
-  async update(
-    id: User['id'],
-    updateUserDto: UpdateUserDto,
-  ): Promise<User | null> {
+  async update(id: User['id'], updateUserDto: UpdateUserDto): Promise<User> {
     // Do not remove comment below.
     // <updating-property />
 
@@ -215,6 +222,9 @@ export class UsersService {
       provider: updateUserDto.provider,
       socialId: updateUserDto.socialId,
     });
+    if (!updated) {
+      throw new NotFoundException(this.t('user.NOT_FOUND'));
+    }
     this.logger.debug({ userId: id }, 'User updated');
     return updated;
   }
