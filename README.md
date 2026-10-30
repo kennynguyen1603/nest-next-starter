@@ -43,7 +43,7 @@ nest-next-starter/                  ← Turborepo monorepo (pnpm workspaces)
 
 ## Requirements
 
-- **Node.js** ≥ 18
+- **Node.js** ≥ 20.9 (required by Next.js 16; CI and Docker use 22)
 - **pnpm** 9.x (`npm install -g pnpm@9`)
 - MongoDB or PostgreSQL/MySQL (depending on `DATABASE_TYPE`)
 - **Redis** ≥ 6 (required for BullMQ job queue and rate limiting)
@@ -56,14 +56,21 @@ nest-next-starter/                  ← Turborepo monorepo (pnpm workspaces)
 
 ### Option A — Docker (recommended for full-stack)
 
-Runs the API, frontend, MongoDB, Redis, and an automatic database seed in one command.
+Runs the API, frontend, admin panel, Redis, and an automatic database seed in one command.
+
+> [!IMPORTANT]
+> The database is **not** part of the compose stack. Point `DATABASE_*` in `apps/api/.env` at a MongoDB or PostgreSQL instance reachable from the containers (e.g. `host.docker.internal` for a DB on your machine, or a managed DB).
 
 ```bash
-# 1. Copy and configure the API environment file
-cp apps/api/.env.example apps/api/.env
-# Edit apps/api/.env with your values (mail, OAuth secrets, etc.)
+# 1. Copy and configure the environment files
+cp apps/api/.env.example apps/api/.env      # DB, mail, OAuth secrets, etc.
+cp apps/web/.env.example apps/web/.env      # required by the web service
+cp apps/admin/.env.example apps/admin/.env  # optional (APP_COOKIE_DOMAIN)
 
-# 2. Build and start all services
+# 2. Redis password for the compose stack (root .env is read by Docker Compose)
+echo "REDIS_PASSWORD=$(openssl rand -hex 16)" >> .env
+
+# 3. Build and start all services
 docker compose up --build
 ```
 
@@ -75,7 +82,7 @@ docker compose up --build
 | Admin Panel  | http://localhost:3002        |
 
 > [!NOTE]
-> The `seed` service runs automatically before the API starts. It detects `DATABASE_TYPE` and runs the correct seed — MongoDB (`document`) or SQL (`relational`) — automatically. Seeds are idempotent and safe to re-run. To wipe all data: `docker compose down -v && docker compose up --build`.
+> The `seed` service runs automatically before the API starts. It detects `DATABASE_TYPE`, runs pending TypeORM migrations for SQL, and then runs the correct seed — MongoDB (`document`) or SQL (`relational`) — automatically. Seeds are idempotent and safe to re-run. To wipe all data: `docker compose down -v && docker compose up --build`.
 
 #### Passing OAuth credentials at build time
 
@@ -107,6 +114,9 @@ cp apps/api/.env.example apps/api/.env
 
 # Frontend
 cp apps/web/.env.example apps/web/.env.local
+
+# Admin panel
+cp apps/admin/.env.example apps/admin/.env.local
 ```
 
 Edit the `.env` files with your values (see the **Environment Variables** section below).
@@ -220,6 +230,16 @@ pnpm --filter=web test    # Unit tests (Vitest)
 pnpm --filter=admin dev    # Dev server on port 3002
 pnpm --filter=admin build  # Production build
 pnpm --filter=admin start  # Run production
+```
+
+### Browser E2E (`apps/e2e`, Playwright)
+
+```bash
+pnpm --filter=e2e exec playwright install chromium  # One-time browser install
+pnpm --filter=e2e test:e2e      # Web + admin against a mocked API (starts both dev servers)
+pnpm --filter=e2e api:up        # Start throwaway DB/Redis + API for the real-API layer
+pnpm --filter=e2e test:e2e:api  # Real-API specs (auth sessions, RBAC, CORS)
+pnpm --filter=e2e api:down
 ```
 
 ### Docker

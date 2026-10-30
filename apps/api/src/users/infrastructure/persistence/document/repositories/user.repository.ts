@@ -92,10 +92,12 @@ export class UsersDocumentRepository implements UserRepository {
   async findManyWithPagination({
     filterOptions,
     sortOptions,
+    search,
     paginationOptions,
   }: {
     filterOptions?: FilterUserDto | null;
     sortOptions?: SortUserDto[] | null;
+    search?: string | null;
     paginationOptions: IPaginationOptions;
   }): Promise<[User[], number]> {
     const where: QueryFilter<UserSchemaClass> = {};
@@ -112,6 +114,18 @@ export class UsersDocumentRepository implements UserRepository {
         .find({ roleId: { $in: roleIds } })
         .lean<{ userId: string }[]>();
       where['_id'] = { $in: userRoleDocs.map((ur) => ur.userId) };
+    }
+
+    if (search) {
+      const pattern = new RegExp(
+        search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+        'i',
+      );
+      where.$or = [
+        { email: pattern },
+        { firstName: pattern },
+        { lastName: pattern },
+      ];
     }
 
     const sortQuery = sortOptions?.reduce(

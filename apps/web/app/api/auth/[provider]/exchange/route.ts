@@ -93,34 +93,18 @@ async function exchangeGithub(
   });
 }
 
-async function exchangeTwitter(
+// The API performs the X code exchange itself: X tokens cannot be verified as
+// issued to this app, so only a code redeemed with our credentials is trusted.
+function exchangeTwitter(
   code: string,
   codeVerifier: string,
   redirectUri: string,
   browserUserAgent: string,
 ) {
-  const credentials = Buffer.from(
-    `${process.env.NEXT_PUBLIC_TWITTER_CLIENT_ID}:${process.env.TWITTER_CLIENT_SECRET}`,
-  ).toString("base64");
-  const res = await fetch("https://api.twitter.com/2/oauth2/token", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      Authorization: `Basic ${credentials}`,
-    },
-    body: new URLSearchParams({
-      code,
-      grant_type: "authorization_code",
-      redirect_uri: redirectUri,
-      code_verifier: codeVerifier,
-    }),
-  });
-  if (!res.ok) throw new Error("Twitter token exchange failed");
-  const { access_token } = await res.json();
   return fetch(`${API_URL}/api/v1/auth/twitter/login`, {
     method: "POST",
     headers: backendHeaders(browserUserAgent),
-    body: JSON.stringify({ accessToken: access_token }),
+    body: JSON.stringify({ code, codeVerifier, redirectUri }),
   });
 }
 

@@ -111,6 +111,15 @@
       "backToSignIn": "← Back to sign in",
       "errorDefault": "This confirmation link is invalid or has expired.",
       "errorMissingHash": "Invalid confirmation link."
+    },
+    "confirmNewEmail": {
+      "title": "New email confirmation",
+      "loading": "Confirming your new email address…",
+      "successTitle": "Email updated!",
+      "successMessage": "Your new email address has been confirmed. Use it the next time you sign in.",
+      "backToSignIn": "← Back to sign in",
+      "errorDefault": "This confirmation link is invalid or has expired.",
+      "errorMissingHash": "Invalid confirmation link."
     }
   },
   "user": {

@@ -56,32 +56,28 @@ export class NotificationProcessor extends WorkerHost {
     );
   }
 
+  // job is undefined when the failure happens outside a job (e.g. lost lock).
   @OnWorkerEvent('failed')
-  onFailed(job: Job) {
+  onFailed(job: Job | undefined, error: Error) {
     this.logger.error(
       {
-        jobId: job.id,
-        type: job.name,
-        attempt: job.attemptsMade,
-        reason: job.failedReason,
+        err: error,
+        jobId: job?.id,
+        type: job?.name,
+        attempt: job?.attemptsMade,
+        reason: job?.failedReason,
       },
       'Notification job failed',
     );
   }
 
   @OnWorkerEvent('stalled')
-  onStalled(job: Job) {
-    this.logger.error(
-      { jobId: job.id, type: job.name },
-      'Notification job stalled',
-    );
+  onStalled(jobId: string) {
+    this.logger.error({ jobId }, 'Notification job stalled');
   }
 
   @OnWorkerEvent('error')
-  onError(job: Job, error: Error) {
-    this.logger.error(
-      { jobId: job.id, err: error },
-      'Notification worker error',
-    );
+  onError(error: Error) {
+    this.logger.error({ err: error }, 'Notification worker error');
   }
 }

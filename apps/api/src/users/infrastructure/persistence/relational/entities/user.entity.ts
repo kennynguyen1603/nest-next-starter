@@ -29,7 +29,10 @@ export class UserEntity extends EntityRelationalHelper {
     if (!this.id) this.id = uuidv7();
   }
 
-  @Column({ type: String, unique: true, nullable: true })
+  // Unique among live rows only (partial index), so a soft-deleted account
+  // does not keep its email reserved. See migration UserEmailUniqueActive.
+  @Index('UQ_user_email_active', { unique: true, where: '"deletedAt" IS NULL' })
+  @Column({ type: String, nullable: true })
   email!: string | null;
 
   @Column({ nullable: true })

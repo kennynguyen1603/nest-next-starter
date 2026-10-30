@@ -71,30 +71,29 @@ export class EmailProcessor extends WorkerHost {
     );
   }
 
+  // job is undefined when the failure happens outside a job (e.g. lost lock).
   @OnWorkerEvent('failed')
-  onFailed(job: Job) {
+  onFailed(job: Job | undefined, error: Error) {
     this.logger.error(
       {
-        jobId: job.id,
-        type: job.name,
-        attempt: job.attemptsMade,
-        reason: job.failedReason,
-        stacktrace: job.stacktrace,
+        err: error,
+        jobId: job?.id,
+        type: job?.name,
+        attempt: job?.attemptsMade,
+        reason: job?.failedReason,
+        stacktrace: job?.stacktrace,
       },
       'Email job failed',
     );
   }
 
   @OnWorkerEvent('stalled')
-  onStalled(job: Job) {
-    this.logger.error(
-      { jobId: job.id, type: job.name, attempt: job.attemptsMade },
-      'Email job stalled',
-    );
+  onStalled(jobId: string) {
+    this.logger.error({ jobId }, 'Email job stalled');
   }
 
   @OnWorkerEvent('error')
-  onError(job: Job, error: Error) {
-    this.logger.error({ jobId: job.id, err: error }, 'Email worker error');
+  onError(error: Error) {
+    this.logger.error({ err: error }, 'Email worker error');
   }
 }

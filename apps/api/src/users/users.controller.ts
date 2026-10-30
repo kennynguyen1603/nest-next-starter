@@ -23,7 +23,7 @@ import { ApiAuth } from '@/decorators/http.decorators';
 import { Roles } from '@/decorators/roles.decorator';
 import { RoleEnum } from '@/roles/roles.enum';
 import { RbacGuard } from '@/roles/rbac.guard';
-import { NullableType } from '@/utils/types/nullable.type';
+import { SessionService } from '@/session/session.service';
 import {
   OffsetPaginatedDto,
   OffsetPaginationResponse,
@@ -34,6 +34,7 @@ import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { QueryUserDto } from './dto/query-user.dto';
+import { UserStatus } from './user-status.enum';
 
 @Roles(RoleEnum.ADMIN)
 @UseGuards(AuthGuard('jwt'), RbacGuard)
@@ -43,7 +44,10 @@ import { QueryUserDto } from './dto/query-user.dto';
   version: '1',
 })
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly sessionService: SessionService,
+  ) {}
 
   @ApiCreatedResponse({ type: User })
   @ApiAuth({ statusCode: HttpStatus.CREATED, summary: 'Create user' })
@@ -70,8 +74,8 @@ export class UsersController {
   @SerializeOptions({ groups: ['admin'] })
   @Get(':id')
   @ApiParam({ name: 'id', type: String, required: true })
-  findOne(@Param('id') id: User['id']): Promise<NullableType<User>> {
-    return this.usersService.findById(id);
+  findOne(@Param('id') id: User['id']): Promise<User> {
+    return this.usersService.findByIdOrFail(id);
   }
 
   @ApiOkResponse({ type: User })
@@ -79,17 +83,30 @@ export class UsersController {
   @SerializeOptions({ groups: ['admin'] })
   @Patch(':id')
   @ApiParam({ name: 'id', type: String, required: true })
-  update(
+  async update(
     @Param('id') id: User['id'],
     @Body() updateUserDto: UpdateUserDto,
-  ): Promise<User | null> {
-    return this.usersService.update(id, updateUserDto);
+  ): Promise<User> {
+    const user = await this.usersService.update(id, updateUserDto);
+
+    // Credentials, roles and status are baked into issued tokens or gate
+    // sign-in, so force the user to sign in again when an admin changes them.
+    const mustRevokeSessions =
+      !!updateUserDto.password ||
+      !!updateUserDto.roles?.length ||
+      (!!updateUserDto.status && updateUserDto.status !== UserStatus.ACTIVE);
+    if (mustRevokeSessions) {
+      await this.sessionService.deleteByUserId({ userId: id }, 'admin_revoked');
+    }
+
+    return user;
   }
 
   @ApiAuth({ statusCode: HttpStatus.NO_CONTENT, summary: 'Delete user' })
   @Delete(':id')
   @ApiParam({ name: 'id', type: String, required: true })
-  remove(@Param('id') id: User['id']): Promise<void> {
-    return this.usersService.remove(id);
+  async remove(@Param('id') id: User['id']): Promise<void> {
+    await this.usersService.remove(id);
+    await this.sessionService.deleteByUserId({ userId: id }, 'admin_revoked');
   }
 }

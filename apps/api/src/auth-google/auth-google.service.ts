@@ -77,6 +77,7 @@ export class AuthGoogleService {
     return {
       id: data.sub,
       email: data.email,
+      emailVerified: true,
       provider: 'google',
       firstName: data.given_name,
       lastName: data.family_name,

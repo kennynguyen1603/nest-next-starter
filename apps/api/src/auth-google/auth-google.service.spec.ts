@@ -55,6 +55,7 @@ describe('AuthGoogleService', () => {
     ).resolves.toEqual({
       id: 'google-sub-1',
       email: 'user@example.com',
+      emailVerified: true,
       provider: 'google',
       firstName: 'Ada',
       lastName: 'Lovelace',

@@ -4,7 +4,8 @@ export type RevokeReason =
   | 'logout'
   | 'suspicious'
   | 'expired'
-  | 'limit_exceeded';
+  | 'limit_exceeded'
+  | 'admin_revoked';
 
 export class Session {
   id!: number | string;

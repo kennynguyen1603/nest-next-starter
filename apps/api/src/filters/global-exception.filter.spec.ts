@@ -218,4 +218,30 @@ describe('GlobalExceptionFilter', () => {
       process.env.NODE_ENV = originalEnv;
     });
   });
+  describe('database error mapping', () => {
+    function dbError(name: string, code: string | number) {
+      return Object.assign(new Error('driver message'), { name, code });
+    }
+
+    it.each([
+      ['Postgres unique violation', 409, dbError('QueryFailedError', '23505')],
+      ['Mongo duplicate key', 409, dbError('MongoServerError', 11000)],
+      ['Postgres malformed uuid', 400, dbError('QueryFailedError', '22P02')],
+      ['Mongoose CastError', 400, dbError('CastError', 'ignored')],
+    ])('maps %s to %i without leaking the driver message', (_, code, err) => {
+      filter.catch(err, makeHost());
+
+      const body = getBody(reply);
+      expect(getStatus(reply)).toBe(code);
+      expect(body.statusCode).toBe(code);
+      expect(body.message).not.toContain('driver message');
+      expect(body.stack).toBeUndefined();
+    });
+
+    it('keeps other database errors as 500', () => {
+      filter.catch(dbError('QueryFailedError', '57014'), makeHost());
+
+      expect(getStatus(reply)).toBe(500);
+    });
+  });
 });

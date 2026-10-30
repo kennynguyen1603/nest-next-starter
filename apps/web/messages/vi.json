@@ -111,6 +111,15 @@
       "backToSignIn": "← Quay lại đăng nhập",
       "errorDefault": "Link xác nhận này không hợp lệ hoặc đã hết hạn.",
       "errorMissingHash": "Link xác nhận không hợp lệ."
+    },
+    "confirmNewEmail": {
+      "title": "Xác nhận email mới",
+      "loading": "Đang xác nhận địa chỉ email mới của bạn…",
+      "successTitle": "Đã cập nhật email!",
+      "successMessage": "Địa chỉ email mới của bạn đã được xác nhận. Hãy dùng email này cho lần đăng nhập tới.",
+      "backToSignIn": "← Quay lại đăng nhập",
+      "errorDefault": "Link xác nhận này không hợp lệ hoặc đã hết hạn.",
+      "errorMissingHash": "Link xác nhận không hợp lệ."
     }
   },
   "user": {

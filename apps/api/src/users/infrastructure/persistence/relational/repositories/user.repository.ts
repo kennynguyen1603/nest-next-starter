@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { FindOptionsWhere, Repository, In } from 'typeorm';
+import { FindOptionsWhere, Repository, In, ILike } from 'typeorm';
 
 import { User } from '@/users/domain/user';
 import { UserRepository } from '../../user.repository';
@@ -46,10 +46,12 @@ export class UsersRelationalRepository implements UserRepository {
   async findManyWithPagination({
     filterOptions,
     sortOptions,
+    search,
     paginationOptions,
   }: {
     filterOptions?: FilterUserDto | null;
     sortOptions?: SortUserDto[] | null;
+    search?: string | null;
     paginationOptions: IPaginationOptions;
   }): Promise<[User[], number]> {
     const where: FindOptionsWhere<UserEntity> = {};
@@ -57,12 +59,21 @@ export class UsersRelationalRepository implements UserRepository {
       where.roles = filterOptions.roles.map((role) => ({ name: role.name }));
     }
 
+    // An array of where objects is OR-ed; each branch keeps the role filter.
+    let whereOrSearch: FindOptionsWhere<UserEntity>[] | undefined;
+    if (search) {
+      const pattern = `%${search.replace(/[\\%_]/g, '\\$&')}%`;
+      whereOrSearch = (['email', 'firstName', 'lastName'] as const).map(
+        (field) => ({ ...where, [field]: ILike(pattern) }),
+      );
+    }
+
     // Use findAndCount with explicit relations for correct ManyToMany pagination.
     // (getManyAndCount() + leftJoinAndSelect on ManyToMany can under-count pages)
     const [entities, total] = await this.usersRepository.findAndCount({
       skip: (paginationOptions.page - 1) * paginationOptions.limit,
       take: paginationOptions.limit,
-      where,
+      where: whereOrSearch ?? where,
       order: sortOptions?.reduce(
         (acc, sort) => ({ ...acc, [sort.orderBy]: sort.order }),
         {},
@@ -113,14 +124,12 @@ export class UsersRelationalRepository implements UserRepository {
     return entity ? UserMapper.toDomain(entity) : null;
   }
 
-  async update(id: User['id'], payload: Partial<User>): Promise<User> {
+  async update(id: User['id'], payload: Partial<User>): Promise<User | null> {
     const entity = await this.withRelations()
       .where('user.id = :id', { id })
       .getOne();
 
-    if (!entity) {
-      throw new Error('User not found');
-    }
+    if (!entity) return null;
 
     // Compute merged persistence model for value extraction
     const merged = UserMapper.toPersistence({

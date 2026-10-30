@@ -17,6 +17,42 @@ type UnprocessableBody = {
   errors?: Record<string, string>;
 };
 
+type DriverError = { name?: string; code?: string | number };
+
+/**
+ * Maps database errors that are caused by the client rather than the server,
+ * so they are not reported as 500s. Covers both persistence drivers:
+ * Postgres (via TypeORM QueryFailedError) and MongoDB/Mongoose.
+ */
+function mapDatabaseError(
+  exception: unknown,
+): { statusCode: number; message: string } | undefined {
+  if (typeof exception !== 'object' || exception === null) return undefined;
+  const { name, code } = exception as DriverError;
+
+  // 23505 unique_violation (Postgres) / 11000 duplicate key (MongoDB)
+  if (
+    (name === 'QueryFailedError' && code === '23505') ||
+    (name === 'MongoServerError' && code === 11000)
+  ) {
+    return {
+      statusCode: HttpStatus.CONFLICT,
+      message: 'Resource already exists',
+    };
+  }
+  // 22P02 invalid_text_representation (e.g. malformed uuid) / Mongoose CastError
+  if (
+    (name === 'QueryFailedError' && code === '22P02') ||
+    name === 'CastError'
+  ) {
+    return {
+      statusCode: HttpStatus.BAD_REQUEST,
+      message: 'Invalid identifier or value format',
+    };
+  }
+  return undefined;
+}
+
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
   constructor(
@@ -33,8 +69,12 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     let statusCode: number;
     let message: string;
     let details: ErrorDetailDto[] | undefined;
+    const dbError = mapDatabaseError(exception);
 
-    if (exception instanceof HttpException) {
+    if (dbError) {
+      ({ statusCode, message } = dbError);
+      this.logger.warn({ err: exception, statusCode }, message);
+    } else if (exception instanceof HttpException) {
       statusCode = exception.getStatus();
       const raw = exception.getResponse();
 

@@ -108,7 +108,7 @@ describe('EmailProcessor', () => {
     });
 
     it('logs failures with reason and stacktrace', () => {
-      processor.onFailed(job);
+      processor.onFailed(job, new Error('boom'));
 
       expect(mockLogger.error).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -120,18 +120,31 @@ describe('EmailProcessor', () => {
       );
     });
 
-    it('logs stalled jobs at error level', () => {
-      processor.onStalled(job);
+    it('logs failures that happen without a job', () => {
+      const err = new Error('lock lost');
+      processor.onFailed(undefined, err);
 
-      expect(mockLogger.error).toHaveBeenCalled();
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.objectContaining({ err, jobId: undefined }),
+        'Email job failed',
+      );
+    });
+
+    it('logs stalled jobs by id at error level', () => {
+      processor.onStalled('job-1');
+
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        { jobId: 'job-1' },
+        expect.any(String),
+      );
     });
 
     it('logs worker errors with the error object', () => {
       const err = new Error('redis gone');
-      processor.onError(job, err);
+      processor.onError(err);
 
       expect(mockLogger.error).toHaveBeenCalledWith(
-        { jobId: 'job-1', err },
+        { err },
         'Email worker error',
       );
     });

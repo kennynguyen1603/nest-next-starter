@@ -27,7 +27,7 @@ export function Spinner({
     <span
       aria-hidden={props["aria-label"] ? undefined : true}
       className={cn(
-        "inline-block shrink-0 animate-spin border-2",
+        "inline-block shrink-0 animate-spin rounded-full border-2",
         sizes[size],
         variants[variant],
         className,

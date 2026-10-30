@@ -727,6 +727,7 @@ describe('AuthService', () => {
       await service.validateSocialLogin('google', {
         id: 'gid1',
         email: 'new@x.com',
+        emailVerified: true,
         firstName: 'A',
         lastName: 'B',
         provider: 'google',
@@ -736,6 +737,20 @@ describe('AuthService', () => {
         'social1',
         expect.objectContaining({ email: 'new@x.com' }),
       );
+    });
+
+    it('does NOT adopt an unverified social email', async () => {
+      mockUsersService.findBySocialIdAndProvider.mockResolvedValue(baseUser);
+      mockUsersService.findByEmail.mockResolvedValue(null);
+
+      await service.validateSocialLogin('facebook', {
+        id: 'fid1',
+        email: 'new@x.com',
+        emailVerified: false,
+        provider: 'facebook',
+      });
+
+      expect(mockUsersService.update).not.toHaveBeenCalled();
     });
 
     it('does NOT call update when social has no email', async () => {
@@ -913,6 +928,7 @@ describe('AuthService', () => {
     const social: SocialInterface = {
       id: 'gid1',
       email: 'New@X.com',
+      emailVerified: true,
       firstName: 'A',
       lastName: 'B',
       provider: 'google',
@@ -947,6 +963,33 @@ describe('AuthService', () => {
       expect(mockUsersService.findByEmail).toHaveBeenCalledWith('new@x.com');
       expect(mockUsersService.create).not.toHaveBeenCalled();
       expect(result.user).toEqual(expect.objectContaining({ id: 'email1' }));
+    });
+
+    it('refuses to link an existing account on an unverified email', async () => {
+      mockUsersService.findByEmail.mockResolvedValue({
+        id: 'email1',
+        roles: [{ name: 'user' }],
+      });
+
+      await expect(
+        service.validateSocialLogin('facebook', {
+          ...social,
+          emailVerified: false,
+        }),
+      ).rejects.toThrow(UnprocessableEntityException);
+      expect(mockUsersService.create).not.toHaveBeenCalled();
+      expect(mockSessionService.create).not.toHaveBeenCalled();
+    });
+
+    it('creates a user without storing an unverified email', async () => {
+      await service.validateSocialLogin('facebook', {
+        ...social,
+        emailVerified: false,
+      });
+
+      expect(mockUsersService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ email: null, socialId: 'gid1' }),
+      );
     });
 
     it('rejects a banned account', async () => {

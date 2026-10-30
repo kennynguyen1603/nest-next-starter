@@ -13,10 +13,13 @@ export abstract class UserRepository {
   abstract findManyWithPagination({
     filterOptions,
     sortOptions,
+    search,
     paginationOptions,
   }: {
     filterOptions?: FilterUserDto | null;
     sortOptions?: SortUserDto[] | null;
+    /** Case-insensitive substring match on email, first name or last name. */
+    search?: string | null;
     paginationOptions: IPaginationOptions;
   }): Promise<[User[], number]>;
 
