@@ -10,6 +10,11 @@ on:
 permissions:
   contents: read
 
+# A newer push to the same branch/PR supersedes the running checks.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   NODE_VERSION: "22"
   PNPM_VERSION: "9.0.0"
@@ -55,9 +60,56 @@ jobs:
           NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ vars.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
           NEXT_PUBLIC_GITHUB_CLIENT_ID: ${{ vars.NEXT_PUBLIC_GITHUB_CLIENT_ID }}
 
+  e2e:
+    name: E2E — Playwright (web · admin)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browser
+        run: pnpm --filter=e2e exec playwright install --with-deps chromium
+
+      # Mocked-API layer only; the real-API layer (E2E_API=1) needs docker DB/Redis.
+      - name: Test — E2E
+        run: pnpm --filter=e2e test:e2e
+
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: playwright-test-results
+          path: apps/e2e/test-results
+          retention-days: 7
+
+  docker:
+    name: Docker build — ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [api, web, admin]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      # Build only (no push): catches Dockerfile / turbo prune breakage before deploy.
+      - name: Build image
+        run: docker build -f apps/${{ matrix.app }}/Dockerfile -t ${{ matrix.app }}:ci .
+
   deploy:
     name: Deploy → Production
-    needs: ci
+    needs: [ci, e2e, docker]
     if: github.event_name != 'pull_request' && vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
     environment: production
