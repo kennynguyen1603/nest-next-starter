@@ -6,6 +6,7 @@ export interface IFileUploadService {
   uploadFromBuffer(
     buffer: Buffer,
     options: { filename: string; mimetype: string },
+    ownerId?: string | null,
   ): Promise<FileType>;
-  getFileUrl(id: FileType['id']): Promise<{ url: string }>;
+  getFileUrl(id: FileType['id'], userId: string): Promise<{ url: string }>;
 }

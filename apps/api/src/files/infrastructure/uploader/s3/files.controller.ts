@@ -4,6 +4,7 @@ import {
   Param,
   Post,
   Query,
+  Request,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -21,6 +22,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
+import { JwtPayloadType } from '@/auth/strategies/types/jwt-payload.type';
 import { FilesS3Service } from './files.service';
 import { FileResponseDto } from './dto/file-response.dto';
 
@@ -48,8 +50,9 @@ export class FilesS3Controller {
   @UseInterceptors(FileInterceptor('file'))
   async uploadFile(
     @UploadedFile() file: Express.MulterS3.File,
+    @Request() request: { user: JwtPayloadType },
   ): Promise<FileResponseDto> {
-    return this.filesService.create(file);
+    return this.filesService.create(file, request.user.id);
   }
 
   @ApiOperation({ summary: 'Get a presigned URL to download/display a file' })
@@ -57,7 +60,7 @@ export class FilesS3Controller {
   @ApiQuery({
     name: 'expiresIn',
     required: false,
-    description: 'URL TTL in seconds (default: 3600)',
+    description: 'URL TTL in seconds (default and max: 3600)',
     type: Number,
   })
   @ApiOkResponse({
@@ -66,13 +69,15 @@ export class FilesS3Controller {
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
   @Get(':id/url')
-  async getPresignedUrl(
+  async getFileUrl(
     @Param('id') id: string,
+    @Request() request: { user: JwtPayloadType },
     @Query('expiresIn') expiresIn?: number,
   ): Promise<{ url: string }> {
-    return this.filesService.getPresignedUrl(
+    return this.filesService.getFileUrl(
       id,
-      expiresIn ? Number(expiresIn) : 3600,
+      request.user.id,
+      expiresIn ? Number(expiresIn) : undefined,
     );
   }
 }

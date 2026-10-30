@@ -824,13 +824,14 @@ APP_FALLBACK_LANGUAGE=en           # default language when Accept-Language heade
 APP_HEADER_LANGUAGE=x-custom-lang  # request header used by nestjs-i18n
 DATABASE_TYPE=mongodb              # mongodb | postgres | mysql | sqlite
 DATABASE_URL=mongodb://localhost:27017/nest_starter
-AUTH_JWT_SECRET=change_me_jwt_secret
+# Each secret: at least 32 chars and unique (openssl rand -base64 48)
+AUTH_JWT_SECRET=
 AUTH_JWT_TOKEN_EXPIRES_IN=15m
-AUTH_REFRESH_SECRET=change_me_refresh_secret
+AUTH_REFRESH_SECRET=
 AUTH_REFRESH_TOKEN_EXPIRES_IN=7d
-AUTH_FORGOT_SECRET=change_me_forgot_secret
+AUTH_FORGOT_SECRET=
 AUTH_FORGOT_TOKEN_EXPIRES_IN=30m
-AUTH_CONFIRM_EMAIL_SECRET=change_me_confirm_secret
+AUTH_CONFIRM_EMAIL_SECRET=
 AUTH_CONFIRM_EMAIL_TOKEN_EXPIRES_IN=1d
 ```
 
@@ -841,7 +842,7 @@ REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_PASSWORD=                    # optional
 REDIS_TLS=false                    # set true if your Redis requires TLS
-REDIS_REJECT_UNAUTHORIZED=false    # set true to enforce TLS certificate verification
+REDIS_REJECT_UNAUTHORIZED=true     # set false only to skip TLS certificate verification
 # Mutual TLS (only needed when REDIS_TLS=true and the server requires client certs):
 REDIS_CA=                          # path or PEM string for the CA certificate
 REDIS_KEY=                         # path or PEM string for the client private key
@@ -906,7 +907,7 @@ QUEUE_FAILED_RETRY_ATTEMPTS=3   # number of automatic retries before marking a j
 ```env
 DATABASE_MAX_CONNECTIONS=100        # TypeORM connection pool size (SQL only)
 DATABASE_SSL_ENABLED=false          # enable SSL/TLS for the database connection
-DATABASE_REJECT_UNAUTHORIZED=false  # reject connections with unverifiable certificates
+DATABASE_REJECT_UNAUTHORIZED=true   # reject connections with unverifiable certificates
 ```
 
 ### Rate Limiting (Throttler)
@@ -936,7 +937,6 @@ GRAFANA_PASSWORD=your-secure-password
 DOCKER_PROMETHEUS_PORT=9090    # host port for Prometheus UI
 DOCKER_GRAFANA_PORT=3001       # host port for Grafana UI (3001 avoids conflict with web on 3000)
 DOCKER_PG_EXPORTER=9187        # host port for postgres-exporter (SQL users only)
-DOCKER_MONGO_EXPORTER=9216     # host port for mongodb-exporter (MongoDB users only)
 ```
 
 These variables are only required when running the monitoring Docker Compose profile. See the [Monitoring section in the root README](../../README.md#monitoring-prometheus--grafana) for the full setup guide.
@@ -1054,12 +1054,11 @@ Dashboard files live in `src/tools/grafana/dashboards/` and are auto-loaded by G
 
 Configured in `prometheus.config.yml` at the project root:
 
-| Job          | Target                   | Description                     |
-| ------------ | ------------------------ | ------------------------------- |
-| `prometheus` | `localhost:9090`         | Prometheus self-monitoring      |
-| `server`     | `api:8080`               | NestJS API metrics              |
-| `database`   | `postgres-exporter:9187` | PostgreSQL metrics (SQL users)  |
-| `mongodb`    | `mongodb-exporter:9216`  | MongoDB metrics (MongoDB users) |
+| Job          | Target                   | Description                    |
+| ------------ | ------------------------ | ------------------------------ |
+| `prometheus` | `localhost:9090`         | Prometheus self-monitoring     |
+| `server`     | `api:8080`               | NestJS API metrics             |
+| `database`   | `postgres-exporter:9187` | PostgreSQL metrics (SQL users) |
 
 ### Data persistence
 

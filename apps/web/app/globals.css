@@ -1,65 +1,9 @@
-@import "tailwindcss";
+@import "@repo/ui/styles.css";
 
-@theme {
-  --radius: 0;
-  --radius-sm: 0;
-  --radius-md: 0;
-  --radius-lg: 0;
-  --radius-xl: 0;
-  --radius-2xl: 0;
-  --radius-full: 0;
-  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
-}
-
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-/* Reset must be in @layer base so Tailwind utility classes (mx-auto, px-*, etc.)
-   can override them — unlayered CSS beats @layer utilities in the cascade. */
 @layer base {
   html,
   body {
     max-width: 100vw;
     overflow-x: hidden;
-  }
-
-  * {
-    box-sizing: border-box;
-    padding: 0;
-    margin: 0;
-  }
-
-  body {
-    color: var(--foreground);
-    background: var(--background);
-    font-family: var(--font-sans);
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-
-  a {
-    color: inherit;
-    text-decoration: none;
-  }
-
-  button,
-  a,
-  input,
-  select,
-  textarea {
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
   }
 }

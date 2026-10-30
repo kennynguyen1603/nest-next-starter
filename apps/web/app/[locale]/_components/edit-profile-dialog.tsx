@@ -7,9 +7,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useTranslations } from "next-intl";
 import { api, getLocale } from "@/lib/api";
-import { Spinner } from "@/components/spinner";
-import { FormField } from "@/components/form-field";
-import { ServerError } from "@/components/server-error";
+import { Alert } from "@repo/ui/alert";
+import { Button } from "@repo/ui/button";
+import { Dialog } from "@repo/ui/dialog";
+import { FormField } from "@repo/ui/form-field";
+import { Input } from "@repo/ui/input";
 import { useAuthStore } from "@/lib/auth-store";
 import type { AuthUser } from "@repo/types";
 
@@ -78,14 +80,6 @@ export function EditProfileDialog({ user, currentPhotoUrl, onClose }: Props) {
   });
 
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  useEffect(() => {
     if (!pendingFile) {
       setPreviewUrl(null);
       return;
@@ -149,147 +143,122 @@ export function EditProfileDialog({ user, currentPhotoUrl, onClose }: Props) {
   const initial = (user.firstName?.[0] ?? user.email?.[0] ?? "U").toUpperCase();
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div className="bg-white w-full max-w-md shadow-xl">
-        <div className="px-6 py-4 border-b border-[#E8E8E8] flex items-center justify-between">
-          <h2 className="text-sm font-semibold">{t("editProfile")}</h2>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="text-neutral-400 hover:text-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
-          >
-            ✕
-          </button>
+    <Dialog title={t("editProfile")} size="md" onClose={onClose}>
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="flex flex-col gap-4"
+        noValidate
+      >
+        {/* Avatar preview + picker */}
+        <div className="flex items-center gap-4">
+          {displayPhoto ? (
+            <Image
+              src={displayPhoto}
+              alt="Avatar"
+              width={56}
+              height={56}
+              // Local previews are blob: URLs the optimizer can't fetch, and presigned
+              // S3 URLs change on every request, so the optimizer can't cache them.
+              unoptimized
+              className="size-14 shrink-0 object-cover"
+            />
+          ) : (
+            <div className="flex size-14 shrink-0 items-center justify-center bg-foreground">
+              <span className="select-none text-h3 leading-none text-white">
+                {initial}
+              </span>
+            </div>
+          )}
+          <div className="flex flex-col gap-1">
+            <label className="cursor-pointer border border-border-strong px-3 py-2 text-center text-caption font-medium text-foreground transition-colors hover:border-foreground focus-within:ring-1 focus-within:ring-foreground">
+              {pendingFile ? pendingFile.name : t("uploadPhoto")}
+              <input
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={handlePhotoChange}
+              />
+            </label>
+            {pendingFile && (
+              <span className="text-caption text-muted">
+                {t("photoWillSaveOnSubmit")}
+              </span>
+            )}
+          </div>
         </div>
 
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="px-6 py-5 flex flex-col gap-4"
-          noValidate
-        >
-          {/* Avatar preview + picker */}
-          <div className="flex items-center gap-4">
-            {displayPhoto ? (
-              <Image
-                src={displayPhoto}
-                alt="Avatar"
-                width={56}
-                height={56}
-                // Local previews are blob: URLs the optimizer can't fetch, and presigned
-                // S3 URLs change on every request, so the optimizer can't cache them.
-                unoptimized
-                className="w-14 h-14 object-cover shrink-0"
-              />
-            ) : (
-              <div className="w-14 h-14 bg-black flex items-center justify-center shrink-0">
-                <span className="text-white text-lg font-semibold leading-none select-none">
-                  {initial}
-                </span>
-              </div>
-            )}
-            <div className="flex flex-col gap-1">
-              <label className="cursor-pointer text-xs font-medium text-neutral-600 border border-[#D0D0D0] px-3 py-2 text-center hover:bg-neutral-50 transition-colors focus-within:ring-1 focus-within:ring-black">
-                {pendingFile ? pendingFile.name : t("uploadPhoto")}
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="sr-only"
-                  onChange={handlePhotoChange}
-                />
-              </label>
-              {pendingFile && (
-                <span className="text-[11px] text-neutral-400">
-                  {t("photoWillSaveOnSubmit")}
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="flex gap-3">
-            <FormField
+        <div className="flex gap-3">
+          <FormField
+            id="firstName"
+            label={t("firstName")}
+            error={errors.firstName?.message}
+            className="flex-1"
+          >
+            <Input
               id="firstName"
-              label={t("firstName")}
-              error={errors.firstName?.message}
-              className="flex-1"
-            >
-              <input
-                id="firstName"
-                className="border border-[#D0D0D0] px-3 py-2.5 text-sm focus-visible:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black"
-                {...register("firstName")}
-              />
-            </FormField>
-            <FormField
+              invalid={!!errors.firstName}
+              {...register("firstName")}
+            />
+          </FormField>
+          <FormField
+            id="lastName"
+            label={t("lastName")}
+            error={errors.lastName?.message}
+            className="flex-1"
+          >
+            <Input
               id="lastName"
-              label={t("lastName")}
-              error={errors.lastName?.message}
-              className="flex-1"
+              invalid={!!errors.lastName}
+              {...register("lastName")}
+            />
+          </FormField>
+        </div>
+
+        {!isOAuthUser && (
+          <>
+            <FormField
+              id="oldPassword"
+              label={t("oldPassword")}
+              error={errors.oldPassword?.message}
             >
-              <input
-                id="lastName"
-                className="border border-[#D0D0D0] px-3 py-2.5 text-sm focus-visible:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black"
-                {...register("lastName")}
+              <Input
+                id="oldPassword"
+                type="password"
+                autoComplete="current-password"
+                placeholder="••••••••"
+                invalid={!!errors.oldPassword}
+                {...register("oldPassword")}
               />
             </FormField>
-          </div>
 
-          {!isOAuthUser && (
-            <>
-              <FormField
-                id="oldPassword"
-                label={t("oldPassword")}
-                error={errors.oldPassword?.message}
-              >
-                <input
-                  id="oldPassword"
-                  type="password"
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  className="border border-[#D0D0D0] px-3 py-2.5 text-sm focus-visible:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black"
-                  {...register("oldPassword")}
-                />
-              </FormField>
-
-              <FormField
+            <FormField
+              id="newPassword"
+              label={t("newPassword")}
+              error={errors.newPassword?.message}
+            >
+              <Input
                 id="newPassword"
-                label={t("newPassword")}
-                error={errors.newPassword?.message}
-              >
-                <input
-                  id="newPassword"
-                  type="password"
-                  autoComplete="new-password"
-                  placeholder={t("newPasswordPlaceholder")}
-                  className="border border-[#D0D0D0] px-3 py-2.5 text-sm focus-visible:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black"
-                  {...register("newPassword")}
-                />
-              </FormField>
-            </>
-          )}
+                type="password"
+                autoComplete="new-password"
+                placeholder={t("newPasswordPlaceholder")}
+                invalid={!!errors.newPassword}
+                {...register("newPassword")}
+              />
+            </FormField>
+          </>
+        )}
 
-          {serverError && <ServerError message={serverError} />}
+        {serverError && <Alert>{serverError}</Alert>}
 
-          <div className="flex justify-end gap-2 pt-1">
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-sm font-medium text-neutral-600 border border-[#D0D0D0] px-4 py-2 hover:bg-neutral-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-1"
-            >
-              {commonT("cancel")}
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="bg-black text-white text-sm font-medium px-4 py-2 hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-1 flex items-center gap-2"
-            >
-              {isSubmitting && <Spinner size="xs" variant="white" />}
-              {isSubmitting ? t("saving") : t("saveChanges")}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="secondary" onClick={onClose}>
+            {commonT("cancel")}
+          </Button>
+          <Button type="submit" loading={isSubmitting}>
+            {isSubmitting ? t("saving") : t("saveChanges")}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
   );
 }

@@ -1,7 +1,6 @@
 import {
   HttpStatus,
   Injectable,
-  NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -15,7 +14,9 @@ import { randomStringGenerator } from '@nestjs/common/utils/random-string-genera
 import { FileType } from '@/files/domain/file';
 import { FileRepository } from '@/files/infrastructure/persistence/file.repository';
 import { AllConfigType } from '@/config/config.type';
+import { findAccessibleFile } from '@/files/infrastructure/uploader/file-access';
 import { IFileUploadService } from '@/files/infrastructure/uploader/uploader.interface';
+import { UserRepository } from '@/users/infrastructure/persistence/user.repository';
 
 @Injectable()
 export class FilesS3Service implements IFileUploadService {
@@ -24,6 +25,7 @@ export class FilesS3Service implements IFileUploadService {
 
   constructor(
     private readonly fileRepository: FileRepository,
+    private readonly userRepository: UserRepository,
     private readonly configService: ConfigService<AllConfigType>,
   ) {
     this.s3 = new S3Client({
@@ -42,7 +44,10 @@ export class FilesS3Service implements IFileUploadService {
     });
   }
 
-  async create(file: Express.MulterS3.File): Promise<{ file: FileType }> {
+  async create(
+    file: Express.MulterS3.File,
+    ownerId: string,
+  ): Promise<{ file: FileType }> {
     if (!file) {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
@@ -51,13 +56,14 @@ export class FilesS3Service implements IFileUploadService {
     }
 
     return {
-      file: await this.fileRepository.create({ path: file.key }),
+      file: await this.fileRepository.create({ path: file.key, ownerId }),
     };
   }
 
   async uploadFromBuffer(
     buffer: Buffer,
     options: { filename: string; mimetype: string },
+    ownerId: string | null = null,
   ): Promise<FileType> {
     const ext =
       options.filename.split('.').pop()?.toLowerCase() ??
@@ -74,44 +80,20 @@ export class FilesS3Service implements IFileUploadService {
       }),
     );
 
-    return this.fileRepository.create({ path: key });
+    return this.fileRepository.create({ path: key, ownerId });
   }
 
-  async getFileUrl(id: FileType['id']): Promise<{ url: string }> {
-    const file = await this.fileRepository.findById(id);
-
-    if (!file) {
-      throw new NotFoundException({
-        status: HttpStatus.NOT_FOUND,
-        error: 'fileNotFound',
-      });
-    }
-
-    if (file.path.startsWith('http')) {
-      return { url: file.path };
-    }
-
-    const command = new GetObjectCommand({
-      Bucket: this.bucket,
-      Key: file.path,
-    });
-
-    const url = await getSignedUrl(this.s3, command, { expiresIn: 3600 });
-    return { url };
-  }
-
-  async getPresignedUrl(
+  async getFileUrl(
     id: FileType['id'],
+    userId: string,
     expiresIn = 3600,
   ): Promise<{ url: string }> {
-    const file = await this.fileRepository.findById(id);
-
-    if (!file) {
-      throw new NotFoundException({
-        status: HttpStatus.NOT_FOUND,
-        error: 'fileNotFound',
-      });
-    }
+    const file = await findAccessibleFile(
+      this.fileRepository,
+      this.userRepository,
+      id,
+      userId,
+    );
 
     if (file.path.startsWith('http')) {
       return { url: file.path };
@@ -122,7 +104,9 @@ export class FilesS3Service implements IFileUploadService {
       Key: file.path,
     });
 
-    const url = await getSignedUrl(this.s3, command, { expiresIn });
+    const url = await getSignedUrl(this.s3, command, {
+      expiresIn: Math.min(Math.max(Math.floor(expiresIn) || 3600, 1), 3600),
+    });
     return { url };
   }
 }

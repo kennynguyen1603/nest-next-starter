@@ -1,7 +1,13 @@
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 NC='\033[0m'
-changed_files=$(git diff --name-only HEAD HEAD~ -- '*.ts' '*.js')
+# Collect files from every commit being pushed that no remote has yet
+changed_files=$(
+  while read -r local_ref local_sha remote_ref remote_sha; do
+    case "$local_sha" in (*[!0]*) ;; (*) continue ;; esac # skip branch deletions
+    git log --name-only --format= "$local_sha" --not --remotes -- '*.ts' '*.js'
+  done | sed '/^$/d' | sort -u
+)
 if [ -n "$changed_files" ]; then
   echo "${BLUE}Running tests due to changes in the following TS/JS files:${NC}"
   echo "$changed_files"

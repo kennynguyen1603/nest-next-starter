@@ -3,6 +3,7 @@
     "appName": "Starter",
     "loading": "Loading…",
     "cancel": "Cancel",
+    "retry": "Try again",
     "saveChanges": "Save changes"
   },
   "home": {
@@ -19,7 +20,19 @@
     "statusActive": "Active",
     "statusInactive": "Inactive",
     "statusPending": "Pending",
-    "statusBanned": "Banned"
+    "statusBanned": "Banned",
+    "statUnread": "Unread notifications",
+    "statSessions": "Active sessions",
+    "statJoined": "Joined",
+    "quickLinks": "Quick links",
+    "linkNotificationsDesc": "Read and manage your notifications.",
+    "linkSecurityDesc": "Review the devices signed in to your account."
+  },
+  "nav": {
+    "label": "Main navigation",
+    "overview": "Overview",
+    "notifications": "Notifications",
+    "security": "Security"
   },
   "auth": {
     "layout": {
@@ -38,7 +51,7 @@
       "orContinueWith": "or continue with",
       "oauthOpening": "Opening…",
       "errorInvalidEmail": "Invalid email address",
-      "errorPasswordLength": "Password must be at least 8 characters",
+      "errorPasswordRequired": "Password is required",
       "errorDefault": "Sign in failed. Please try again.",
       "errorGeneric": "Something went wrong. Please try again."
     },
@@ -142,11 +155,37 @@
     "timeJustNow": "Just now",
     "timeHoursAgo": "{count}h ago",
     "timeYesterday": "Yesterday",
-    "timeDaysAgo": "{count}d ago"
+    "timeDaysAgo": "{count}d ago",
+    "filterLabel": "Filter notifications",
+    "tabAll": "All",
+    "tabUnread": "Unread",
+    "emptyUnread": "No unread notifications",
+    "unreadCount": "{count} unread",
+    "errorMarkRead": "Could not mark that notification as read. Please try again.",
+    "errorDelete": "Could not delete that notification. Please try again.",
+    "errorMarkAllRead": "Could not mark all notifications as read. Please try again.",
+    "errorClearAll": "Could not clear your notifications. Please try again."
   },
   "locale": {
     "switchLanguage": "Language",
     "en": "English",
     "vi": "Tiếng Việt"
+  },
+  "security": {
+    "title": "Security",
+    "subtitle": "Devices signed in to your account.",
+    "sessionsHeading": "Active sessions",
+    "thisDevice": "This device",
+    "unknownDevice": "Unknown device",
+    "ipAddress": "IP {ip}",
+    "lastActive": "Last active {time}",
+    "revoke": "Sign out",
+    "revokeAll": "Sign out all other devices",
+    "revokeAllConfirm": "Sign out all other devices?",
+    "revokeAllWarning": "Every other device will have to sign in again.",
+    "noOtherSessions": "No other devices are signed in.",
+    "errorLoad": "Failed to load sessions.",
+    "errorRevoke": "Could not sign that device out. Please try again.",
+    "errorRevokeAll": "Could not sign out the other devices. Please try again."
   }
 }

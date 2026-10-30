@@ -4,6 +4,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import bcrypt from 'bcryptjs';
 import { RoleEnum } from '@/roles/roles.enum';
+import {
+  seedAdminPassword,
+  seedDemoUser,
+} from '@/database/seeds/seed-credentials';
 import { UserStatus } from '@/users/user-status.enum';
 import { UserEntity } from '@/users/infrastructure/persistence/relational/entities/user.entity';
 import { RoleEntity } from '@/roles/infrastructure/persistence/relational/entities/role.entity';
@@ -29,9 +33,9 @@ export class UserSeedService {
       where: { email: 'admin@example.com' },
     });
 
-    if (!countAdmin && adminRole) {
+    if (!countAdmin && adminRole && seedAdminPassword) {
       const salt = await bcrypt.genSalt();
-      const password = await bcrypt.hash('secret', salt);
+      const password = await bcrypt.hash(seedAdminPassword, salt);
 
       await this.repository.save(
         this.repository.create({
@@ -49,7 +53,7 @@ export class UserSeedService {
       where: { email: 'john.doe@example.com' },
     });
 
-    if (!countUser && userRole) {
+    if (!countUser && userRole && seedDemoUser) {
       const salt = await bcrypt.genSalt();
       const password = await bcrypt.hash('secret', salt);
 

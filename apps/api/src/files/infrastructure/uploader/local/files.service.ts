@@ -2,7 +2,6 @@ import fs from 'fs';
 import {
   HttpStatus,
   Injectable,
-  NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -12,18 +11,24 @@ import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { AllConfigType } from '@/config/config.type';
 import { FileType } from '@/files/domain/file';
 import { FileRepository } from '@/files/infrastructure/persistence/file.repository';
+import { findAccessibleFile } from '@/files/infrastructure/uploader/file-access';
 import { IFileUploadService } from '@/files/infrastructure/uploader/uploader.interface';
+import { UserRepository } from '@/users/infrastructure/persistence/user.repository';
 
 @Injectable()
 export class FilesLocalService implements IFileUploadService {
   constructor(
     private readonly configService: ConfigService<AllConfigType>,
     private readonly fileRepository: FileRepository,
+    private readonly userRepository: UserRepository,
     @InjectPinoLogger(FilesLocalService.name)
     private readonly logger: PinoLogger,
   ) {}
 
-  async create(file: { path: string }): Promise<{ file: FileType }> {
+  async create(
+    file: { path: string },
+    ownerId: string,
+  ): Promise<{ file: FileType }> {
     if (!file) {
       throw new UnprocessableEntityException({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
@@ -38,6 +43,7 @@ export class FilesLocalService implements IFileUploadService {
         path: `/${this.configService.get('app.apiPrefix', {
           infer: true,
         })}/v1/${file.path}`,
+        ownerId,
       }),
     };
   }
@@ -45,6 +51,7 @@ export class FilesLocalService implements IFileUploadService {
   async uploadFromBuffer(
     buffer: Buffer,
     options: { filename: string; mimetype: string },
+    ownerId: string | null = null,
   ): Promise<FileType> {
     const ext =
       options.filename.split('.').pop()?.toLowerCase() ??
@@ -63,6 +70,7 @@ export class FilesLocalService implements IFileUploadService {
     const apiPrefix = this.configService.get('app.apiPrefix', { infer: true });
     const file = await this.fileRepository.create({
       path: `/${apiPrefix}/v1/files/${filename}`,
+      ownerId,
     });
     this.logger.info(
       { fileId: file.id, filename },
@@ -71,15 +79,16 @@ export class FilesLocalService implements IFileUploadService {
     return file;
   }
 
-  async getFileUrl(id: FileType['id']): Promise<{ url: string }> {
-    const file = await this.fileRepository.findById(id);
-
-    if (!file) {
-      throw new NotFoundException({
-        status: HttpStatus.NOT_FOUND,
-        error: 'fileNotFound',
-      });
-    }
+  async getFileUrl(
+    id: FileType['id'],
+    userId: string,
+  ): Promise<{ url: string }> {
+    const file = await findAccessibleFile(
+      this.fileRepository,
+      this.userRepository,
+      id,
+      userId,
+    );
 
     if (file.path.startsWith('http')) {
       return { url: file.path };

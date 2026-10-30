@@ -1,3 +1,4 @@
+import type { AuthUser } from "@repo/types";
 import { useAuthStore } from "@/lib/auth-store";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
@@ -52,6 +53,20 @@ async function clearSession(): Promise<void> {
   await fetch("/api/auth/clear-session", { method: "POST" }).catch(() => {});
 }
 
+export function isAdmin(user: AuthUser | null): boolean {
+  return !!user?.roles?.some((r) => r.name === "admin");
+}
+
+// Ends the server-side session too, so a non-admin refresh cookie cannot keep
+// reopening the dashboard. The API's RolesGuard remains the real control.
+export async function revokeSession(): Promise<void> {
+  await fetch(`${BASE_URL}/api/v1/auth/logout`, {
+    method: "POST",
+    credentials: "include",
+  }).catch(() => {});
+  await clearSession();
+}
+
 // Dedupe concurrent refreshes (layout bootstrap + a page fetch + a 401 retry can
 // all fire at once) so they share one round-trip instead of racing.
 let refreshInFlight: Promise<boolean> | null = null;
@@ -82,7 +97,11 @@ async function doRefresh(): Promise<boolean> {
       credentials: "include",
       headers: { Authorization: `Bearer ${token}` },
     });
-    const user = meRes.ok ? await meRes.json() : null;
+    const user = meRes.ok ? ((await meRes.json()) as AuthUser) : null;
+    if (!isAdmin(user)) {
+      await revokeSession();
+      return false;
+    }
     useAuthStore.getState().setAuth(token, tokenExpires, user);
     return true;
   } catch {

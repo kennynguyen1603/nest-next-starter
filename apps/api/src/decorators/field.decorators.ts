@@ -4,7 +4,6 @@ import { ApiProperty, type ApiPropertyOptions } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
-  IsDate,
   IsDefined,
   IsEmail,
   IsEnum,
@@ -15,8 +14,6 @@ import {
   IsOptional,
   IsPositive,
   IsString,
-  IsUrl,
-  IsUUID,
   Max,
   MaxLength,
   Min,
@@ -270,97 +267,6 @@ export function EmailFieldOptional(
   return applyDecorators(
     IsOptional({ each: options.each }),
     EmailField({ required: false, ...options }),
-  );
-}
-
-export function UUIDField(
-  options: Omit<ApiPropertyOptions, 'type' | 'format' | 'isArray'> &
-    IFieldOptions = {},
-): PropertyDecorator {
-  const decorators = [Type(() => String), IsUUID('4', { each: options.each })];
-
-  if (options.nullable) {
-    decorators.push(IsNullable());
-  } else {
-    decorators.push(NotEquals(null));
-  }
-
-  if (options.swagger !== false) {
-    decorators.push(
-      ApiProperty({
-        type: options.each ? [String] : String,
-        format: 'uuid',
-        isArray: options.each,
-        ...options,
-      } as unknown as ApiPropertyOptions),
-    );
-  }
-
-  return applyDecorators(...decorators);
-}
-
-export function UUIDFieldOptional(
-  options: Omit<ApiPropertyOptions, 'type' | 'required' | 'isArray'> &
-    IFieldOptions = {},
-): PropertyDecorator {
-  return applyDecorators(
-    IsOptional({ each: options.each }),
-    UUIDField({ required: false, ...options }),
-  );
-}
-
-export function URLField(
-  options: Omit<ApiPropertyOptions, 'type'> & IStringFieldOptions = {},
-): PropertyDecorator {
-  const decorators = [StringField(options), IsUrl({}, { each: true })];
-
-  if (options.nullable) {
-    decorators.push(IsNullable({ each: options.each }));
-  } else {
-    decorators.push(NotEquals(null, { each: options.each }));
-  }
-
-  return applyDecorators(...decorators);
-}
-
-export function URLFieldOptional(
-  options: Omit<ApiPropertyOptions, 'type'> & IStringFieldOptions = {},
-): PropertyDecorator {
-  return applyDecorators(
-    IsOptional({ each: options.each }),
-    URLField({ required: false, ...options }),
-  );
-}
-
-export function DateField(
-  options: Omit<ApiPropertyOptions, 'type'> & IFieldOptions = {},
-): PropertyDecorator {
-  const decorators = [Type(() => Date), IsDate()];
-
-  if (options.nullable) {
-    decorators.push(IsNullable());
-  } else {
-    decorators.push(NotEquals(null));
-  }
-
-  if (options.swagger !== false) {
-    decorators.push(
-      ApiProperty({
-        type: Date,
-        ...options,
-      } as unknown as ApiPropertyOptions),
-    );
-  }
-
-  return applyDecorators(...decorators);
-}
-
-export function DateFieldOptional(
-  options: Omit<ApiPropertyOptions, 'type' | 'required'> & IFieldOptions = {},
-): PropertyDecorator {
-  return applyDecorators(
-    IsOptional({ each: options.each }),
-    DateField({ ...options, required: false }),
   );
 }
 

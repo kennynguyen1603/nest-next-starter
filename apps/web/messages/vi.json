@@ -3,6 +3,7 @@
     "appName": "Starter",
     "loading": "Đang tải…",
     "cancel": "Hủy",
+    "retry": "Thử lại",
     "saveChanges": "Lưu thay đổi"
   },
   "home": {
@@ -19,7 +20,19 @@
     "statusActive": "Hoạt động",
     "statusInactive": "Không hoạt động",
     "statusPending": "Chờ xác nhận",
-    "statusBanned": "Bị cấm"
+    "statusBanned": "Bị cấm",
+    "statUnread": "Thông báo chưa đọc",
+    "statSessions": "Phiên đăng nhập",
+    "statJoined": "Ngày tham gia",
+    "quickLinks": "Lối tắt",
+    "linkNotificationsDesc": "Đọc và quản lý thông báo của bạn.",
+    "linkSecurityDesc": "Xem các thiết bị đang đăng nhập vào tài khoản."
+  },
+  "nav": {
+    "label": "Điều hướng chính",
+    "overview": "Tổng quan",
+    "notifications": "Thông báo",
+    "security": "Bảo mật"
   },
   "auth": {
     "layout": {
@@ -38,7 +51,7 @@
       "orContinueWith": "hoặc tiếp tục với",
       "oauthOpening": "Đang mở…",
       "errorInvalidEmail": "Địa chỉ email không hợp lệ",
-      "errorPasswordLength": "Mật khẩu phải có ít nhất 8 ký tự",
+      "errorPasswordRequired": "Vui lòng nhập mật khẩu",
       "errorDefault": "Đăng nhập thất bại. Vui lòng thử lại.",
       "errorGeneric": "Đã xảy ra lỗi. Vui lòng thử lại."
     },
@@ -126,7 +139,7 @@
   },
   "notifications": {
     "title": "Thông báo",
-    "markAllRead": "Đánh dấu đã đọc",
+    "markAllRead": "Đánh dấu tất cả đã đọc",
     "clearAll": "Xóa tất cả",
     "markRead": "Đánh dấu đã đọc",
     "delete": "Xóa",
@@ -142,11 +155,37 @@
     "timeJustNow": "Vừa xong",
     "timeHoursAgo": "{count} giờ trước",
     "timeYesterday": "Hôm qua",
-    "timeDaysAgo": "{count} ngày trước"
+    "timeDaysAgo": "{count} ngày trước",
+    "filterLabel": "Lọc thông báo",
+    "tabAll": "Tất cả",
+    "tabUnread": "Chưa đọc",
+    "emptyUnread": "Không có thông báo chưa đọc",
+    "unreadCount": "{count} chưa đọc",
+    "errorMarkRead": "Không thể đánh dấu thông báo đã đọc. Vui lòng thử lại.",
+    "errorDelete": "Không thể xóa thông báo. Vui lòng thử lại.",
+    "errorMarkAllRead": "Không thể đánh dấu tất cả đã đọc. Vui lòng thử lại.",
+    "errorClearAll": "Không thể xóa các thông báo. Vui lòng thử lại."
   },
   "locale": {
     "switchLanguage": "Ngôn ngữ",
     "en": "English",
     "vi": "Tiếng Việt"
+  },
+  "security": {
+    "title": "Bảo mật",
+    "subtitle": "Các thiết bị đang đăng nhập vào tài khoản của bạn.",
+    "sessionsHeading": "Phiên đăng nhập",
+    "thisDevice": "Thiết bị này",
+    "unknownDevice": "Thiết bị không xác định",
+    "ipAddress": "IP {ip}",
+    "lastActive": "Hoạt động lần cuối {time}",
+    "revoke": "Đăng xuất",
+    "revokeAll": "Đăng xuất mọi thiết bị khác",
+    "revokeAllConfirm": "Đăng xuất mọi thiết bị khác?",
+    "revokeAllWarning": "Mọi thiết bị khác sẽ phải đăng nhập lại.",
+    "noOtherSessions": "Không có thiết bị nào khác đang đăng nhập.",
+    "errorLoad": "Không tải được danh sách phiên.",
+    "errorRevoke": "Không thể đăng xuất thiết bị này. Vui lòng thử lại.",
+    "errorRevokeAll": "Không thể đăng xuất các thiết bị khác. Vui lòng thử lại."
   }
 }

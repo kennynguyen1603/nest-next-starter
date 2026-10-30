@@ -7,7 +7,6 @@ import {
   FacebookDebugTokenResponse,
   FacebookErrorResponse,
   FacebookInterface,
-  FacebookTokenExchangeResponse,
 } from './interfaces/facebook.interface';
 import { AuthFacebookLoginDto } from './dto/auth-facebook-login.dto';
 import { AllConfigType } from '../config/config.type';
@@ -195,48 +194,6 @@ export class AuthFacebookService {
       throw new HttpException(
         'Token verification failed',
         HttpStatus.UNAUTHORIZED,
-      );
-    }
-  }
-
-  /**
-   * Exchanges a short-lived Facebook access token for a long-lived one.
-   * Useful for persisting user sessions longer than the default 1–2 hours.
-   * @param shortLivedToken Facebook's default short-lived token.
-   * @returns A long-lived access token from Facebook.
-   */
-  async exchangeForLongLivedToken(shortLivedToken: string): Promise<string> {
-    try {
-      const { appId, appSecret } = this.getAppCredentials();
-
-      const tokenUrl = new URL(`${this.baseUrl}/oauth/access_token`);
-      tokenUrl.searchParams.set('grant_type', 'fb_exchange_token');
-      tokenUrl.searchParams.set('client_id', appId);
-      tokenUrl.searchParams.set('client_secret', appSecret);
-      tokenUrl.searchParams.set('fb_exchange_token', shortLivedToken);
-
-      const response = await fetch(tokenUrl.toString(), {
-        method: 'GET',
-        headers: {
-          Accept: 'application/json',
-        },
-        signal: AbortSignal.timeout(10000),
-      });
-
-      if (!response.ok) {
-        throw new HttpException(
-          'Failed to exchange token',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      const data = (await response.json()) as FacebookTokenExchangeResponse;
-      return data.access_token;
-    } catch (error: unknown) {
-      this.logger.error({ err: error }, 'Facebook token exchange failed');
-      throw new HttpException(
-        'Failed to exchange token',
-        HttpStatus.BAD_REQUEST,
       );
     }
   }

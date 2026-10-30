@@ -1,5 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
+import { AllConfigType } from '../config/config.type';
 import { SocialInterface } from '../social/interfaces/social.interface';
 import { AuthGithubLoginDto } from './dto/auth-github-login.dto';
 import { GithubInterface } from './interfaces/github.interface';
@@ -11,7 +13,47 @@ export class AuthGithubService {
   constructor(
     @InjectPinoLogger(AuthGithubService.name)
     private readonly logger: PinoLogger,
+    private readonly configService: ConfigService<AllConfigType>,
   ) {}
+
+  /**
+   * GitHub access tokens carry no audience, so a token issued to any other
+   * OAuth app would otherwise resolve to the same profile. The check-token
+   * endpoint only succeeds when the token belongs to our client id.
+   */
+  private async assertTokenIssuedToApp(accessToken: string): Promise<void> {
+    const clientId = this.configService.getOrThrow('github.clientId', {
+      infer: true,
+    });
+    const clientSecret = this.configService.getOrThrow('github.clientSecret', {
+      infer: true,
+    });
+    const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString(
+      'base64',
+    );
+
+    const response = await fetch(
+      `${this.apiUrl}/applications/${clientId}/token`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${credentials}`,
+          Accept: 'application/vnd.github+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ access_token: accessToken }),
+        signal: AbortSignal.timeout(10000),
+      },
+    );
+
+    if (!response.ok) {
+      this.logger.warn(
+        { statusCode: response.status },
+        'GitHub token was not issued to this app',
+      );
+      throw new HttpException('Invalid GitHub token', HttpStatus.UNAUTHORIZED);
+    }
+  }
 
   async getProfileByToken(
     loginDto: AuthGithubLoginDto,
@@ -19,6 +61,8 @@ export class AuthGithubService {
     this.logger.debug('Fetching GitHub user profile');
 
     try {
+      await this.assertTokenIssuedToApp(loginDto.accessToken);
+
       const response = await fetch(`${this.apiUrl}/user`, {
         headers: {
           Authorization: `Bearer ${loginDto.accessToken}`,

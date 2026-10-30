@@ -8,4 +8,7 @@ export class FileEntity extends EntityRelationalHelper {
 
   @Column()
   path!: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  ownerId?: string | null;
 }

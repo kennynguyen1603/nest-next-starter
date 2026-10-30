@@ -129,11 +129,17 @@ export async function POST(
   { params }: { params: Promise<{ provider: string }> },
 ) {
   const { provider } = await params;
-  const origin = request.headers.get("origin") ?? "http://localhost:3000";
+  // The redirect URI is derived from Origin, so only accept same-host requests.
+  const origin = request.headers.get("origin");
+  const host =
+    request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  if (!origin || URL.parse(origin)?.host !== host) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   const redirectUri = `${origin}/auth/${provider}/callback`;
   const browserUserAgent = request.headers.get("user-agent") ?? "";
 
-  let body: ExchangeBody;
+  let body: Partial<ExchangeBody> | null;
   try {
     body = await request.json();
   } catch {
@@ -143,7 +149,10 @@ export async function POST(
     );
   }
 
-  const { code, codeVerifier } = body;
+  // Valid JSON may still be null, a primitive, or carry non-string fields.
+  const code = typeof body?.code === "string" ? body.code : "";
+  const codeVerifier =
+    typeof body?.codeVerifier === "string" ? body.codeVerifier : "";
   if (!code) {
     return NextResponse.json({ error: "Missing code" }, { status: 400 });
   }
@@ -196,13 +205,12 @@ export async function POST(
 
     const data = await backendRes.json();
     const response = NextResponse.json(data);
-    const setCookie = backendRes.headers.get("set-cookie");
-    if (setCookie) {
-      response.headers.set("set-cookie", setCookie);
+    // Forward every cookie; get("set-cookie") would merge them into one header.
+    for (const cookie of backendRes.headers.getSetCookie()) {
+      response.headers.append("set-cookie", cookie);
     }
     return response;
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Exchange failed";
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Exchange failed" }, { status: 500 });
   }
 }

@@ -1,6 +1,6 @@
 import path from 'path';
 
-import { Module } from '@nestjs/common';
+import { Logger, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { LoggerModule } from 'nestjs-pino';
@@ -58,7 +58,6 @@ import useBullFactory from './config/bull/bull.factory';
 import useLoggerFactory from './tools/logger/logger-factory';
 import { GlobalExceptionFilter } from './filters/global-exception.filter';
 import throttlerConfig from './config/throttler/throttler.config';
-import grafanaConfig from './config/grafana/grafana.config';
 import useThrottlerFactory from './config/throttler/throttler.factory';
 import { AppThrottlerGuard } from './config/throttler/throttler.guard';
 
@@ -125,7 +124,6 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
         redisConfig,
         bullConfig,
         throttlerConfig,
-        grafanaConfig,
       ],
       envFilePath: ['.env'],
     }),
@@ -135,7 +133,11 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
         fallbackLanguage: configService.getOrThrow('app.fallbackLanguage', {
           infer: true,
         }),
-        loaderOptions: { path: path.join(__dirname, '/i18n/'), watch: true },
+        loaderOptions: {
+          path: path.join(__dirname, '/i18n/'),
+          watch:
+            configService.get('app.nodeEnv', { infer: true }) === 'development',
+        },
       }),
       resolvers: [
         {
@@ -175,9 +177,8 @@ const infrastructureDatabaseModule = (databaseConfig() as DatabaseConfig)
     PrometheusModule.register(),
     MetricsModule,
     GracefulShutdownModule.forRoot({
-      cleanup: (...args) => {
-        // eslint-disable-next-line no-console
-        console.log('App shutting down...', args);
+      cleanup: () => {
+        new Logger('GracefulShutdown').log('App shutting down...');
       },
     }),
     WorkerModule,

@@ -6,13 +6,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
   AlertCircle,
-  Bell,
   CheckCircle,
   Clock,
   Megaphone,
   Send,
   Users,
 } from "lucide-react";
+import { Alert } from "@repo/ui/alert";
+import { Button } from "@repo/ui/button";
+import { FormField } from "@repo/ui/form-field";
+import { Input, Select, Textarea } from "@repo/ui/input";
 import { api } from "@/lib/api";
 
 const NOTIFICATIONS_ENABLED =
@@ -72,16 +75,22 @@ function parseData(raw?: string): Record<string, unknown> | undefined {
 function FeatureDisabled() {
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold text-gray-900">Notifications</h1>
-      <div className="flex gap-4 rounded-xl border border-amber-200 bg-amber-50 p-6">
-        <AlertCircle size={20} className="mt-0.5 shrink-0 text-amber-500" />
+      <h1 className="text-h2">Notifications</h1>
+      <div className="flex gap-4 border border-amber-200 bg-amber-50 p-6">
+        <AlertCircle
+          size={20}
+          className="mt-0.5 shrink-0 text-amber-600"
+          aria-hidden="true"
+        />
         <div className="space-y-2">
-          <p className="text-sm font-medium text-amber-800">Feature disabled</p>
-          <p className="text-sm text-amber-700">
+          <p className="text-small font-medium text-amber-900">
+            Feature disabled
+          </p>
+          <p className="text-small text-amber-800">
             The notification module is currently disabled. Set the following
             environment variables and restart both services to enable it:
           </p>
-          <pre className="mt-1 rounded bg-amber-100 px-3 py-2 font-mono text-xs text-amber-900">
+          <pre className="mt-1 bg-amber-100 px-3 py-2 font-mono text-caption text-amber-900">
             {`# apps/api/.env\nNOTIFICATIONS_ENABLED=true\n\n# apps/admin/.env.local\nNEXT_PUBLIC_NOTIFICATIONS_ENABLED=true`}
           </pre>
         </div>
@@ -101,66 +110,57 @@ interface BaseFieldsProps {
 function BaseFields({ register, errors }: BaseFieldsProps) {
   return (
     <>
-      {/* Type */}
-      <div>
-        <label className="mb-1 block text-sm font-medium text-gray-700">
-          Type <span className="text-red-500">*</span>
-        </label>
-        <select
-          {...register("type")}
-          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus-visible:border-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-        >
+      <FormField id="type" label="Type" required>
+        <Select id="type" {...register("type")}>
           <option value="system">System</option>
-        </select>
-      </div>
+        </Select>
+      </FormField>
 
-      {/* Title */}
-      <div>
-        <label className="mb-1 block text-sm font-medium text-gray-700">
-          Title <span className="text-red-500">*</span>
-        </label>
-        <input
-          {...register("title")}
+      <FormField
+        id="title"
+        label="Title"
+        required
+        error={errors.title?.message}
+      >
+        <Input
+          id="title"
           placeholder="Welcome to the platform"
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus-visible:border-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          invalid={!!errors.title}
+          {...register("title")}
         />
-        {errors.title && (
-          <p className="mt-1 text-xs text-red-600">{errors.title.message}</p>
-        )}
-      </div>
+      </FormField>
 
-      {/* Message */}
-      <div>
-        <label className="mb-1 block text-sm font-medium text-gray-700">
-          Message <span className="text-red-500">*</span>
-        </label>
-        <textarea
-          {...register("message")}
+      <FormField
+        id="message"
+        label="Message"
+        required
+        error={errors.message?.message}
+      >
+        <Textarea
+          id="message"
           rows={3}
           placeholder="Your account has been set up successfully."
-          className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus-visible:border-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          invalid={!!errors.message}
+          className="resize-none"
+          {...register("message")}
         />
-        {errors.message && (
-          <p className="mt-1 text-xs text-red-600">{errors.message.message}</p>
-        )}
-      </div>
+      </FormField>
 
-      {/* Extra data */}
-      <div>
-        <label className="mb-1 block text-sm font-medium text-gray-700">
-          Extra data{" "}
-          <span className="font-normal text-gray-400">(optional JSON)</span>
-        </label>
-        <textarea
-          {...register("data")}
+      <FormField
+        id="data"
+        label="Extra data"
+        hint="Optional JSON"
+        error={errors.data?.message}
+      >
+        <Textarea
+          id="data"
           rows={3}
           placeholder={'{ "link": "/dashboard" }'}
-          className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm focus-visible:border-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          invalid={!!errors.data}
+          className="resize-none font-mono"
+          {...register("data")}
         />
-        {errors.data && (
-          <p className="mt-1 text-xs text-red-600">{errors.data.message}</p>
-        )}
-      </div>
+      </FormField>
     </>
   );
 }
@@ -210,29 +210,28 @@ function SingleTab({ onSent }: { onSent: (entry: SentEntry) => void }) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
-      <div>
-        <label className="mb-1 block text-sm font-medium text-gray-700">
-          User ID <span className="text-red-500">*</span>
-        </label>
-        <input
-          {...register("userId")}
+      <FormField
+        id="userId"
+        label="User ID"
+        required
+        error={errors.userId?.message}
+      >
+        <Input
+          id="userId"
           placeholder="6a11a4f5f8c013f044fe3299"
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus-visible:border-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          invalid={!!errors.userId}
+          {...register("userId")}
         />
-        {errors.userId && (
-          <p className="mt-1 text-xs text-red-600">{errors.userId.message}</p>
-        )}
-      </div>
+      </FormField>
 
       <BaseFields register={register} errors={errors} />
 
-      {submitError && <ErrorBanner message={submitError} />}
+      {submitError && <Alert>{submitError}</Alert>}
 
-      <SubmitButton
-        loading={isSubmitting}
-        label="Send notification"
-        icon={<Send size={14} />}
-      />
+      <Button type="submit" loading={isSubmitting}>
+        {!isSubmitting && <Send size={14} aria-hidden="true" />}
+        {isSubmitting ? "Sending…" : "Send notification"}
+      </Button>
     </form>
   );
 }
@@ -296,9 +295,13 @@ function BroadcastTab({ onSent }: { onSent: (entry: SentEntry) => void }) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
-      <div className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5">
-        <Users size={15} className="mt-0.5 shrink-0 text-blue-500" />
-        <p className="text-xs text-blue-700">
+      <div className="flex items-start gap-2 border border-border bg-surface px-3 py-2.5">
+        <Users
+          size={15}
+          className="mt-0.5 shrink-0 text-muted"
+          aria-hidden="true"
+        />
+        <p className="text-caption text-muted">
           This notification will be sent to <strong>every user</strong> in the
           system. Use with care.
         </p>
@@ -306,12 +309,16 @@ function BroadcastTab({ onSent }: { onSent: (entry: SentEntry) => void }) {
 
       <BaseFields register={register} errors={errors} />
 
-      {submitError && <ErrorBanner message={submitError} />}
+      {submitError && <Alert>{submitError}</Alert>}
 
       {confirming && !isSubmitting && (
-        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
-          <AlertCircle size={15} className="mt-0.5 shrink-0 text-amber-500" />
-          <div className="flex-1 text-xs text-amber-700">
+        <div className="flex items-start gap-2 border border-amber-200 bg-amber-50 px-3 py-2.5">
+          <AlertCircle
+            size={15}
+            className="mt-0.5 shrink-0 text-amber-600"
+            aria-hidden="true"
+          />
+          <div className="flex-1 text-caption text-amber-800">
             <p className="font-medium">Confirm broadcast</p>
             <p className="mt-0.5">
               &ldquo;{getValues("title")}&rdquo; will be sent to all users.
@@ -321,60 +328,26 @@ function BroadcastTab({ onSent }: { onSent: (entry: SentEntry) => void }) {
           <button
             type="button"
             onClick={() => setConfirming(false)}
-            className="shrink-0 text-xs text-amber-600 underline hover:text-amber-800"
+            className="shrink-0 text-caption text-amber-800 underline underline-offset-4 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground"
           >
             Cancel
           </button>
         </div>
       )}
 
-      <SubmitButton
+      <Button
+        type="submit"
+        variant={confirming ? "danger" : "primary"}
         loading={isSubmitting}
-        label={
-          confirming ? "Confirm — send to all users" : "Broadcast to all users"
-        }
-        icon={<Megaphone size={14} />}
-        danger={confirming}
-      />
+      >
+        {!isSubmitting && <Megaphone size={14} aria-hidden="true" />}
+        {isSubmitting
+          ? "Sending…"
+          : confirming
+            ? "Confirm — send to all users"
+            : "Broadcast to all users"}
+      </Button>
     </form>
-  );
-}
-
-// ─── Small shared UI atoms ────────────────────────────────────────────────────
-
-function ErrorBanner({ message }: { message: string }) {
-  return (
-    <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3">
-      <AlertCircle size={15} className="shrink-0 text-red-500" />
-      <p className="text-xs text-red-700">{message}</p>
-    </div>
-  );
-}
-
-function SubmitButton({
-  loading,
-  label,
-  icon,
-  danger = false,
-}: {
-  loading: boolean;
-  label: string;
-  icon: React.ReactNode;
-  danger?: boolean;
-}) {
-  return (
-    <button
-      type="submit"
-      disabled={loading}
-      className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-        danger
-          ? "bg-amber-600 hover:bg-amber-700"
-          : "bg-indigo-600 hover:bg-indigo-700"
-      }`}
-    >
-      {icon}
-      {loading ? "Sending…" : label}
-    </button>
   );
 }
 
@@ -383,26 +356,26 @@ function SubmitButton({
 function SentHistory({ entries }: { entries: SentEntry[] }) {
   if (entries.length === 0) return null;
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <div className="border-b border-gray-100 px-5 py-4">
-        <h2 className="text-sm font-semibold text-gray-900">
-          Sent this session
-        </h2>
-      </div>
-      <ul className="divide-y divide-gray-100">
+    <div className="border border-border bg-background">
+      <h2 className="border-b border-border px-5 py-4 text-label uppercase text-muted">
+        Sent this session
+      </h2>
+      <ul className="divide-y divide-border">
         {entries.map((n) => (
           <li key={n.id} className="flex items-start gap-3 px-5 py-4">
-            <CheckCircle size={16} className="mt-0.5 shrink-0 text-green-500" />
+            <CheckCircle
+              size={16}
+              className="mt-0.5 shrink-0 text-green-600"
+              aria-hidden="true"
+            />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-gray-900">
-                {n.title}
-              </p>
-              <p className="mt-0.5 truncate text-xs text-gray-500">
+              <p className="truncate text-small font-medium">{n.title}</p>
+              <p className="mt-0.5 truncate text-caption text-muted">
                 → {n.target}
               </p>
             </div>
-            <div className="flex shrink-0 items-center gap-1 text-xs text-gray-400">
-              <Clock size={12} />
+            <div className="flex shrink-0 items-center gap-1 text-caption text-muted tabular-nums">
+              <Clock size={12} aria-hidden="true" />
               {new Date(n.sentAt).toLocaleTimeString()}
             </div>
           </li>
@@ -426,29 +399,31 @@ function NotificationsMain() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Bell size={20} className="text-indigo-500" />
-        <h1 className="text-xl font-semibold text-gray-900">Notifications</h1>
+      <div>
+        <h1 className="text-h2">Notifications</h1>
+        <p className="mt-1 text-small text-muted">
+          Send a notification to one user or broadcast to everyone.
+        </p>
       </div>
 
       {/* Tab switcher */}
-      <div className="flex gap-1 rounded-lg border border-gray-200 bg-gray-50 p-1 w-fit">
+      <div className="flex w-fit border border-border">
         <TabButton
           active={tab === "single"}
           onClick={() => setTab("single")}
-          icon={<Send size={14} />}
+          icon={<Send size={14} aria-hidden="true" />}
           label="Single user"
         />
         <TabButton
           active={tab === "broadcast"}
           onClick={() => setTab("broadcast")}
-          icon={<Megaphone size={14} />}
+          icon={<Megaphone size={14} aria-hidden="true" />}
           label="Broadcast to all"
         />
       </div>
 
       {/* Form card */}
-      <div className="rounded-xl border border-gray-200 bg-white p-6">
+      <div className="border border-border bg-background p-6">
         {tab === "single" ? (
           <SingleTab onSent={addSent} />
         ) : (
@@ -476,10 +451,11 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+      aria-pressed={active}
+      className={`flex h-9 items-center gap-2 px-4 text-small font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-foreground ${
         active
-          ? "bg-white text-gray-900 shadow-sm"
-          : "text-gray-500 hover:text-gray-700"
+          ? "bg-foreground text-background"
+          : "text-muted hover:text-foreground"
       }`}
     >
       {icon}

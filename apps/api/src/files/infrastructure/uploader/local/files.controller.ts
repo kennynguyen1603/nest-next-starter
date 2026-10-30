@@ -4,6 +4,7 @@ import {
   NotFoundException,
   Param,
   Post,
+  Request,
   Response,
   UploadedFile,
   UseGuards,
@@ -23,6 +24,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
+import { JwtPayloadType } from '@/auth/strategies/types/jwt-payload.type';
 import { FilesLocalService } from './files.service';
 import { FileResponseDto } from './dto/file-response.dto';
 
@@ -55,8 +57,9 @@ export class FilesLocalController {
   @UseInterceptors(FileInterceptor('file'))
   async uploadFile(
     @UploadedFile() file: Express.Multer.File,
+    @Request() request: { user: JwtPayloadType },
   ): Promise<FileResponseDto> {
-    return this.filesService.create(file);
+    return this.filesService.create(file, request.user.id);
   }
 
   @ApiOperation({ summary: 'Get URL to display a file' })
@@ -67,8 +70,11 @@ export class FilesLocalController {
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
   @Get(':id/url')
-  async getFileUrl(@Param('id') id: string): Promise<{ url: string }> {
-    return this.filesService.getFileUrl(id);
+  async getFileUrl(
+    @Param('id') id: string,
+    @Request() request: { user: JwtPayloadType },
+  ): Promise<{ url: string }> {
+    return this.filesService.getFileUrl(id, request.user.id);
   }
 
   // Served publicly so <img src> can load it (a bearer token can't ride on an

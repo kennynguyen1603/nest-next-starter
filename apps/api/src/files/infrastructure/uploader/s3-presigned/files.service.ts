@@ -1,7 +1,6 @@
 import {
   HttpStatus,
   Injectable,
-  NotFoundException,
   PayloadTooLargeException,
   UnprocessableEntityException,
 } from '@nestjs/common';
@@ -18,7 +17,9 @@ import { FileRepository } from '@/files/infrastructure/persistence/file.reposito
 import { FileType } from '@/files/domain/file';
 import { FileUploadDto } from './dto/file.dto';
 import { AllConfigType } from '@/config/config.type';
+import { findAccessibleFile } from '@/files/infrastructure/uploader/file-access';
 import { IFileUploadService } from '@/files/infrastructure/uploader/uploader.interface';
+import { UserRepository } from '@/users/infrastructure/persistence/user.repository';
 
 @Injectable()
 export class FilesS3PresignedService implements IFileUploadService {
@@ -27,6 +28,7 @@ export class FilesS3PresignedService implements IFileUploadService {
 
   constructor(
     private readonly fileRepository: FileRepository,
+    private readonly userRepository: UserRepository,
     private readonly configService: ConfigService<AllConfigType>,
   ) {
     this.s3 = new S3Client({
@@ -47,6 +49,7 @@ export class FilesS3PresignedService implements IFileUploadService {
 
   async create(
     file: FileUploadDto,
+    ownerId: string,
   ): Promise<{ file: FileType; uploadSignedUrl: string }> {
     if (!file) {
       throw new UnprocessableEntityException({
@@ -92,6 +95,7 @@ export class FilesS3PresignedService implements IFileUploadService {
     const signedUrl = await getSignedUrl(this.s3, command, { expiresIn: 3600 });
     const data = await this.fileRepository.create({
       path: key,
+      ownerId,
     });
 
     return {
@@ -103,6 +107,7 @@ export class FilesS3PresignedService implements IFileUploadService {
   async uploadFromBuffer(
     buffer: Buffer,
     options: { filename: string; mimetype: string },
+    ownerId: string | null = null,
   ): Promise<FileType> {
     const ext =
       options.filename.split('.').pop()?.toLowerCase() ??
@@ -119,18 +124,19 @@ export class FilesS3PresignedService implements IFileUploadService {
       }),
     );
 
-    return this.fileRepository.create({ path: key });
+    return this.fileRepository.create({ path: key, ownerId });
   }
 
-  async getFileUrl(id: FileType['id']): Promise<{ url: string }> {
-    const file = await this.fileRepository.findById(id);
-
-    if (!file) {
-      throw new NotFoundException({
-        status: HttpStatus.NOT_FOUND,
-        error: 'fileNotFound',
-      });
-    }
+  async getFileUrl(
+    id: FileType['id'],
+    userId: string,
+  ): Promise<{ url: string }> {
+    const file = await findAccessibleFile(
+      this.fileRepository,
+      this.userRepository,
+      id,
+      userId,
+    );
 
     if (file.path.startsWith('http')) {
       return { url: file.path };

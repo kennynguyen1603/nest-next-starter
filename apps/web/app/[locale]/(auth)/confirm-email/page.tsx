@@ -6,7 +6,8 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "@/lib/navigation";
 import { Link } from "@/lib/navigation";
 import { api } from "@/lib/api";
-import { Spinner } from "@/components/spinner";
+import { Alert } from "@repo/ui/alert";
+import { Spinner } from "@repo/ui/spinner";
 import { AuthSuccessState } from "@/components/auth-success-state";
 
 type Status = "loading" | "success" | "error";
@@ -47,7 +48,7 @@ function ConfirmEmailContent() {
     return (
       <div className="mb-8 flex flex-col items-start gap-4">
         <Spinner size="lg" variant="neutral" />
-        <p className="text-sm text-neutral-500">{t("loading")}</p>
+        <p className="text-small text-muted">{t("loading")}</p>
       </div>
     );
   }
@@ -65,17 +66,12 @@ function ConfirmEmailContent() {
   return (
     <>
       <div className="mb-8">
-        <h1 className="text-3xl font-semibold tracking-tight">{t("title")}</h1>
-        <p
-          role="alert"
-          className="mt-2 text-sm text-red-600 bg-red-50 border border-red-200 px-3 py-2.5"
-        >
-          {errorMessage}
-        </p>
+        <h1 className="text-h1">{t("title")}</h1>
+        <Alert className="mt-2">{errorMessage}</Alert>
       </div>
       <Link
         href="/login"
-        className="text-sm font-medium underline underline-offset-2 hover:text-neutral-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
+        className="text-small font-medium text-foreground underline underline-offset-4 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground"
       >
         {t("backToSignIn")}
       </Link>

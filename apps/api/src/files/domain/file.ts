@@ -1,4 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
+import { Exclude } from 'class-transformer';
 import { Allow } from 'class-validator';
 
 export class FileType {
@@ -9,4 +10,8 @@ export class FileType {
   @Allow()
   @ApiProperty({ type: String })
   path!: string;
+
+  @ApiHideProperty()
+  @Exclude({ toPlainOnly: true })
+  ownerId?: string | null;
 }

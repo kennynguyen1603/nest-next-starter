@@ -15,7 +15,6 @@
     "@repo/types": "workspace:*",
     "@repo/ui": "workspace:*",
     "@tailwindcss/postcss": "^4.2.4",
-    "autoprefixer": "^10.5.0",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.511.0",
     "next": "16.2.6",

@@ -20,16 +20,20 @@ export enum Order {
 // Redact value of these paths from logs
 export const loggingRedactPaths = [
   'req.headers.authorization',
+  'req.headers.cookie',
+  'res.headers["set-cookie"]',
   'req.body.token',
   'req.body.refreshToken',
   'req.body.email',
   'req.body.password',
   'req.body.oldPassword',
+  'req.body.hash',
 ];
 
 export const IS_PUBLIC = 'is-public';
-export const IS_AUTH_OPTIONAL = 'is-auth-optional';
+
+export const SWAGGER_PATH = '/docs';
 
 export const DEFAULT_PAGE_LIMIT = 10;
+export const MAX_PAGE_LIMIT = 100;
 export const DEFAULT_CURRENT_PAGE = 1;
-export const SYSTEM_USER_ID = 'system';

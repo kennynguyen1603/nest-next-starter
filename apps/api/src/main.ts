@@ -17,15 +17,13 @@ import { Request, Response, NextFunction } from 'express';
 import { setupGracefulShutdown } from 'nestjs-graceful-shutdown';
 
 import { AppModule } from './app.module';
-import { ResolvePromisesInterceptor } from '@/utils/serializer.interceptor';
 import validationOptions from '@/utils/validation-options';
 import { AllConfigType } from './config/config.type';
 import { BULL_BOARD_PATH } from './config/bull/bull.config';
 import { HttpMetricsMiddleware } from './metrics/http-metrics.middleware';
 import { basicAuthMiddleware } from './middlewares/basic-auth.middleware';
 import { RedisIoAdapter } from './socket/socket.adapter';
-
-export const SWAGGER_PATH = '/docs';
+import { SWAGGER_PATH } from './constants/app.constant';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
@@ -79,29 +77,22 @@ async function bootstrap() {
     }),
   );
 
-  app.setGlobalPrefix(
-    configService.getOrThrow('app.apiPrefix', { infer: true }),
-    {
-      exclude: ['/'],
-    },
-  );
+  const apiPrefix = configService.getOrThrow('app.apiPrefix', { infer: true });
+  app.setGlobalPrefix(apiPrefix, {
+    exclude: ['/'],
+  });
   app.enableVersioning({
     type: VersioningType.URI,
   });
   app.useGlobalPipes(new ValidationPipe(validationOptions));
-  app.useGlobalInterceptors(
-    // ResolvePromisesInterceptor is used to resolve promises in responses because class-transformer can't do it
-    // https://github.com/typestack/class-transformer/issues/549
-    new ResolvePromisesInterceptor(),
-    new ClassSerializerInterceptor(app.get(Reflector)),
-  );
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
+  const prefixPath = `/${apiPrefix}`.toLowerCase();
   const pathsToIntercept = [
-    `/api${BULL_BOARD_PATH}`,
+    `${prefixPath}${BULL_BOARD_PATH}`,
     SWAGGER_PATH,
-    `/api/auth/reference`,
     // Metrics leak internals and each scrape queries Redis for queue counts.
-    `/api/metrics`,
+    `${prefixPath}/metrics`,
   ];
   app.use((req: Request, res: Response, next: NextFunction) => {
     // Express routing is case-insensitive, so `/API/metrics` must not slip past.

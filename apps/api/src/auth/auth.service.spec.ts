@@ -14,6 +14,7 @@ import bcrypt from 'bcryptjs';
 import { getLoggerToken } from 'nestjs-pino';
 import { AuthService } from './auth.service';
 import { UsersService } from '@/users/users.service';
+import { FilesService } from '@/files/files.service';
 import { SessionService } from '@/session/session.service';
 import { RolesService } from '@/roles/roles.service';
 import { FILE_UPLOAD_SERVICE } from '@/files/infrastructure/uploader/uploader.interface';
@@ -46,6 +47,9 @@ const mockEmailQueueService = {
   addEmailVerificationJob: jest.fn(),
   addConfirmNewEmailJob: jest.fn(),
   addResetPasswordJob: jest.fn(),
+};
+const mockFilesService = {
+  findById: jest.fn(),
 };
 const mockFileUploadService = {
   uploadFromBuffer: jest.fn(),
@@ -89,6 +93,7 @@ describe('AuthService', () => {
         { provide: ConfigService, useValue: mockConfigService },
         { provide: RolesService, useValue: mockRolesService },
         { provide: CacheService, useValue: mockCacheService },
+        { provide: FilesService, useValue: mockFilesService },
         { provide: FILE_UPLOAD_SERVICE, useValue: mockFileUploadService },
         { provide: getLoggerToken(AuthService.name), useValue: mockLogger },
       ],
@@ -177,6 +182,26 @@ describe('AuthService', () => {
         'auth.INVALID_CREDENTIALS',
         expect.any(Object),
       );
+    });
+
+    it('rejects an account that is not active after a correct password', async () => {
+      mockUsersService.findByEmail.mockResolvedValue({
+        id: '1',
+        email: 'x@x.com',
+        provider: AuthProvidersEnum.EMAIL,
+        password: await bcrypt.hash('correctpass', 10),
+        status: UserStatus.INACTIVE,
+        roles: [{ name: 'user' }],
+      });
+
+      await expect(
+        service.validateLogin({ email: 'x@x.com', password: 'correctpass' }),
+      ).rejects.toThrow(UnprocessableEntityException);
+      expect(mockI18n.t).toHaveBeenCalledWith(
+        'auth.ACCOUNT_NOT_ACTIVE',
+        expect.any(Object),
+      );
+      expect(mockSessionService.create).not.toHaveBeenCalled();
     });
 
     it('returns token data and message on success', async () => {
@@ -447,6 +472,10 @@ describe('AuthService', () => {
 
       expect(result).toEqual({ message: 'mocked' });
       expect(mockUsersService.remove).toHaveBeenCalledWith('user1');
+      expect(mockSessionService.deleteByUserId).toHaveBeenCalledWith(
+        { userId: 'user1' },
+        'logout',
+      );
       expect(mockI18n.t).toHaveBeenCalledWith(
         'auth.DELETE_SUCCESS',
         expect.any(Object),
@@ -787,6 +816,43 @@ describe('AuthService', () => {
       expect(mockJwtService.signAsync).not.toHaveBeenCalled();
     });
 
+    it('rejects and revokes the session of an inactive user', async () => {
+      mockSessionService.updateByHash.mockResolvedValue({
+        id: 'session1',
+        user: { id: 'user1' },
+      });
+      mockUsersService.findById.mockResolvedValue({
+        id: 'user1',
+        status: UserStatus.INACTIVE,
+        roles: [{ name: 'user' }],
+      });
+
+      await expect(
+        service.refreshToken({ sessionId: 'session1', hash: 'hash1' }),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(mockSessionService.deleteById).toHaveBeenCalledWith(
+        'session1',
+        'logout',
+      );
+      expect(mockJwtService.signAsync).not.toHaveBeenCalled();
+    });
+
+    it('rejects a session whose user no longer exists', async () => {
+      mockSessionService.updateByHash.mockResolvedValue({
+        id: 'session1',
+        user: null,
+      });
+
+      await expect(
+        service.refreshToken({ sessionId: 'session1', hash: 'hash1' }),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(mockUsersService.findById).not.toHaveBeenCalled();
+      expect(mockSessionService.deleteById).toHaveBeenCalledWith(
+        'session1',
+        'logout',
+      );
+    });
+
     it('throws UnauthorizedException when user has no roles', async () => {
       mockSessionService.updateByHash.mockResolvedValue({
         id: 'session1',
@@ -883,6 +949,19 @@ describe('AuthService', () => {
       expect(result.user).toEqual(expect.objectContaining({ id: 'email1' }));
     });
 
+    it('rejects a banned account', async () => {
+      mockUsersService.findByEmail.mockResolvedValue({
+        id: 'email1',
+        status: UserStatus.BANNED,
+        roles: [{ name: 'user' }],
+      });
+
+      await expect(
+        service.validateSocialLogin('google', social),
+      ).rejects.toThrow(UnprocessableEntityException);
+      expect(mockSessionService.create).not.toHaveBeenCalled();
+    });
+
     it('creates an active user with the downloaded avatar', async () => {
       fetchSpy.mockResolvedValue({
         ok: true,
@@ -923,6 +1002,52 @@ describe('AuthService', () => {
       expect(mockUsersService.create).toHaveBeenCalledWith(
         expect.objectContaining({ photo: undefined }),
       );
+    });
+
+    it('rejects an unconfirmed account matched by email', async () => {
+      mockUsersService.findByEmail.mockResolvedValue({
+        id: 'email1',
+        status: UserStatus.INACTIVE,
+        roles: [{ name: 'user' }],
+      });
+
+      await expect(
+        service.validateSocialLogin('google', social),
+      ).rejects.toThrow(UnprocessableEntityException);
+      expect(mockSessionService.create).not.toHaveBeenCalled();
+    });
+
+    it('skips upload when the avatar is not an image', async () => {
+      fetchSpy.mockResolvedValue({
+        ok: true,
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(4)),
+        headers: { get: () => 'text/html' },
+      } as unknown as Response);
+
+      await service.validateSocialLogin('google', {
+        ...social,
+        photoUrl: 'https://cdn/x.png',
+      });
+
+      expect(mockFileUploadService.uploadFromBuffer).not.toHaveBeenCalled();
+      expect(mockUsersService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ photo: undefined }),
+      );
+    });
+
+    it('skips upload when the avatar is too large', async () => {
+      fetchSpy.mockResolvedValue({
+        ok: true,
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(6 * 1024 * 1024)),
+        headers: { get: () => 'image/png' },
+      } as unknown as Response);
+
+      await service.validateSocialLogin('google', {
+        ...social,
+        photoUrl: 'https://cdn/x.png',
+      });
+
+      expect(mockFileUploadService.uploadFromBuffer).not.toHaveBeenCalled();
     });
 
     it('skips upload when the avatar response is not ok', async () => {
@@ -1038,6 +1163,27 @@ describe('AuthService', () => {
         expect.not.objectContaining({ email: expect.anything() as unknown }),
       );
     });
+
+    it('rejects a photo uploaded by another user', async () => {
+      mockUsersService.findById.mockResolvedValue({ id: 'u1', photo: null });
+      mockFilesService.findById.mockResolvedValue({ id: 'f1', ownerId: 'u2' });
+
+      await expect(
+        service.update(payload, { photo: { id: 'f1' } }),
+      ).rejects.toThrow(UnprocessableEntityException);
+      expect(mockUsersService.update).not.toHaveBeenCalled();
+    });
+
+    it('accepts a photo uploaded by the user', async () => {
+      mockUsersService.findById.mockResolvedValue({ id: 'u1', photo: null });
+      mockFilesService.findById.mockResolvedValue({ id: 'f1', ownerId: 'u1' });
+
+      await service.update(payload, { photo: { id: 'f1' } });
+
+      expect(mockUsersService.update).toHaveBeenCalledWith('u1', {
+        photo: { id: 'f1' },
+      });
+    });
   });
 
   describe('me', () => {
@@ -1053,7 +1199,10 @@ describe('AuthService', () => {
 
   describe('session management', () => {
     it('getSessions flags the current session', async () => {
-      mockSessionService.findByUserId.mockResolvedValue([{ id: 1 }, { id: 2 }]);
+      mockSessionService.findByUserId.mockResolvedValue([
+        { id: 1, hash: 'h1' },
+        { id: 2, hash: 'h2' },
+      ]);
 
       const result = await service.getSessions('u1', '2');
 
@@ -1061,6 +1210,7 @@ describe('AuthService', () => {
         { id: 1, isCurrent: false },
         { id: 2, isCurrent: true },
       ]);
+      expect(result[0]).not.toHaveProperty('hash');
     });
 
     it('revokeSession refuses to revoke another user’s session', async () => {

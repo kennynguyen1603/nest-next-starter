@@ -262,7 +262,6 @@ The monitoring stack is **opt-in** — it runs separately from the main app via 
 | ------------------- | --------------------------------------- | ------ | ------------------------------------------ |
 | Prometheus          | `prom/prometheus:v3.0.1`                | `9090` | Scrapes metrics from the API and exporters |
 | Grafana             | `grafana/grafana-oss:11.3.1`            | `3001` | Visualises dashboards                      |
-| MongoDB Exporter    | `percona/mongodb_exporter:0.44`         | `9216` | DB metrics for MongoDB users               |
 | PostgreSQL Exporter | `prometheuscommunity/postgres-exporter` | `9187` | DB metrics for SQL users                   |
 
 Three dashboards are pre-provisioned automatically:
@@ -283,7 +282,6 @@ GRAFANA_PASSWORD=your-secure-password   # change before deploying
 DOCKER_PROMETHEUS_PORT=9090
 DOCKER_GRAFANA_PORT=3001
 DOCKER_PG_EXPORTER=9187
-DOCKER_MONGO_EXPORTER=9216
 ```
 
 **Step 2 — Start the monitoring stack** (Docker must be running):
@@ -334,11 +332,11 @@ rm -rf .docker/
 
 ### Docker Compose profiles explained
 
-| Profile               | Services included                                     |
-| --------------------- | ----------------------------------------------------- |
-| _(none)_              | `api`, `web`, `mongo`, `redis`, `seed`                |
-| `monitoring`          | Prometheus, Grafana, MongoDB Exporter, setup services |
-| `monitoring-postgres` | PostgreSQL Exporter                                   |
+| Profile               | Services included                      |
+| --------------------- | -------------------------------------- |
+| _(none)_              | `api`, `web`, `mongo`, `redis`, `seed` |
+| `monitoring`          | Prometheus, Grafana, setup services    |
+| `monitoring-postgres` | PostgreSQL Exporter                    |
 
 ---
 
@@ -388,14 +386,15 @@ docker compose run --rm seed
 
 **Settings → Secrets and variables → Actions → Secrets**
 
-| Secret                         | Value                                        |
-| ------------------------------ | -------------------------------------------- |
-| `PRODUCTION_EC2_HOST`          | EC2 public IP or domain                      |
-| `PRODUCTION_EC2_USERNAME`      | SSH user (e.g. `ubuntu`)                     |
-| `PRODUCTION_EC2_PORT`          | SSH port (usually `22`)                      |
-| `PRODUCTION_EC2_PRIVATESSHKEY` | Full contents of the `.pem` private key file |
-| `TURBO_TOKEN`                  | _(optional)_ Turborepo remote cache token    |
-| `TURBO_TEAM`                   | _(optional)_ Turborepo team slug             |
+| Secret                         | Value                                                                                       |
+| ------------------------------ | ------------------------------------------------------------------------------------------- |
+| `PRODUCTION_EC2_HOST`          | EC2 public IP or domain                                                                     |
+| `PRODUCTION_EC2_USERNAME`      | SSH user (e.g. `ubuntu`)                                                                    |
+| `PRODUCTION_EC2_PORT`          | SSH port (usually `22`)                                                                     |
+| `PRODUCTION_EC2_PRIVATESSHKEY` | Full contents of the `.pem` private key file                                                |
+| `PRODUCTION_EC2_FINGERPRINT`   | SSH host key fingerprint (`ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub` on the server) |
+| `TURBO_TOKEN`                  | _(optional)_ Turborepo remote cache token                                                   |
+| `TURBO_TEAM`                   | _(optional)_ Turborepo team slug                                                            |
 
 #### Step 3 — Add Variables
 

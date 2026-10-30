@@ -64,13 +64,15 @@ export default function Sidebar() {
 
   return (
     <aside
-      className={`${collapsed ? "w-16" : "w-60"} shrink-0 bg-sidebar text-gray-300 flex flex-col transition-[width] duration-200 ease-in-out overflow-hidden`}
+      className={`${collapsed ? "w-16" : "w-60"} shrink-0 bg-sidebar text-sidebar-foreground flex flex-col transition-[width] duration-200 ease-in-out overflow-hidden`}
     >
       {/* Logo */}
-      <div className="flex items-center gap-3 px-4 h-16 border-b border-gray-800 shrink-0">
-        <div className="w-8 h-8 bg-indigo-600 rounded-lg shrink-0" />
+      <div className="flex items-center gap-3 px-4 h-16 border-b border-sidebar-border shrink-0">
+        <div className="size-8 bg-white text-sidebar flex items-center justify-center text-small font-semibold shrink-0">
+          A
+        </div>
         {!collapsed && (
-          <span className="font-semibold text-white text-sm truncate">
+          <span className="text-small font-semibold text-white truncate">
             Admin Panel
           </span>
         )}
@@ -86,10 +88,10 @@ export default function Sidebar() {
               href={href}
               aria-label={collapsed ? label : undefined}
               title={collapsed ? label : undefined}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+              className={`flex items-center gap-3 px-3 py-2.5 text-small font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${
                 active
-                  ? "bg-indigo-600 text-white"
-                  : "text-gray-400 hover:bg-gray-800 hover:text-white"
+                  ? "bg-white text-sidebar"
+                  : "text-sidebar-muted hover:bg-white/5 hover:text-white"
               }`}
             >
               <Icon size={18} className="shrink-0" />
@@ -100,9 +102,9 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-gray-800 p-2 space-y-1">
+      <div className="border-t border-sidebar-border p-2 space-y-1">
         {!collapsed && user && (
-          <p className="px-3 py-1.5 text-xs text-gray-500 truncate">
+          <p className="px-3 py-1.5 text-caption text-sidebar-muted truncate">
             {user.firstName || user.email}
           </p>
         )}
@@ -110,7 +112,7 @@ export default function Sidebar() {
           onClick={logout}
           aria-label="Logout"
           title="Logout"
-          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          className="flex items-center gap-3 w-full px-3 py-2.5 text-small text-sidebar-muted hover:bg-white/5 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
         >
           <LogOut size={18} className="shrink-0" />
           {!collapsed && <span>Logout</span>}
@@ -119,7 +121,7 @@ export default function Sidebar() {
           onClick={toggle}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="flex items-center justify-center w-full py-2 rounded-lg text-gray-600 hover:bg-gray-800 hover:text-gray-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          className="flex items-center justify-center w-full py-2 text-sidebar-muted hover:bg-white/5 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
         >
           {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
         </button>

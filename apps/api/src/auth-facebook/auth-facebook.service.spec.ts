@@ -206,28 +206,4 @@ describe('AuthFacebookService', () => {
       );
     });
   });
-
-  describe('exchangeForLongLivedToken', () => {
-    it('returns the long-lived token and applies a timeout', async () => {
-      fetchMock.mockResolvedValueOnce(
-        jsonResponse({ access_token: 'long-lived' }),
-      );
-
-      await expect(
-        makeService().exchangeForLongLivedToken(USER_TOKEN),
-      ).resolves.toBe('long-lived');
-      const { url, init } = call(0);
-      expect(url.searchParams.get('fb_exchange_token')).toBe(USER_TOKEN);
-      expect(init.signal).toBeInstanceOf(AbortSignal);
-    });
-
-    it('rejects when Facebook refuses the exchange', async () => {
-      fetchMock.mockResolvedValueOnce(jsonResponse({}, 400));
-
-      await expectStatus(
-        makeService().exchangeForLongLivedToken(USER_TOKEN),
-        HttpStatus.BAD_REQUEST,
-      );
-    });
-  });
 });

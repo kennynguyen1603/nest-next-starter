@@ -1,7 +1,7 @@
 import { ErrorDto } from '@/common/dto/error.dto';
 import { Public } from '@/decorators/public.decorator';
 import { Serialize } from '@/utils/interceptors/serialize';
-import { Controller, Get, HttpStatus } from '@nestjs/common';
+import { Controller, Get, HttpStatus, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
@@ -16,7 +16,7 @@ import {
 import { HealthCheckDto } from './dto/health.dto';
 import { AllConfigType } from '@/config/config.type';
 import { AuthService } from '@/auth/auth.service';
-import { SWAGGER_PATH } from '@/main';
+import { SWAGGER_PATH } from '@/constants/app.constant';
 import { Redis } from 'ioredis';
 import databaseConfig from '@/config/database/database.config';
 import { DatabaseConfig } from '@/config/database/database-config.type';
@@ -30,7 +30,10 @@ const isDocumentDatabase = (databaseConfig() as DatabaseConfig)
   path: 'health',
   version: '1',
 })
-export class HealthController {
+export class HealthController implements OnModuleDestroy {
+  // One long-lived connection instead of a new TCP/TLS handshake per probe.
+  private redis?: Redis;
+
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService<AllConfigType>,
@@ -72,22 +75,25 @@ export class HealthController {
 
   private async checkRedis(): Promise<HealthIndicatorResult> {
     const indicator = this.healthIndicatorService.check('redis');
-    const redis = new Redis({
+    this.redis ??= new Redis({
       host: this.configService.getOrThrow('redis.host', { infer: true }),
       port: this.configService.getOrThrow('redis.port', { infer: true }),
       password: this.configService.get('redis.password', { infer: true }),
-      lazyConnect: true,
+      tls: this.configService.get('redis.tls', { infer: true }),
+      maxRetriesPerRequest: 1,
     });
     try {
-      await redis.connect();
-      await redis.ping();
+      await this.redis.ping();
       return indicator.up();
     } catch (e: unknown) {
       this.logger.error({ err: e }, 'Redis health check failed');
-      return indicator.down({ error: String(e) });
-    } finally {
-      redis.disconnect();
+      // Details stay in the log; this endpoint is public.
+      return indicator.down();
     }
+  }
+
+  onModuleDestroy() {
+    this.redis?.disconnect();
   }
 
   private async checkSwaggerDocs(): Promise<HealthIndicatorResult> {
@@ -108,7 +114,7 @@ export class HealthController {
       return indicator.up();
     } catch (e: unknown) {
       this.logger.error({ err: e }, 'Swagger docs health check threw error');
-      return indicator.down({ error: String(e) });
+      return indicator.down();
     }
   }
 }

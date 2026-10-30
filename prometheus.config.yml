@@ -20,8 +20,3 @@ scrape_configs:
     scrape_interval: 15s
     static_configs:
       - targets: ['postgres-exporter:9187']
-
-  - job_name: mongodb
-    scrape_interval: 15s
-    static_configs:
-      - targets: ['mongodb-exporter:9216']

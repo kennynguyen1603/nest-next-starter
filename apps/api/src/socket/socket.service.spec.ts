@@ -51,22 +51,4 @@ describe('SocketService', () => {
       mockGateway.server = mockServer;
     });
   });
-
-  describe('emitToRoom', () => {
-    it('emits event to the given room', () => {
-      service.emitToRoom('chat:room-42', 'chat:message', { content: 'hi' });
-      expect(mockServer.to).toHaveBeenCalledWith('chat:room-42');
-      expect(mockServer.emit).toHaveBeenCalledWith('chat:message', {
-        content: 'hi',
-      });
-    });
-
-    it('skips emit and warns when server is not ready', () => {
-      mockGateway.server = undefined;
-      service.emitToRoom('chat:room-42', 'chat:message', { content: 'hi' });
-      expect(mockServer.to).not.toHaveBeenCalled();
-      expect(mockLogger.warn).toHaveBeenCalled();
-      mockGateway.server = mockServer;
-    });
-  });
 });

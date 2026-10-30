@@ -9,7 +9,7 @@ import type { UserGrowthPoint } from "@repo/types";
 
 // Chart sits below the summary cards — split it out of the initial bundle.
 const LineChart = dynamic(() => import("@/components/reports/LineChart"), {
-  loading: () => <div className="h-48 animate-pulse rounded-lg bg-gray-50" />,
+  loading: () => <div className="h-48 animate-pulse bg-surface" />,
 });
 
 interface UserSummary {
@@ -25,22 +25,18 @@ function SummaryCard({
   label,
   value,
   icon: Icon,
-  color,
 }: {
   label: string;
   value: number | string;
   icon: React.ElementType;
-  color: string;
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-sm text-gray-500">{label}</span>
-        <div className={`rounded-lg p-2 ${color}`}>
-          <Icon size={16} className="text-white" />
-        </div>
+    <div className="bg-background p-5">
+      <div className="flex items-center justify-between mb-4">
+        <span className="text-label uppercase text-muted">{label}</span>
+        <Icon size={16} aria-hidden="true" className="text-muted" />
       </div>
-      <p className="text-2xl font-semibold text-gray-900">{value}</p>
+      <p className="text-h1 tabular-nums">{value}</p>
     </div>
   );
 }
@@ -75,15 +71,12 @@ export default function ReportsPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-border border border-border">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="rounded-xl border border-gray-200 bg-white p-5 h-24 animate-pulse"
-            />
+            <div key={i} className="bg-background p-5 h-28 animate-pulse" />
           ))}
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-5 h-64 animate-pulse" />
+        <div className="border border-border bg-background h-72 animate-pulse" />
       </div>
     );
   }
@@ -92,83 +85,84 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold text-gray-900">Reports</h1>
+      <div>
+        <h1 className="text-h2">Reports</h1>
+        <p className="mt-1 text-small text-muted">
+          User totals and registrations over the last 30 days.
+        </p>
+      </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-border border border-border">
         <SummaryCard
           label="Total Users"
           value={summary?.totalUsers ?? 0}
           icon={Users}
-          color="bg-indigo-500"
         />
         <SummaryCard
           label="Active Users"
           value={summary?.activeUsers ?? 0}
           icon={UserCheck}
-          color="bg-green-500"
         />
         <SummaryCard
           label="Inactive Users"
           value={summary?.inactiveUsers ?? 0}
           icon={UserX}
-          color="bg-gray-400"
         />
         <SummaryCard
           label="Growth (30d)"
           value={`${summary?.userGrowthPercent ?? 0}%`}
           icon={TrendingUp}
-          color="bg-violet-500"
         />
       </div>
 
       {/* Growth chart */}
-      <div className="rounded-xl border border-gray-200 bg-white p-5">
+      <section className="border border-border bg-background p-5">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-gray-900">
+          <h2 className="text-label uppercase text-muted">
             User Growth — Last 30 days
           </h2>
-          <span className="text-xs text-gray-400">
+          <span className="text-caption text-muted">
             {totalNewInPeriod} new registrations
           </span>
         </div>
         <LineChart data={growth} />
-      </div>
+      </section>
 
       {/* Daily registrations table */}
-      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-900">
+      <section className="border border-border bg-background">
+        <div className="px-5 py-4 border-b border-border">
+          <h2 className="text-label uppercase text-muted">
             Daily Registrations
           </h2>
         </div>
         {growth.length === 0 ? (
-          <p className="px-5 py-8 text-sm text-gray-400 text-center">
+          <p className="px-5 py-10 text-small text-muted text-center">
             No registration data in the last 30 days.
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-small">
               <thead>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="px-5 py-3 text-left font-medium text-gray-500">
+                <tr className="border-b border-border bg-surface">
+                  <th className="px-5 py-3 text-left text-label uppercase text-muted">
                     Date
                   </th>
-                  <th className="px-5 py-3 text-right font-medium text-gray-500">
+                  <th className="px-5 py-3 text-right text-label uppercase text-muted">
                     New Users
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-border">
                 {[...growth].reverse().map((row) => (
                   <tr
                     key={row.date}
-                    className="hover:bg-gray-50 transition-colors"
+                    className="hover:bg-surface transition-colors"
                   >
-                    <td className="px-5 py-3 text-gray-700 font-mono text-xs">
+                    <td className="px-5 py-3 text-muted font-mono text-caption">
                       {row.date}
                     </td>
-                    <td className="px-5 py-3 text-right text-gray-900 font-medium">
+                    <td className="px-5 py-3 text-right font-medium tabular-nums">
                       {row.count}
                     </td>
                   </tr>
@@ -177,7 +171,7 @@ export default function ReportsPage() {
             </table>
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }

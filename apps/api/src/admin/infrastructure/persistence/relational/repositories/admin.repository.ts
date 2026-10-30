@@ -20,7 +20,7 @@ export class AdminRelationalRepository implements AdminRepository {
 
   async getStats(): Promise<AdminStatsDto> {
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setUTCHours(0, 0, 0, 0);
 
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -135,8 +135,10 @@ export class AdminRelationalRepository implements AdminRepository {
   }
 
   async getUserGrowth(): Promise<UserGrowthDto[]> {
+    // Rows are grouped by UTC day, so start the window at UTC midnight.
     const from = new Date();
-    from.setDate(from.getDate() - 30);
+    from.setUTCHours(0, 0, 0, 0);
+    from.setUTCDate(from.getUTCDate() - 30);
 
     const dbType = this.dataSource.options.type;
 

@@ -3,6 +3,7 @@ import {
   Get,
   Param,
   Post,
+  Request,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -19,6 +20,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
+import { JwtPayloadType } from '@/auth/strategies/types/jwt-payload.type';
 import { FilesCloudinaryService } from './files.service';
 import { FileResponseDto } from './dto/file-response.dto';
 
@@ -56,8 +58,9 @@ export class FilesCloudinaryController {
       originalname: string;
       mimetype: string;
     },
+    @Request() request: { user: JwtPayloadType },
   ): Promise<FileResponseDto> {
-    return this.filesService.create(file);
+    return this.filesService.create(file, request.user.id);
   }
 
   @ApiOperation({ summary: 'Get URL to display a file' })
@@ -68,7 +71,10 @@ export class FilesCloudinaryController {
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
   @Get(':id/url')
-  async getFileUrl(@Param('id') id: string): Promise<{ url: string }> {
-    return this.filesService.getFileUrl(id);
+  async getFileUrl(
+    @Param('id') id: string,
+    @Request() request: { user: JwtPayloadType },
+  ): Promise<{ url: string }> {
+    return this.filesService.getFileUrl(id, request.user.id);
   }
 }

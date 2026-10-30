@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect, Suspense, lazy } from "react";
-import { useTranslations } from "next-intl";
-import { useRouter } from "@/lib/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { useAuthStore } from "@/lib/auth-store";
-import { api, tryRefresh } from "@/lib/api";
-import type { AuthUser } from "@repo/types";
+import { api } from "@/lib/api";
+import { Link } from "@/lib/navigation";
+import { formatCount, formatJoinDate, type StatValue } from "@/lib/dashboard";
 import Image from "next/image";
-import { LanguageSwitcher } from "./_components/language-switcher";
-import { Spinner } from "@/components/spinner";
+import { AppShell } from "./_components/app-shell";
+import { Button } from "@repo/ui/button";
 
 const EditProfileDialog = lazy(() =>
   import("./_components/edit-profile-dialog").then((m) => ({
@@ -21,46 +21,27 @@ const DeleteAccountDialog = lazy(() =>
   })),
 );
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
-
 export default function Home() {
-  const router = useRouter();
-  // Per-field selectors so unrelated store writes don't re-render the page.
-  const accessToken = useAuthStore((s) => s.accessToken);
-  const tokenExpires = useAuthStore((s) => s.tokenExpires);
-  const user = useAuthStore((s) => s.user);
-  const clearAuth = useAuthStore((s) => s.clearAuth);
-  const setAuth = useAuthStore((s) => s.setAuth);
+  return (
+    <AppShell>
+      <Overview />
+    </AppShell>
+  );
+}
+
+function Overview() {
+  // AppShell only mounts this once the user is loaded.
+  const user = useAuthStore((s) => s.user)!;
   const t = useTranslations();
+  const locale = useLocale();
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [unread, setUnread] = useState<StatValue>(undefined);
+  const [sessions, setSessions] = useState<StatValue>(undefined);
 
   useEffect(() => {
-    async function init() {
-      if (!accessToken) {
-        // Restores the session from the httpOnly refresh cookie (also covers the
-        // OAuth callback, which set that cookie before redirecting here).
-        const ok = await tryRefresh();
-        if (!ok) router.replace("/login");
-        return;
-      }
-
-      if (!user) {
-        try {
-          const fetched = await api.get<AuthUser>("/api/v1/auth/me");
-          setAuth(accessToken, tokenExpires!, fetched);
-        } catch {
-          clearAuth();
-          router.replace("/login");
-        }
-      }
-    }
-    init();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (!user?.photo?.id) {
+    if (!user.photo?.id) {
       setPhotoUrl(null);
       return;
     }
@@ -68,141 +49,147 @@ export default function Home() {
       .get<{ url: string }>(`/api/v1/files/${user.photo.id}/url`)
       .then((d) => setPhotoUrl(d.url))
       .catch(() => setPhotoUrl(null));
-  }, [user?.photo?.id]);
+  }, [user.photo?.id]);
 
-  async function handleLogout() {
-    try {
-      await fetch(`${BASE_URL}/api/v1/auth/logout`, {
-        method: "POST",
-        credentials: "include",
-        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
-      });
-    } finally {
-      clearAuth();
-      router.push("/login");
-    }
-  }
-
-  if (!accessToken || !user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F8F8F8]">
-        <Spinner size="md" role="status" aria-label={t("common.loading")} />
-      </div>
-    );
-  }
+  // A failed stat shows "—"; it never takes the page down.
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get<{ pagination: { totalRecords: number } }>(
+        "/api/v1/notifications?isRead=false&limit=1",
+      )
+      .then((d) => d.pagination.totalRecords)
+      .catch(() => null)
+      .then((n) => !cancelled && setUnread(n));
+    api
+      .get<unknown[]>("/api/v1/auth/sessions")
+      .then((d) => d.length)
+      .catch(() => null)
+      .then((n) => !cancelled && setSessions(n));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const initial = (user.firstName?.[0] ?? user.email?.[0] ?? "U").toUpperCase();
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ");
 
   return (
-    <div className="min-h-screen bg-[#F8F8F8] flex flex-col">
-      {/* Header */}
-      <header className="bg-white border-b border-[#E8E8E8] sticky top-0 z-10">
-        <div className="flex items-center justify-between px-6 h-14 max-w-2xl mx-auto w-full">
-          <span className="text-xs font-semibold tracking-[0.2em] uppercase text-neutral-400">
-            {t("common.appName")}
-          </span>
-          <div className="flex items-center gap-3">
-            <LanguageSwitcher />
-            <button
-              onClick={handleLogout}
-              className="text-xs font-medium text-neutral-600 border border-[#D0D0D0] px-3 py-1.5 hover:bg-neutral-50 hover:border-neutral-400 hover:text-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-1"
-            >
-              {t("home.signOut")}
-            </button>
+    <div className="max-w-2xl mx-auto space-y-8">
+      {/* Profile identity */}
+      <div className="flex items-center gap-4">
+        {photoUrl ? (
+          <Image
+            src={photoUrl}
+            alt={fullName || "Avatar"}
+            width={48}
+            height={48}
+            // Presigned S3 URLs change on every request, so the optimizer can't cache them.
+            unoptimized
+            className="object-cover shrink-0"
+          />
+        ) : (
+          <div className="size-12 bg-foreground flex items-center justify-center shrink-0">
+            <span className="text-background text-h3 leading-none select-none">
+              {initial}
+            </span>
           </div>
+        )}
+        <div className="min-w-0">
+          <h1 className="text-h2 truncate">
+            {t("home.hello", { name: fullName || user.email || "—" })}
+          </h1>
+          <p className="text-small text-muted truncate">
+            {t("home.accountDashboard")}
+          </p>
         </div>
-      </header>
+      </div>
 
-      <main className="flex-1 flex justify-center px-4 sm:px-6 py-10">
-        <div className="w-full max-w-2xl space-y-6">
-          {/* Profile identity */}
-          <div className="flex items-center gap-4">
-            {photoUrl ? (
-              <Image
-                src={photoUrl}
-                alt={fullName || "Avatar"}
-                width={48}
-                height={48}
-                // Presigned S3 URLs change on every request, so the optimizer can't cache them.
-                unoptimized
-                className="object-cover shrink-0"
-              />
-            ) : (
-              <div className="w-12 h-12 bg-black flex items-center justify-center shrink-0">
-                <span className="text-white text-base font-semibold leading-none select-none">
-                  {initial}
-                </span>
-              </div>
-            )}
-            <div className="min-w-0">
-              <p className="font-semibold tracking-tight truncate">
-                {fullName || user.email || "—"}
-              </p>
-              {fullName && (
-                <p className="text-sm text-neutral-500 truncate">
-                  {user.email}
-                </p>
-              )}
-            </div>
-          </div>
+      {/* Stats */}
+      <dl className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-border border border-border">
+        <Stat label={t("home.statUnread")}>{formatCount(unread, locale)}</Stat>
+        <Stat label={t("home.statSessions")}>
+          {formatCount(sessions, locale)}
+        </Stat>
+        <Stat label={t("home.status")}>
+          {user.status ? <StatusBadge status={user.status} t={t} /> : "—"}
+        </Stat>
+        <Stat label={t("home.statJoined")}>
+          {formatJoinDate(user.createdAt, locale)}
+        </Stat>
+      </dl>
 
-          {/* Account card */}
-          <div className="bg-white border border-[#E8E8E8]">
-            <div className="px-6 py-4 border-b border-[#E8E8E8] flex items-center justify-between">
-              <span className="text-[11px] font-semibold tracking-widest uppercase text-neutral-400">
-                {t("home.accountInfo")}
+      {/* Quick links */}
+      <section aria-labelledby="quick-links">
+        <h2 id="quick-links" className="text-label uppercase text-muted mb-3">
+          {t("home.quickLinks")}
+        </h2>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <QuickLink
+            href="/notifications"
+            title={t("nav.notifications")}
+            description={t("home.linkNotificationsDesc")}
+          />
+          <QuickLink
+            href="/security"
+            title={t("nav.security")}
+            description={t("home.linkSecurityDesc")}
+          />
+        </div>
+      </section>
+
+      {/* Account card */}
+      <section className="bg-background border border-border">
+        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+          <h2 className="text-label uppercase text-muted">
+            {t("home.accountInfo")}
+          </h2>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowEdit(true)}
+          >
+            {t("user.editProfile")}
+          </Button>
+        </div>
+        <div className="divide-y divide-border">
+          <InfoRow label={t("home.fullName")} value={fullName || "—"} />
+          <InfoRow label={t("home.email")} value={user.email ?? "—"} />
+          <InfoRow
+            label={t("home.provider")}
+            value={user.provider}
+            capitalize
+          />
+          {user.status && (
+            <div className="flex items-center px-6 py-4 gap-6">
+              <span className="w-28 shrink-0 text-label uppercase text-muted">
+                {t("home.status")}
               </span>
-              <button
-                onClick={() => setShowEdit(true)}
-                className="text-xs font-medium text-neutral-600 border border-[#D0D0D0] px-3 py-1.5 hover:bg-neutral-50 hover:border-neutral-400 hover:text-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-1"
-              >
-                {t("user.editProfile")}
-              </button>
+              <StatusBadge status={user.status} t={t} />
             </div>
-            <div className="divide-y divide-[#F0F0F0]">
-              <InfoRow label={t("home.fullName")} value={fullName || "—"} />
-              <InfoRow label={t("home.email")} value={user.email ?? "—"} />
-              <InfoRow
-                label={t("home.provider")}
-                value={user.provider}
-                capitalize
-              />
-              {user.status && (
-                <div className="flex items-center px-6 py-4 gap-6">
-                  <span className="w-28 shrink-0 text-xs font-medium text-neutral-400 uppercase tracking-wide">
-                    {t("home.status")}
-                  </span>
-                  <StatusBadge status={user.status} t={t} />
-                </div>
-              )}
-              {user.roles && user.roles.length > 0 && (
-                <InfoRow
-                  label={t("home.role")}
-                  value={user.roles.map((r) => r.name).join(", ")}
-                  capitalize
-                />
-              )}
-              {user.createdAt && (
-                <InfoRow
-                  label={t("home.memberSince")}
-                  value={new Date(user.createdAt).toLocaleDateString()}
-                />
-              )}
-            </div>
-          </div>
-
-          {/* Danger zone */}
-          <div className="pt-2 border-t border-[#E8E8E8]">
-            <button
-              onClick={() => setShowDelete(true)}
-              className="text-xs font-medium text-red-600 border border-red-200 px-3 py-1.5 hover:bg-red-50 hover:border-red-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-1"
-            >
-              {t("user.deleteAccount")}
-            </button>
-          </div>
+          )}
+          {user.roles && user.roles.length > 0 && (
+            <InfoRow
+              label={t("home.role")}
+              value={user.roles.map((r) => r.name).join(", ")}
+              capitalize
+            />
+          )}
+          {user.createdAt && (
+            <InfoRow
+              label={t("home.memberSince")}
+              value={new Date(user.createdAt).toLocaleDateString()}
+            />
+          )}
         </div>
-      </main>
+      </section>
+
+      {/* Danger zone */}
+      <div className="pt-6 border-t border-border">
+        <Button variant="danger" size="sm" onClick={() => setShowDelete(true)}>
+          {t("user.deleteAccount")}
+        </Button>
+      </div>
 
       {showEdit && (
         <Suspense fallback={null}>
@@ -222,9 +209,44 @@ export default function Home() {
   );
 }
 
+function Stat({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="bg-background px-5 py-4 min-w-0">
+      <dt className="text-label uppercase text-muted truncate">{label}</dt>
+      <dd className="mt-2 text-h3 text-foreground truncate">{children}</dd>
+    </div>
+  );
+}
+
+function QuickLink({
+  href,
+  title,
+  description,
+}: {
+  href: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="block bg-background border border-border px-5 py-4 hover:border-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground"
+    >
+      <span className="text-small font-medium text-foreground">{title} →</span>
+      <span className="block mt-1 text-small text-muted">{description}</span>
+    </Link>
+  );
+}
+
 const STATUS_STYLES: Record<string, string> = {
   active: "bg-green-50 text-green-700 border border-green-200",
-  inactive: "bg-neutral-100 text-neutral-500 border border-neutral-200",
+  inactive: "bg-surface text-muted border border-border",
   pending: "bg-yellow-50 text-yellow-700 border border-yellow-200",
   banned: "bg-red-50 text-red-600 border border-red-200",
 };
@@ -241,12 +263,10 @@ function StatusBadge({
       typeof t
     >[0];
   const label = t(key);
-  const style =
-    STATUS_STYLES[status] ??
-    "bg-neutral-100 text-neutral-500 border border-neutral-200";
+  const style = STATUS_STYLES[status] ?? STATUS_STYLES.inactive;
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 text-xs font-medium ${style}`}
+      className={`inline-flex items-center px-2 py-0.5 text-caption font-medium ${style}`}
     >
       {label}
     </span>
@@ -264,11 +284,11 @@ function InfoRow({
 }) {
   return (
     <div className="flex items-center px-6 py-4 gap-6">
-      <span className="w-28 shrink-0 text-xs font-medium text-neutral-400 uppercase tracking-wide">
+      <span className="w-28 shrink-0 text-label uppercase text-muted">
         {label}
       </span>
       <span
-        className={`text-sm text-neutral-800 truncate ${capitalize ? "capitalize" : ""}`}
+        className={`text-small text-foreground truncate ${capitalize ? "capitalize" : ""}`}
       >
         {value}
       </span>

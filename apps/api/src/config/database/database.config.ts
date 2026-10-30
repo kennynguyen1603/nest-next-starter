@@ -132,7 +132,7 @@ export default registerAs<DatabaseConfig>('database', () => {
       ? parseInt(process.env.DATABASE_CONNECTION_TIMEOUT_MS, 10)
       : 10000,
     sslEnabled: process.env.DATABASE_SSL_ENABLED === 'true',
-    rejectUnauthorized: process.env.DATABASE_REJECT_UNAUTHORIZED === 'true',
+    rejectUnauthorized: process.env.DATABASE_REJECT_UNAUTHORIZED !== 'false',
     ca: process.env.DATABASE_CA,
     key: process.env.DATABASE_KEY,
     cert: process.env.DATABASE_CERT,

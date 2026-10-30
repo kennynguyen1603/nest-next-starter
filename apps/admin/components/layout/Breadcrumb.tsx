@@ -6,6 +6,7 @@ import { ChevronRight } from "lucide-react";
 
 const LABELS: Record<string, string> = {
   users: "Users",
+  notifications: "Notifications",
   reports: "Reports",
   settings: "Settings",
 };
@@ -15,14 +16,14 @@ export default function Breadcrumb() {
   const segments = pathname.split("/").filter(Boolean);
 
   if (segments.length === 0) {
-    return <span className="text-sm font-medium text-gray-900">Dashboard</span>;
+    return <span className="text-small font-medium">Dashboard</span>;
   }
 
   return (
-    <nav className="flex items-center gap-1 text-sm" aria-label="Breadcrumb">
+    <nav className="flex items-center gap-1 text-small" aria-label="Breadcrumb">
       <Link
         href="/"
-        className="text-gray-500 hover:text-gray-900 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded"
+        className="text-muted hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground"
       >
         Dashboard
       </Link>
@@ -34,17 +35,17 @@ export default function Breadcrumb() {
           <span key={href} className="flex items-center gap-1">
             <ChevronRight
               size={14}
-              className="text-gray-400"
+              className="text-border-strong"
               aria-hidden="true"
             />
             {isLast ? (
-              <span aria-current="page" className="font-medium text-gray-900">
+              <span aria-current="page" className="font-medium">
                 {label}
               </span>
             ) : (
               <Link
                 href={href}
-                className="text-gray-500 hover:text-gray-900 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded"
+                className="text-muted hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground"
               >
                 {label}
               </Link>

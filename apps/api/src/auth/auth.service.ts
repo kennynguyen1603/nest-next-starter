@@ -16,6 +16,7 @@ import ms from 'ms';
 import { I18nContext, I18nService } from 'nestjs-i18n';
 
 import { AllConfigType } from '@/config/config.type';
+import { FilesService } from '@/files/files.service';
 import { FILE_UPLOAD_SERVICE } from '@/files/infrastructure/uploader/uploader.interface';
 import type { IFileUploadService } from '@/files/infrastructure/uploader/uploader.interface';
 import { EmailQueueService } from '@/worker/queues/email/email.service';
@@ -44,10 +45,13 @@ import { AuthEmailLoginDto } from './dto/auth-email-login.dto';
 import { AuthRegisterLoginDto } from './dto/auth-register-login.dto';
 import { AuthUpdateDto } from './dto/auth-update.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
+import { SessionResponseDto } from './dto/session-response.dto';
 import { JwtPayloadType } from './strategies/types/jwt-payload.type';
 import { JwtRefreshPayloadType } from './strategies/types/jwt-refresh-payload.type';
 
 const MAX_SESSIONS_PER_USER = 10;
+const AVATAR_FETCH_TIMEOUT_MS = 5000;
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 
 @Injectable()
 export class AuthService {
@@ -59,6 +63,7 @@ export class AuthService {
     private readonly configService: ConfigService<AllConfigType>,
     private readonly rolesService: RolesService,
     private readonly cacheService: CacheService,
+    private readonly filesService: FilesService,
     private readonly i18n: I18nService,
     @Inject(FILE_UPLOAD_SERVICE)
     private readonly fileUploadService: IFileUploadService,
@@ -79,6 +84,13 @@ export class AuthService {
       status: HttpStatus.UNPROCESSABLE_ENTITY,
       errors: { hash: this.t('auth.INVALID_HASH') },
     });
+  }
+
+  private generateSessionHash(): string {
+    return crypto
+      .createHash('sha256')
+      .update(randomStringGenerator())
+      .digest('hex');
   }
 
   /**
@@ -157,10 +169,18 @@ export class AuthService {
       });
     }
 
-    const hash = crypto
-      .createHash('sha256')
-      .update(randomStringGenerator())
-      .digest('hex');
+    if (this.isBlocked(user)) {
+      this.logger.warn(
+        { userId: user.id, status: user.status },
+        'Login failed: account not active',
+      );
+      throw new UnprocessableEntityException({
+        status: HttpStatus.UNPROCESSABLE_ENTITY,
+        errors: { email: this.t('auth.ACCOUNT_NOT_ACTIVE') },
+      });
+    }
+
+    const hash = this.generateSessionHash();
 
     const roleNames = (user.roles ?? []).map((r) => r.name);
     await this.sessionService.enforceSessionLimit(
@@ -205,6 +225,39 @@ export class AuthService {
     };
   }
 
+  /**
+   * Bounded download of a provider avatar: times out, accepts only images and
+   * caps the size. Returns undefined when the response is not usable.
+   */
+  private async uploadSocialAvatar(
+    url: string,
+  ): Promise<{ id: string } | undefined> {
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(AVATAR_FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) return undefined;
+
+    const contentType = (res.headers.get('content-type') ?? '')
+      .split(';')[0]
+      .trim();
+    if (
+      !contentType.startsWith('image/') ||
+      Number(res.headers.get('content-length')) > MAX_AVATAR_BYTES
+    ) {
+      return undefined;
+    }
+
+    const buffer = Buffer.from(await res.arrayBuffer());
+    if (buffer.byteLength > MAX_AVATAR_BYTES) return undefined;
+
+    const ext = contentType.split('/')[1]?.split('+')[0] || 'jpg';
+    const file = await this.fileUploadService.uploadFromBuffer(buffer, {
+      filename: `avatar.${ext}`,
+      mimetype: contentType,
+    });
+    return { id: file.id };
+  }
+
   async validateSocialLogin(
     authProvider: string,
     socialData: SocialInterface,
@@ -235,17 +288,7 @@ export class AuthService {
       let photoDto: { id: string } | undefined;
       if (socialData.photoUrl) {
         try {
-          const res = await fetch(socialData.photoUrl);
-          if (res.ok) {
-            const buffer = Buffer.from(await res.arrayBuffer());
-            const contentType = res.headers.get('content-type') ?? 'image/jpeg';
-            const ext = contentType.split('/')[1]?.split('+')[0] ?? 'jpg';
-            const file = await this.fileUploadService.uploadFromBuffer(buffer, {
-              filename: `avatar.${ext}`,
-              mimetype: contentType,
-            });
-            photoDto = { id: file.id };
-          }
+          photoDto = await this.uploadSocialAvatar(socialData.photoUrl);
         } catch {
           this.logger.warn(
             { provider: authProvider, socialId: socialData.id },
@@ -284,10 +327,18 @@ export class AuthService {
       });
     }
 
-    const hash = crypto
-      .createHash('sha256')
-      .update(randomStringGenerator())
-      .digest('hex');
+    if (this.isBlocked(user)) {
+      this.logger.warn(
+        { userId: user.id, status: user.status },
+        'Social login failed: account not active',
+      );
+      throw new UnprocessableEntityException({
+        status: HttpStatus.UNPROCESSABLE_ENTITY,
+        errors: { user: this.t('auth.ACCOUNT_NOT_ACTIVE') },
+      });
+    }
+
+    const hash = this.generateSessionHash();
 
     this.logger.debug(
       {
@@ -666,6 +717,18 @@ export class AuthService {
       });
     }
 
+    // Only files the user uploaded (or ownerless legacy files) may become their photo.
+    if (userDto.photo?.id && userDto.photo.id !== currentUser.photo?.id) {
+      const file = await this.filesService.findById(userDto.photo.id);
+
+      if (file?.ownerId && file.ownerId !== currentUser.id) {
+        throw new UnprocessableEntityException({
+          status: HttpStatus.UNPROCESSABLE_ENTITY,
+          errors: { photo: this.t('user.INVALID_PHOTO') },
+        });
+      }
+    }
+
     delete userDto.email;
     delete userDto.oldPassword;
 
@@ -675,10 +738,7 @@ export class AuthService {
   async refreshToken(
     data: Pick<JwtRefreshPayloadType, 'sessionId' | 'hash'>,
   ): Promise<{ token: string; refreshToken: string; tokenExpires: number }> {
-    const hash = crypto
-      .createHash('sha256')
-      .update(randomStringGenerator())
-      .digest('hex');
+    const hash = this.generateSessionHash();
 
     const session = await this.sessionService.updateByHash(
       { id: data.sessionId, hash: data.hash },
@@ -690,21 +750,25 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
-    const user = await this.usersService.findById(session.user.id);
+    const userId = session.user?.id;
+    const user = userId ? await this.usersService.findById(userId) : null;
 
-    if (user?.status === UserStatus.BANNED) {
-      await this.sessionService.deleteById(session.id, 'suspicious');
+    if (!user || this.isBlocked(user)) {
+      await this.sessionService.deleteById(
+        session.id,
+        user?.status === UserStatus.BANNED ? 'suspicious' : 'logout',
+      );
       this.logger.warn(
-        { sessionId: session.id, userId: session.user.id },
-        'Token refresh rejected: user is banned — session revoked',
+        { sessionId: session.id, userId, status: user?.status },
+        'Token refresh rejected: user missing or not active — session revoked',
       );
       throw new UnauthorizedException();
     }
 
-    if (!user?.roles?.length) {
+    if (!user.roles?.length) {
       this.logger.warn(
-        { sessionId: data.sessionId, userId: session.user.id },
-        'Token refresh failed: user not found or has no roles',
+        { sessionId: data.sessionId, userId },
+        'Token refresh failed: user has no roles',
       );
       throw new UnauthorizedException();
     }
@@ -714,18 +778,23 @@ export class AuthService {
       await this.rolesService.getPermissionsForRoles(roleNames);
 
     const { token, refreshToken, tokenExpires } = await this.getTokensData({
-      id: session.user.id,
+      id: user.id,
       roles: roleNames,
       permissions,
       sessionId: session.id,
       hash,
     });
 
-    this.logger.debug(
-      { userId: session.user.id, sessionId: session.id },
-      'Token refreshed',
-    );
+    this.logger.debug({ userId, sessionId: session.id }, 'Token refreshed');
     return { token, refreshToken, tokenExpires };
+  }
+
+  /**
+   * Unconfirmed, pending and banned accounts may not hold sessions. Rows
+   * without a status (legacy or admin-created) stay allowed.
+   */
+  private isBlocked(user: User): boolean {
+    return !!user.status && user.status !== UserStatus.ACTIVE;
   }
 
   /**
@@ -753,6 +822,7 @@ export class AuthService {
 
   async softDelete(userId: User['id']): Promise<{ message: string }> {
     await this.usersService.remove(userId);
+    await this.sessionService.deleteByUserId({ userId }, 'logout');
     this.logger.info({ userId }, 'User account soft-deleted');
     return { message: this.t('auth.DELETE_SUCCESS') };
   }
@@ -768,10 +838,18 @@ export class AuthService {
   async getSessions(
     userId: User['id'],
     currentSessionId: Session['id'],
-  ): Promise<Array<Session & { isCurrent: boolean }>> {
+  ): Promise<SessionResponseDto[]> {
     const sessions = await this.sessionService.findByUserId(userId);
+    // Explicit mapping keeps the refresh-token hash and the populated user out
+    // of the response.
     return sessions.map((s) => ({
-      ...s,
+      id: s.id,
+      deviceId: s.deviceId,
+      deviceName: s.deviceName,
+      ipAddress: s.ipAddress,
+      platform: s.platform,
+      lastUsedAt: s.lastUsedAt,
+      createdAt: s.createdAt,
       isCurrent: String(s.id) === String(currentSessionId),
     }));
   }

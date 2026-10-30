@@ -11,9 +11,10 @@ import { api } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth-store";
 import { buildOAuthUrl } from "@/lib/oauth";
 import type { OAuthProvider } from "@/lib/oauth";
-import { Spinner } from "@/components/spinner";
-import { FormField } from "@/components/form-field";
-import { ServerError } from "@/components/server-error";
+import { Alert } from "@repo/ui/alert";
+import { Button } from "@repo/ui/button";
+import { FormField } from "@repo/ui/form-field";
+import { Input } from "@repo/ui/input";
 
 type FormValues = {
   email: string;
@@ -121,14 +122,21 @@ function LoginPageContent() {
     () =>
       z.object({
         email: z.string().email(t("errorInvalidEmail")),
-        password: z.string().min(8, t("errorPasswordLength")),
+        password: z.string().min(1, t("errorPasswordRequired")),
       }),
     [t],
   );
 
   useEffect(() => {
     const error = searchParams.get("error");
-    if (error) setServerError(decodeURIComponent(error).replace(/_/g, " "));
+    if (!error) return;
+    let message = error;
+    try {
+      message = decodeURIComponent(error);
+    } catch {
+      // Malformed escape sequence: show the raw value.
+    }
+    setServerError(message.replace(/_/g, " "));
   }, [searchParams]);
 
   const {
@@ -147,7 +155,12 @@ function LoginPageContent() {
       setAuth(data.token, data.tokenExpires, null);
       router.push("/");
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : t("errorDefault"));
+      // A 422 carries the real reason in details; message is "Validation failed".
+      const detail = (err as { details?: { message: string }[] })?.details?.[0];
+      setServerError(
+        detail?.message ??
+          (err instanceof Error ? err.message : t("errorDefault")),
+      );
     }
   }
 
@@ -166,12 +179,12 @@ function LoginPageContent() {
   return (
     <>
       <div className="mb-8">
-        <h1 className="text-3xl font-semibold tracking-tight">{t("title")}</h1>
-        <p className="mt-2 text-sm text-neutral-500">
+        <h1 className="text-h1">{t("title")}</h1>
+        <p className="mt-2 text-small text-muted">
           {t("noAccount")}{" "}
           <Link
             href="/register"
-            className="text-black font-medium underline underline-offset-2 hover:text-neutral-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
+            className="font-medium text-foreground underline underline-offset-4 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground"
           >
             {t("createOne")}
           </Link>
@@ -184,13 +197,13 @@ function LoginPageContent() {
         noValidate
       >
         <FormField id="email" label={t("email")} error={errors.email?.message}>
-          <input
+          <Input
             id="email"
             type="email"
             autoComplete="email"
             spellCheck={false}
             placeholder="you@example.com…"
-            className="border border-[#D0D0D0] px-4 py-3.5 text-sm transition-colors focus-visible:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black"
+            invalid={!!errors.email}
             {...register("email")}
           />
         </FormField>
@@ -200,52 +213,44 @@ function LoginPageContent() {
           label={t("password")}
           error={errors.password?.message}
         >
-          <input
+          <Input
             id="password"
             type="password"
             autoComplete="current-password"
             placeholder="••••••••"
-            className="border border-[#D0D0D0] px-4 py-3.5 text-sm transition-colors focus-visible:outline-none focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black"
+            invalid={!!errors.password}
             {...register("password")}
           />
         </FormField>
 
-        {serverError && <ServerError message={serverError} />}
+        {serverError && <Alert>{serverError}</Alert>}
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="bg-black text-white text-sm font-medium py-3.5 hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 flex items-center justify-center gap-2 mt-1"
-        >
-          {isSubmitting && <Spinner variant="white" />}
+        <Button type="submit" fullWidth loading={isSubmitting} className="mt-1">
           {isSubmitting ? t("submitting") : t("submit")}
-        </button>
+        </Button>
       </form>
 
-      <div className="flex items-center gap-3 my-7">
-        <div className="flex-1 h-px bg-[#E8E8E8]" />
-        <span className="text-[11px] font-medium text-neutral-400 uppercase tracking-wider">
+      <div className="my-7 flex items-center gap-3">
+        <div className="h-px flex-1 bg-border" />
+        <span className="text-label uppercase text-muted">
           {t("orContinueWith")}
         </span>
-        <div className="flex-1 h-px bg-[#E8E8E8]" />
+        <div className="h-px flex-1 bg-border" />
       </div>
 
       <div className="grid grid-cols-2 gap-2">
         {OAUTH_PROVIDERS.map(({ id, label, icon }) => (
-          <button
+          <Button
             key={id}
             type="button"
+            variant="secondary"
             disabled={oauthLoading !== null}
+            loading={oauthLoading === id}
             onClick={() => handleOAuth(id)}
-            className="flex items-center justify-center gap-2.5 border border-[#D0D0D0] px-4 py-3.5 text-sm font-medium hover:bg-neutral-50 hover:border-neutral-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-1"
           >
-            {oauthLoading === id ? (
-              <span className="w-4 h-4 border-2 border-black/20 border-t-black/70 animate-spin rounded-[9999px] shrink-0" />
-            ) : (
-              icon
-            )}
+            {oauthLoading !== id && icon}
             <span>{oauthLoading === id ? t("oauthOpening") : label}</span>
-          </button>
+          </Button>
         ))}
       </div>
     </>
