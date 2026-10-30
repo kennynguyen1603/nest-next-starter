@@ -14,6 +14,7 @@ services:
         if [ "$$DATABASE_TYPE" = "mongodb" ] || [ -z "$$DATABASE_TYPE" ]; then
           node dist/database/seeds/document/run-seed.js
         else
+          node node_modules/typeorm/cli.js migration:run -d dist/database/data-source.js &&
           node dist/database/seeds/relational/run-seed.js
         fi
     restart: "no"
@@ -82,6 +83,10 @@ services:
         NEXT_PUBLIC_NOTIFICATIONS_ENABLED: ${NEXT_PUBLIC_NOTIFICATIONS_ENABLED:-false}
     ports:
       - "3002:3002"
+    # Optional: only server-side values (APP_COOKIE_DOMAIN) are read at runtime.
+    env_file:
+      - path: apps/admin/.env
+        required: false
     environment:
       NODE_ENV: production
     depends_on:
