@@ -264,6 +264,7 @@ export class AuthService {
     securityContext?: SecurityContext,
   ): Promise<LoginResponseDto & { refreshToken: string; message: string }> {
     const socialEmail = socialData.email?.toLowerCase();
+    const emailVerified = socialData.emailVerified === true;
     const [userByEmail, userBySocial] = await Promise.all([
       socialEmail
         ? this.usersService.findByEmail(socialEmail)
@@ -278,11 +279,23 @@ export class AuthService {
     let user: NullableType<User> = userBySocial;
 
     if (user) {
-      if (socialEmail && !userByEmail) {
+      if (socialEmail && emailVerified && !userByEmail) {
         user.email = socialEmail;
         await this.usersService.update(user.id, { email: socialEmail });
       }
     } else if (userByEmail) {
+      // Linking on an unverified address would let anyone who can put that
+      // address on a provider account take over the existing account.
+      if (!emailVerified) {
+        this.logger.warn(
+          { provider: authProvider, userId: userByEmail.id },
+          'Social login refused: unverified email matches an existing account',
+        );
+        throw new UnprocessableEntityException({
+          status: HttpStatus.UNPROCESSABLE_ENTITY,
+          errors: { email: this.t('auth.EMAIL_ALREADY_EXISTS') },
+        });
+      }
       user = userByEmail;
     } else if (socialData.id) {
       let photoDto: { id: string } | undefined;
@@ -298,7 +311,9 @@ export class AuthService {
       }
 
       user = await this.usersService.create({
-        email: socialEmail ?? null,
+        // An unverified address is not stored: it could later be used to
+        // reset the password of an account its real owner never created.
+        email: emailVerified ? (socialEmail ?? null) : null,
         firstName: socialData.firstName ?? null,
         lastName: socialData.lastName ?? null,
         socialId: socialData.id,

@@ -74,6 +74,7 @@ describe('AuthFacebookService', () => {
       ).resolves.toEqual({
         id: 'fb-1',
         email: 'user@example.com',
+        emailVerified: false,
         firstName: 'Ada',
         lastName: 'Lovelace',
         provider: 'facebook',

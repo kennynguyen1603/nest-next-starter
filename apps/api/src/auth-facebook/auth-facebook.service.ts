@@ -95,6 +95,9 @@ export class AuthFacebookService {
       return {
         id: data.id,
         email: data.email || undefined,
+        // Graph API exposes no verification flag, so the address is not
+        // trusted for linking to an existing account.
+        emailVerified: false,
         firstName: data.first_name || '',
         lastName: data.last_name || '',
         provider: 'facebook',
