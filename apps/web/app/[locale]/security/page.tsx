@@ -29,6 +29,7 @@ function Sessions() {
   const locale = useLocale();
   const [sessions, setSessions] = useState<Session[] | null>(null);
   const [loadError, setLoadError] = useState(false);
+  const [reload, setReload] = useState(0);
   const [actionError, setActionError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<Session["id"] | null>(null);
   const [revokingAll, setRevokingAll] = useState(false);
@@ -43,7 +44,13 @@ function Sessions() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reload]);
+
+  function retryLoad() {
+    setSessions(null);
+    setLoadError(false);
+    setReload((r) => r + 1);
+  }
 
   async function handleRevoke(id: Session["id"]) {
     setActionError(null);
@@ -109,8 +116,11 @@ function Sessions() {
         )}
 
         {loadError ? (
-          <div className="px-6 py-4">
+          <div className="px-6 py-4 space-y-3">
             <Alert>{t("errorLoad")}</Alert>
+            <Button variant="secondary" size="sm" onClick={retryLoad}>
+              {tCommon("retry")}
+            </Button>
           </div>
         ) : !sessions ? (
           <div className="flex items-center justify-center py-12">

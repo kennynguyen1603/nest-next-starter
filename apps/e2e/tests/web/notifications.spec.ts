@@ -537,6 +537,38 @@ test("a failed load shows an error instead of the list", async ({ page }) => {
   await expect(page).toHaveURL(/\/en\/notifications$/);
 });
 
+test("try again reloads the list after a failed load", async ({ page }) => {
+  const { queries, route } = getRoute(unreadOnly);
+  let failing = true;
+  await mockApi(page, [
+    ...sessionRoutes(),
+    {
+      ...route,
+      reply: (req) =>
+        failing && new URL(req.url()).searchParams.get("limit") !== "1"
+          ? { status: 500, json: { message: "boom" } }
+          : route.reply(req),
+    },
+  ]);
+  await page.goto("/en/notifications");
+
+  await expect(card(page).getByRole("alert")).toHaveText(
+    "Failed to load notifications.",
+  );
+  failing = false;
+  await card(page).getByRole("button", { name: "Try again" }).click();
+
+  await expect(rows(page)).toHaveCount(3);
+  await expect(card(page).getByRole("alert")).toHaveCount(0);
+  await expect(
+    card(page).getByRole("button", { name: "Try again" }),
+  ).toHaveCount(0);
+  // One retry, for the same page and filter as the failed request.
+  expect(queries).toHaveLength(1);
+  expect(queries[0]!.get("page")).toBe("1");
+  expect(queries[0]!.get("isRead")).toBeNull();
+});
+
 test("bulk actions wait for the list to load", async ({ page }) => {
   const { route } = getRoute(unreadOnly);
   await mockApi(page, [...sessionRoutes(), route]);

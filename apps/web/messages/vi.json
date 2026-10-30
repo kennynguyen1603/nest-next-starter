@@ -3,6 +3,7 @@
     "appName": "Starter",
     "loading": "Đang tải…",
     "cancel": "Hủy",
+    "retry": "Thử lại",
     "saveChanges": "Lưu thay đổi"
   },
   "home": {

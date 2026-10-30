@@ -3,6 +3,7 @@
     "appName": "Starter",
     "loading": "Loading…",
     "cancel": "Cancel",
+    "retry": "Try again",
     "saveChanges": "Save changes"
   },
   "home": {

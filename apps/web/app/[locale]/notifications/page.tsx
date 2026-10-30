@@ -71,6 +71,12 @@ function Notifications() {
     setFilter(nextFilter);
   }
 
+  function retryLoad() {
+    setData(null);
+    setLoadError(false);
+    setReload((r) => r + 1);
+  }
+
   function removeRow(id: Notification["id"]) {
     const remaining = (data?.pagination.totalRecords ?? 1) - 1;
     if (data?.data.length === 1 && remaining > 0) {
@@ -247,8 +253,11 @@ function Notifications() {
         )}
 
         {loadError ? (
-          <div className="px-6 py-4">
+          <div className="px-6 py-4 space-y-3">
             <Alert>{t("errorLoad")}</Alert>
+            <Button variant="secondary" size="sm" onClick={retryLoad}>
+              {tCommon("retry")}
+            </Button>
           </div>
         ) : !data ? (
           <div className="flex items-center justify-center py-12">

@@ -252,6 +252,40 @@ test("a failed load shows an error instead of the list", async ({ page }) => {
   await expect(page).toHaveURL(/\/en\/security$/);
 });
 
+test("try again reloads the sessions after a failed load", async ({ page }) => {
+  let failing = true;
+  const calls = await mockApi(page, [
+    ...sessionRoutes(),
+    {
+      method: "GET",
+      path: SESSIONS_PATH,
+      reply: () =>
+        failing
+          ? { status: 500, json: { message: "boom" } }
+          : { json: sessionsFixture() },
+    },
+  ]);
+  await page.goto("/en/security");
+
+  await expect(card(page).getByRole("alert")).toHaveText(
+    "Failed to load sessions.",
+  );
+  const failedLoads = calls.filter(
+    (c) => c.method === "GET" && c.path === SESSIONS_PATH,
+  ).length;
+  failing = false;
+  await card(page).getByRole("button", { name: "Try again" }).click();
+
+  await expect(rows(page)).toHaveCount(4);
+  await expect(card(page).getByRole("alert")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Sign out all other devices" }),
+  ).toBeVisible();
+  expect(
+    calls.filter((c) => c.method === "GET" && c.path === SESSIONS_PATH),
+  ).toHaveLength(failedLoads + 1);
+});
+
 test("security page is translated in Vietnamese", async ({ page }) => {
   await mockApi(page, [
     ...sessionRoutes(),
