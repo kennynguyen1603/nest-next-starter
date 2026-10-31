@@ -6,7 +6,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
-import { getReasonPhrase } from 'http-status-codes';
+import { STATUS_CODES } from 'http';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 
 import { ErrorDetailDto } from '@/common/dto/error-detail.dto';
@@ -114,12 +114,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       );
     }
 
-    let error: string;
-    try {
-      error = getReasonPhrase(statusCode);
-    } catch {
-      error = 'Unknown Error';
-    }
+    const error = STATUS_CODES[statusCode] ?? 'Unknown Error';
 
     const body: ErrorDto = {
       statusCode,

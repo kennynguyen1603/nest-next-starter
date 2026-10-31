@@ -16,29 +16,50 @@ export class AdminDocumentRepository implements AdminRepository {
     private readonly userModel: Model<UserSchemaClass>,
   ) {}
 
-  async getStats(): Promise<AdminStatsDto> {
+  // All user counters in one collection pass instead of one count per metric.
+  private async countUsers() {
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
 
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const [totalUsers, newUsersToday, activeUsers, usersThirtyDaysAgo] =
-      await Promise.all([
-        this.userModel.countDocuments({ deletedAt: { $exists: false } }),
-        this.userModel.countDocuments({
-          deletedAt: { $exists: false },
-          createdAt: { $gte: today },
-        }),
-        this.userModel.countDocuments({
-          deletedAt: { $exists: false },
-          status: UserStatus.ACTIVE,
-        }),
-        this.userModel.countDocuments({
-          deletedAt: { $exists: false },
-          createdAt: { $lt: thirtyDaysAgo },
-        }),
-      ]);
+    const [row] = await this.userModel.aggregate<{
+      totalUsers: number;
+      newUsersToday: number;
+      activeUsers: number;
+      usersThirtyDaysAgo: number;
+    }>([
+      { $match: { deletedAt: { $exists: false } } },
+      {
+        $group: {
+          _id: null,
+          totalUsers: { $sum: 1 },
+          newUsersToday: {
+            $sum: { $cond: [{ $gte: ['$createdAt', today] }, 1, 0] },
+          },
+          activeUsers: {
+            $sum: { $cond: [{ $eq: ['$status', UserStatus.ACTIVE] }, 1, 0] },
+          },
+          usersThirtyDaysAgo: {
+            $sum: { $cond: [{ $lt: ['$createdAt', thirtyDaysAgo] }, 1, 0] },
+          },
+        },
+      },
+    ]);
+    return (
+      row ?? {
+        totalUsers: 0,
+        newUsersToday: 0,
+        activeUsers: 0,
+        usersThirtyDaysAgo: 0,
+      }
+    );
+  }
+
+  async getStats(): Promise<AdminStatsDto> {
+    const { totalUsers, newUsersToday, activeUsers, usersThirtyDaysAgo } =
+      await this.countUsers();
 
     const inactiveUsers = totalUsers - activeUsers;
     const userGrowthPercent =
@@ -62,6 +83,7 @@ export class AdminDocumentRepository implements AdminRepository {
       .find({ deletedAt: { $exists: false } })
       .sort({ createdAt: -1 })
       .limit(10)
+      .select('firstName lastName email createdAt')
       .lean();
 
     return users.map((u) => ({
@@ -77,20 +99,8 @@ export class AdminDocumentRepository implements AdminRepository {
   }
 
   async getUserStatusSummary(): Promise<UserSummaryReportDto> {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const [totalUsers, activeUsers, usersThirtyDaysAgo] = await Promise.all([
-      this.userModel.countDocuments({ deletedAt: { $exists: false } }),
-      this.userModel.countDocuments({
-        deletedAt: { $exists: false },
-        status: UserStatus.ACTIVE,
-      }),
-      this.userModel.countDocuments({
-        deletedAt: { $exists: false },
-        createdAt: { $lt: thirtyDaysAgo },
-      }),
-    ]);
+    const { totalUsers, activeUsers, usersThirtyDaysAgo } =
+      await this.countUsers();
 
     const inactiveUsers = totalUsers - activeUsers;
     const userGrowthPercent =

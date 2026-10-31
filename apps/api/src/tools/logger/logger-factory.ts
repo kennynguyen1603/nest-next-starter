@@ -1,10 +1,10 @@
 import { AllConfigType } from '@/config/config.type';
 import { loggingRedactPaths, LogService } from '@/constants/app.constant';
 import { ConfigService } from '@nestjs/config';
+import { randomUUID } from 'crypto';
 import { type IncomingMessage, type ServerResponse } from 'http';
 import { Params } from 'nestjs-pino';
 import { GenReqId, Options, type ReqId } from 'pino-http';
-import { v4 as uuidv4 } from 'uuid';
 
 type PinoRequest = IncomingMessage & { id?: ReqId };
 
@@ -24,7 +24,7 @@ const genReqId: GenReqId = (
   res: ServerResponse<IncomingMessage>,
 ) => {
   const existing = req.headers['x-request-id'];
-  const id: ReqId = existing ?? uuidv4();
+  const id: ReqId = existing ?? randomUUID();
   res.setHeader(
     'X-Request-Id',
     typeof id === 'object' ? JSON.stringify(id) : String(id),

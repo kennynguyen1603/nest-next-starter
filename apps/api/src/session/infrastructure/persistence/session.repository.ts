@@ -12,13 +12,6 @@ export abstract class SessionRepository {
     data: Omit<Session, 'id' | 'createdAt' | 'updatedAt' | 'revokeAt'>,
   ): Promise<Session>;
 
-  abstract update(
-    id: Session['id'],
-    payload: Partial<
-      Omit<Session, 'id' | 'createdAt' | 'updatedAt' | 'revokeAt'>
-    >,
-  ): Promise<Session | null>;
-
   abstract updateByHash(
     conditions: { id: Session['id']; hash: Session['hash'] },
     payload: Partial<

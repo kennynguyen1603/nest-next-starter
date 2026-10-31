@@ -23,12 +23,16 @@ export class FileDocumentRepository implements FileRepository {
   }
 
   async findById(id: FileType['id']): Promise<NullableType<FileType>> {
-    const fileObject = await this.fileModel.findById(id);
+    const fileObject = await this.fileModel
+      .findById(id)
+      .lean<FileSchemaClass>();
     return fileObject ? FileMapper.toDomain(fileObject) : null;
   }
 
   async findByIds(ids: FileType['id'][]): Promise<FileType[]> {
-    const fileObjects = await this.fileModel.find({ _id: { $in: ids } });
+    const fileObjects = await this.fileModel
+      .find({ _id: { $in: ids } })
+      .lean<FileSchemaClass[]>();
     return fileObjects.map((fileObject) => FileMapper.toDomain(fileObject));
   }
 }

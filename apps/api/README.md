@@ -27,10 +27,10 @@ Runs by default at **http://localhost:8080**.
 
 Select the database type via `DATABASE_TYPE` in `.env` — **no code changes required**:
 
-| `DATABASE_TYPE`                 | Adapter | ORM/ODM                          |
-| ------------------------------- | ------- | -------------------------------- |
-| `mongodb`                       | MongoDB | Mongoose + mongoose-autopopulate |
-| `postgres` / `mysql` / `sqlite` | SQL     | TypeORM                          |
+| `DATABASE_TYPE`                 | Adapter | ORM/ODM  |
+| ------------------------------- | ------- | -------- |
+| `mongodb`                       | MongoDB | Mongoose |
+| `postgres` / `mysql` / `sqlite` | SQL     | TypeORM  |
 
 Each module has two separate infrastructure layers (`document/` and `relational/`).  
 Database seeders: `seed:run:document` / `seed:run:relational`.

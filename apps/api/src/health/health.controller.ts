@@ -1,5 +1,4 @@
 import { ErrorDto } from '@/common/dto/error.dto';
-import { Public } from '@/decorators/public.decorator';
 import { Serialize } from '@/utils/interceptors/serialize';
 import { Controller, Get, HttpStatus, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -45,7 +44,6 @@ export class HealthController implements OnModuleDestroy {
     private readonly logger: PinoLogger,
   ) {}
 
-  @Public()
   @ApiOperation({ summary: 'Health check' })
   @ApiResponse({
     status: HttpStatus.OK,

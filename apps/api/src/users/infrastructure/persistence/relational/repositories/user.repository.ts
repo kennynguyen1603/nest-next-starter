@@ -131,10 +131,13 @@ export class UsersRelationalRepository implements UserRepository {
 
     if (!entity) return null;
 
-    // Compute merged persistence model for value extraction
+    // Compute merged persistence model for value extraction. Explicit
+    // `undefined` keys mean "not provided" and must not erase loaded fields.
     const merged = UserMapper.toPersistence({
       ...UserMapper.toDomain(entity),
-      ...payload,
+      ...Object.fromEntries(
+        Object.entries(payload).filter(([, value]) => value !== undefined),
+      ),
     });
 
     // Build scalar-only update payload.

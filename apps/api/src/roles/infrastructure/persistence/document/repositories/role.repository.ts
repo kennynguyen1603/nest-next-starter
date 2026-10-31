@@ -72,11 +72,13 @@ export class RolesDocumentRepository implements RolesRepository {
     userId: string,
     roleNames: RoleEnum[],
   ): Promise<void> {
-    await this.userRoleModel.deleteMany({ userId });
-    if (!roleNames.length) return;
-    const roles = await this.roleModel
-      .find({ name: { $in: roleNames } }, { _id: 1 })
-      .lean();
+    const [, roles] = await Promise.all([
+      this.userRoleModel.deleteMany({ userId }),
+      roleNames.length
+        ? this.roleModel.find({ name: { $in: roleNames } }, { _id: 1 }).lean()
+        : [],
+    ]);
+    if (!roles.length) return;
     await this.userRoleModel.insertMany(
       roles.map((role) => ({
         userId,

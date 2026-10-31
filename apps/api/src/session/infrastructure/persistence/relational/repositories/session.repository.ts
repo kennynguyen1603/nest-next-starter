@@ -45,37 +45,6 @@ export class SessionRelationalRepository implements SessionRepository {
     return SessionMapper.toDomain(entity);
   }
 
-  async update(
-    id: Session['id'],
-    payload: Partial<
-      Omit<Session, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>
-    >,
-  ): Promise<Session | null> {
-    // user is no longer eager-loaded; select user.id so SessionMapper.toPersistence
-    // (which reads entity.user.id) does not throw on the round-trip.
-    const entity = await this.sessionRepository
-      .createQueryBuilder('session')
-      .leftJoin('session.user', 'user')
-      .addSelect('user.id')
-      .where('session.id = :id', { id: Number(id) })
-      .getOne();
-
-    if (!entity) {
-      throw new Error('Session not found');
-    }
-
-    const updatedEntity = await this.sessionRepository.save(
-      this.sessionRepository.create(
-        SessionMapper.toPersistence({
-          ...SessionMapper.toDomain(entity),
-          ...payload,
-        }),
-      ),
-    );
-
-    return SessionMapper.toDomain(updatedEntity);
-  }
-
   async updateByHash(
     conditions: { id: Session['id']; hash: Session['hash'] },
     payload: Partial<

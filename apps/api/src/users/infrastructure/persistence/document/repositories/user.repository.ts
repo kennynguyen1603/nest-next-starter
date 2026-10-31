@@ -70,22 +70,22 @@ export class UsersDocumentRepository implements UserRepository {
     const createdUser = new this.usersModel(persistenceModel);
     const savedUser = await createdUser.save();
 
+    let roles: RoleSchemaClass[] = [];
     if (data.roles?.length) {
       const names = data.roles.map((role) => role.name).filter(Boolean);
-      const foundRoles = await this.roleModel
-        .find({ name: { $in: names } }, { _id: 1 })
-        .lean<{ _id: unknown }[]>();
-      if (foundRoles.length) {
+      roles = await this.roleModel
+        .find({ name: { $in: names } }, { _id: 1, name: 1 })
+        .lean<RoleSchemaClass[]>();
+      if (roles.length) {
         await this.userRoleModel.insertMany(
-          foundRoles.map((foundRole) => ({
+          roles.map((role) => ({
             userId: savedUser._id.toString(),
-            roleId: String(foundRole._id),
+            roleId: String(role._id),
           })),
         );
       }
     }
 
-    const roles = await this.populateRoles(savedUser._id.toString());
     return UserMapper.toDomain(savedUser, roles);
   }
 
@@ -142,7 +142,8 @@ export class UsersDocumentRepository implements UserRepository {
         .find(where)
         .sort(sortQuery)
         .skip((paginationOptions.page - 1) * paginationOptions.limit)
-        .limit(paginationOptions.limit),
+        .limit(paginationOptions.limit)
+        .lean<UserSchemaClass[]>(),
       this.usersModel.countDocuments(where),
     ]);
 
@@ -159,7 +160,9 @@ export class UsersDocumentRepository implements UserRepository {
   }
 
   async findById(id: User['id']): Promise<NullableType<User>> {
-    const userDocument = await this.usersModel.findById(id);
+    const userDocument = await this.usersModel
+      .findById(id)
+      .lean<UserSchemaClass>();
     if (!userDocument) return null;
     const roles = await this.populateRoles(userDocument._id.toString());
     return UserMapper.toDomain(userDocument, roles);
@@ -167,9 +170,9 @@ export class UsersDocumentRepository implements UserRepository {
 
   async findByIds(ids: User['id'][]): Promise<User[]> {
     if (!ids.length) return [];
-    const userDocuments = await this.usersModel.find({
-      _id: { $in: ids.map((id) => id.toString()) },
-    });
+    const userDocuments = await this.usersModel
+      .find({ _id: { $in: ids.map((id) => id.toString()) } })
+      .lean<UserSchemaClass[]>();
     if (!userDocuments.length) return [];
 
     // Batch-load roles in 2 queries instead of 2N queries (N+1 eliminated)
@@ -183,7 +186,9 @@ export class UsersDocumentRepository implements UserRepository {
 
   async findByEmail(email: User['email']): Promise<NullableType<User>> {
     if (!email) return null;
-    const userDocument = await this.usersModel.findOne({ email });
+    const userDocument = await this.usersModel
+      .findOne({ email })
+      .lean<UserSchemaClass>();
     if (!userDocument) return null;
     const roles = await this.populateRoles(userDocument._id.toString());
     return UserMapper.toDomain(userDocument, roles);
@@ -197,42 +202,39 @@ export class UsersDocumentRepository implements UserRepository {
     provider: User['provider'];
   }): Promise<NullableType<User>> {
     if (!socialId || !provider) return null;
-    const userDocument = await this.usersModel.findOne({ socialId, provider });
+    const userDocument = await this.usersModel
+      .findOne({ socialId, provider })
+      .lean<UserSchemaClass>();
     if (!userDocument) return null;
     const roles = await this.populateRoles(userDocument._id.toString());
     return UserMapper.toDomain(userDocument, roles);
   }
 
   async update(id: User['id'], payload: Partial<User>): Promise<User | null> {
-    const clonedPayload = { ...payload };
-    delete clonedPayload.id;
+    const { id: _id, roles: newRoles, photo, ...fields } = payload;
 
-    const filter = { _id: id.toString() };
-    const existingUser = await this.usersModel.findOne(filter);
-    if (!existingUser) return null;
-
-    // Strip undefined so spreading doesn't accidentally remove fields from the
-    // replacement doc. null is kept — it signals an explicit clear (e.g. photo).
-    const defined = Object.fromEntries(
-      Object.entries(clonedPayload).filter(([, v]) => v !== undefined),
-    ) as Partial<User>;
-
-    const updatedUser = await this.usersModel.findOneAndUpdate(
-      filter,
-      UserMapper.toPersistence({
-        ...UserMapper.toDomain(existingUser),
-        ...defined,
-      }),
-      { returnDocument: 'after' },
+    // Only set what was provided. undefined = untouched; null is kept — it
+    // signals an explicit clear (e.g. photo).
+    const $set: Record<string, unknown> = Object.fromEntries(
+      Object.entries(fields).filter(([, v]) => v !== undefined),
     );
+    if (photo !== undefined) {
+      $set.photo = photo ? { _id: photo.id, path: photo.path } : null;
+    }
+
+    const updatedUser = await this.usersModel
+      .findOneAndUpdate(
+        { _id: id.toString() },
+        { $set },
+        { returnDocument: 'after' },
+      )
+      .lean<UserSchemaClass>();
     if (!updatedUser) return null;
 
-    if (clonedPayload.roles !== undefined) {
+    if (newRoles !== undefined) {
       await this.userRoleModel.deleteMany({ userId: id.toString() });
-      if (clonedPayload.roles.length) {
-        const names = clonedPayload.roles
-          .map((role) => role.name)
-          .filter(Boolean);
+      if (newRoles.length) {
+        const names = newRoles.map((role) => role.name).filter(Boolean);
         const foundRoles = await this.roleModel
           .find({ name: { $in: names } }, { _id: 1 })
           .lean<{ _id: unknown }[]>();
@@ -259,7 +261,9 @@ export class UsersDocumentRepository implements UserRepository {
   }
 
   async remove(id: User['id']): Promise<void> {
-    await this.userRoleModel.deleteMany({ userId: id.toString() });
-    await this.usersModel.deleteOne({ _id: id.toString() });
+    await Promise.all([
+      this.userRoleModel.deleteMany({ userId: id.toString() }),
+      this.usersModel.deleteOne({ _id: id.toString() }),
+    ]);
   }
 }

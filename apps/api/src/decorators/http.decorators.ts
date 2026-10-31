@@ -14,7 +14,6 @@ import {
   ApiResponse,
 } from '@nestjs/swagger';
 import { STATUS_CODES } from 'http';
-import { Public } from './public.decorator';
 import { ApiPaginatedResponse } from './swagger.decorators';
 import { ErrorDto } from '@/common/dto/error.dto';
 
@@ -63,7 +62,6 @@ export const ApiPublic = (options: IApiPublicOptions = {}): MethodDecorator => {
   }
 
   return applyDecorators(
-    Public(),
     ApiOperation({ summary: options?.summary, ...(options?.operations ?? {}) }),
     HttpCode(options.statusCode || defaultStatusCode),
     isPaginated

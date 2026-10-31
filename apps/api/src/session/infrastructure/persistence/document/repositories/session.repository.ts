@@ -17,14 +17,17 @@ export class SessionDocumentRepository implements SessionRepository {
   ) {}
 
   async findById(id: Session['id']): Promise<NullableType<Session>> {
-    const sessionObject = await this.sessionModel.findById(id);
+    const sessionObject = await this.sessionModel
+      .findById(id)
+      .lean<SessionSchemaClass>();
     return sessionObject ? SessionMapper.toDomain(sessionObject) : null;
   }
 
   async findByUserId(userId: User['id']): Promise<Session[]> {
     const sessions = await this.sessionModel
       .find({ user: userId.toString(), revokeAt: { $exists: false } })
-      .sort({ lastUsedAt: -1, createdAt: -1 });
+      .sort({ lastUsedAt: -1, createdAt: -1 })
+      .lean<SessionSchemaClass[]>();
     return sessions.map(SessionMapper.toDomain);
   }
 
@@ -35,35 +38,6 @@ export class SessionDocumentRepository implements SessionRepository {
     return SessionMapper.toDomain(sessionObject);
   }
 
-  async update(
-    id: Session['id'],
-    payload: Partial<Session>,
-  ): Promise<Session | null> {
-    const clonedPayload = { ...payload };
-    delete clonedPayload.id;
-    delete clonedPayload.createdAt;
-    delete clonedPayload.updatedAt;
-    delete clonedPayload.revokeAt;
-
-    const filter = { _id: id.toString() };
-    const session = await this.sessionModel.findOne(filter);
-
-    if (!session) {
-      return null;
-    }
-
-    const sessionObject = await this.sessionModel.findOneAndUpdate(
-      filter,
-      SessionMapper.toPersistence({
-        ...SessionMapper.toDomain(session),
-        ...clonedPayload,
-      }),
-      { returnDocument: 'after' },
-    );
-
-    return sessionObject ? SessionMapper.toDomain(sessionObject) : null;
-  }
-
   async updateByHash(
     conditions: { id: Session['id']; hash: Session['hash'] },
     payload: Partial<
@@ -71,15 +45,17 @@ export class SessionDocumentRepository implements SessionRepository {
     >,
   ): Promise<Session | null> {
     // A revoked session must never rotate again, even if the old hash matches.
-    const sessionObject = await this.sessionModel.findOneAndUpdate(
-      {
-        _id: conditions.id.toString(),
-        hash: conditions.hash,
-        revokeAt: { $exists: false },
-      },
-      { $set: { hash: payload.hash, lastUsedAt: new Date() } },
-      { returnDocument: 'after' },
-    );
+    const sessionObject = await this.sessionModel
+      .findOneAndUpdate(
+        {
+          _id: conditions.id.toString(),
+          hash: conditions.hash,
+          revokeAt: { $exists: false },
+        },
+        { $set: { hash: payload.hash, lastUsedAt: new Date() } },
+        { returnDocument: 'after' },
+      )
+      .lean<SessionSchemaClass>();
 
     return sessionObject ? SessionMapper.toDomain(sessionObject) : null;
   }
@@ -137,7 +113,8 @@ export class SessionDocumentRepository implements SessionRepository {
     const sessions = await this.sessionModel
       .find({ user: userId.toString(), revokeAt: { $exists: false } })
       .sort({ createdAt: 1 })
-      .select('_id');
+      .select('_id')
+      .lean();
     if (sessions.length >= maxSessions) {
       const excess = sessions.slice(0, sessions.length - maxSessions + 1);
       await this.sessionModel.updateMany(

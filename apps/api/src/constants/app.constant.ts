@@ -1,11 +1,3 @@
-export enum Environment {
-  Local = 'local',
-  Development = 'development',
-  Staging = 'staging',
-  Production = 'production',
-  Test = 'test',
-}
-
 export enum LogService {
   Console = 'console',
   GoogleLogging = 'google-logging',
@@ -29,8 +21,6 @@ export const loggingRedactPaths = [
   'req.body.oldPassword',
   'req.body.hash',
 ];
-
-export const IS_PUBLIC = 'is-public';
 
 export const SWAGGER_PATH = '/docs';
 
