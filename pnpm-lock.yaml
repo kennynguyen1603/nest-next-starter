@@ -49,9 +49,6 @@ importers:
       '@tailwindcss/postcss':
         specifier: ^4.2.4
         version: 4.2.4
-      date-fns:
-        specifier: ^4.1.0
-        version: 4.2.1
       lucide-react:
         specifier: ^0.511.0
         version: 0.511.0(react@19.2.0)
@@ -206,18 +203,12 @@ importers:
       helmet:
         specifier: ^8.1.0
         version: 8.1.0
-      http-status-codes:
-        specifier: ^2.3.0
-        version: 2.3.0
       ioredis:
         specifier: ^5.10.1
         version: 5.10.1
       mongoose:
         specifier: ^9.6.1
         version: 9.6.1(gcp-metadata@8.1.2)
-      mongoose-autopopulate:
-        specifier: ^1.2.1
-        version: 1.2.1(mongoose@9.6.1(gcp-metadata@8.1.2))
       ms:
         specifier: ^2.1.3
         version: 2.1.3
@@ -266,9 +257,6 @@ importers:
       socket.io:
         specifier: ^4.8.0
         version: 4.8.3
-      swagger-ui-express:
-        specifier: ^5.0.1
-        version: 5.0.1(express@5.2.1)
       typeorm:
         specifier: ^0.3.28
         version: 0.3.28(ioredis@5.10.1)(mongodb@7.2.0(gcp-metadata@8.1.2))(pg@8.21.0)(ts-node@10.9.2(@swc/core@1.15.33(@swc/helpers@0.5.15))(@types/node@22.15.3)(typescript@5.9.2))
@@ -279,9 +267,6 @@ importers:
         specifier: ^14.0.0
         version: 14.0.0
     devDependencies:
-      '@eslint/eslintrc':
-        specifier: ^3.2.0
-        version: 3.3.1
       '@eslint/js':
         specifier: ^9.18.0
         version: 9.39.1
@@ -351,18 +336,12 @@ importers:
       prettier:
         specifier: ^3.4.2
         version: 3.7.4
-      source-map-support:
-        specifier: ^0.5.21
-        version: 0.5.21
       supertest:
         specifier: ^7.0.0
         version: 7.2.2
       ts-jest:
         specifier: ^29.2.5
         version: 29.4.9(@babel/core@7.29.0)(@jest/transform@30.3.0)(@jest/types@30.3.0)(babel-jest@30.3.0(@babel/core@7.29.0))(jest-util@30.3.0)(jest@30.3.0(@types/node@22.15.3)(ts-node@10.9.2(@swc/core@1.15.33(@swc/helpers@0.5.15))(@types/node@22.15.3)(typescript@5.9.2)))(typescript@5.9.2)
-      ts-loader:
-        specifier: ^9.5.2
-        version: 9.5.7(typescript@5.9.2)(webpack@5.105.4(@swc/core@1.15.33(@swc/helpers@0.5.15)))
       ts-node:
         specifier: ^10.9.2
         version: 10.9.2(@swc/core@1.15.33(@swc/helpers@0.5.15))(@types/node@22.15.3)(typescript@5.9.2)
@@ -3693,9 +3672,6 @@ packages:
     resolution: {integrity: sha512-BS8PfmtDGnrgYdOonGZQdLZslWIeCGFP9tpan0hi1Co2Zr2NKADsvGYA8XxuG/4UWgJ6Cjtv+YJnB6MM69QGlQ==}
     engines: {node: '>= 0.4'}
 
-  date-fns@4.2.1:
-    resolution: {integrity: sha512-37RhSdxaG1suen6VDCza6rNrQfooyQh57HFVPwQGEq2QWliVLzPQZ8Oa017weOu+HZCnzI7N3Pf/wyoBKfEqrA==}
-
   dateformat@4.6.3:
     resolution: {integrity: sha512-2P0p0pFGzHS5EMnhdxQi7aJN+iMheud0UhG4dlE1DLAlvL8JHjJJTX/CSm4JXwV0Ka5nGk3zC5mcb5bUQUxxMA==}
 
@@ -4398,9 +4374,6 @@ packages:
   http-errors@2.0.1:
     resolution: {integrity: sha512-4FbRdAX+bSdmo4AUFuS0WNiPz8NgFt+r8ThgNWmlrjQjt1Q7ZR9+zTlce2859x4KSXrwIsaeTqDoKQmtP8pLmQ==}
     engines: {node: '>= 0.8'}
-
-  http-status-codes@2.3.0:
-    resolution: {integrity: sha512-RJ8XvFvpPM/Dmc5SV+dC4y5PCeOhT3x1Hq0NU3rjGeg5a/CqlhZ7uudknPwZFz4aeAXDcbAyaeP7GAo9lvngtA==}
 
   http-terminator@3.2.0:
     resolution: {integrity: sha512-JLjck1EzPaWjsmIf8bziM3p9fgR1Y3JoUKAkyYEbZmFrIvJM6I8vVJfBGWlEtV9IWOvzNnaTtjuwZeBY2kwB4g==}
@@ -5222,11 +5195,6 @@ packages:
       socks:
         optional: true
 
-  mongoose-autopopulate@1.2.1:
-    resolution: {integrity: sha512-mn6AM7iFqsB9Rqyp2XD3tqXgC+X9dEv+H+eVmunskSb3fqiT6umgwkVPpIm7+Xe5h9/b3mIP/Le670Rx6lLnUw==}
-    peerDependencies:
-      mongoose: 6.x || 7.x || 8.x || ^9.0.0-0
-
   mongoose@9.6.1:
     resolution: {integrity: sha512-3T8/b0plM3ZJPW3WjlzVMIGJEYYTjgDPQ05Qzru3xu3/wOPSFKWYxdwUF2dl8h3NG5dVkzIuOkZdLacnlLf/sA==}
     engines: {node: '>=20.19.0'}
@@ -6034,10 +6002,6 @@ packages:
     resolution: {integrity: sha512-l3BikUxvPOcn5E74dZiq5BGsTb5yEwhaTSzccU6t4sDOH8NWJCstKO5QT2CvtFoK6F0saL7p9xHAqHOlCPJygA==}
     engines: {node: '>= 8'}
 
-  source-map@0.7.6:
-    resolution: {integrity: sha512-i5uvt8C3ikiWeNZSVZNWcfZPItFQOsYTUAOkcUPGd8DqDy1uOUikjt5dG+uRlwyvR108Fb9DOd4GvXfT0N2/uQ==}
-    engines: {node: '>= 12'}
-
   sparse-bitfield@3.0.3:
     resolution: {integrity: sha512-kvzhi7vqKTfkh0PZU+2D2PIllw2ymqJKujUcyPMd9Y75Nv4nPbGJZXNhxsgdQab2BmlDct1YnfQCguEvHr7VsQ==}
 
@@ -6200,12 +6164,6 @@ packages:
   swagger-ui-dist@5.32.4:
     resolution: {integrity: sha512-0AADFFQNJzExEN49SrD/34Nn9cxNxVLiydYl2MBwSZFPVXNkVwC/EFAjoezGGqE8oDegiDC+p47t8lKObCinMQ==}
 
-  swagger-ui-express@5.0.1:
-    resolution: {integrity: sha512-SrNU3RiBGTLLmFU8GIJdOdanJTl4TOmT27tt3bWWHppqYmAZ6IDuEuBvMU6nZq0zLEe6b/1rACXCgLZqO6ZfrA==}
-    engines: {node: '>= v0.10.32'}
-    peerDependencies:
-      express: '>=4.0.0 || >=5.0.0-beta'
-
   symbol-observable@4.0.0:
     resolution: {integrity: sha512-b19dMThMV4HVFynSAM1++gBHAbk2Tc/osgLIBZMKsyqh34jb2e8Os7T6ZW/Bt3pJFdBTd2JwAnAAEQV7rSNvcQ==}
     engines: {node: '>=0.10'}
@@ -6345,13 +6303,6 @@ packages:
         optional: true
       jest-util:
         optional: true
-
-  ts-loader@9.5.7:
-    resolution: {integrity: sha512-/ZNrKgA3K3PtpMYOC71EeMWIloGw3IYEa5/t1cyz2r5/PyUwTXGzYJvcD3kfUvmhlfpz1rhV8B2O6IVTQ0avsg==}
-    engines: {node: '>=12.0.0'}
-    peerDependencies:
-      typescript: '*'
-      webpack: ^5.0.0
 
   ts-node@10.9.2:
     resolution: {integrity: sha512-f0FFpIdcHgn8zcPSbf1dRevwt047YMnaiJM3u2w2RewrB+fob/zePZcrOyQoLMMO7aBIddLcQIEK5dYjkLnGrQ==}
@@ -10532,8 +10483,6 @@ snapshots:
       es-errors: 1.3.0
       is-data-view: 1.0.2
 
-  date-fns@4.2.1: {}
-
   dateformat@4.6.3: {}
 
   dayjs@1.11.20: {}
@@ -11355,8 +11304,6 @@ snapshots:
       setprototypeof: 1.2.0
       statuses: 2.0.2
       toidentifier: 1.0.1
-
-  http-status-codes@2.3.0: {}
 
   http-terminator@3.2.0:
     dependencies:
@@ -12315,10 +12262,6 @@ snapshots:
     optionalDependencies:
       gcp-metadata: 8.1.2
 
-  mongoose-autopopulate@1.2.1(mongoose@9.6.1(gcp-metadata@8.1.2)):
-    dependencies:
-      mongoose: 9.6.1(gcp-metadata@8.1.2)
-
   mongoose@9.6.1(gcp-metadata@8.1.2):
     dependencies:
       kareem: 3.3.0
@@ -13242,8 +13185,6 @@ snapshots:
 
   source-map@0.7.4: {}
 
-  source-map@0.7.6: {}
-
   sparse-bitfield@3.0.3:
     dependencies:
       memory-pager: 1.5.0
@@ -13423,11 +13364,6 @@ snapshots:
     dependencies:
       '@scarf/scarf': 1.4.0
 
-  swagger-ui-express@5.0.1(express@5.2.1):
-    dependencies:
-      express: 5.2.1
-      swagger-ui-dist: 5.32.4
-
   symbol-observable@4.0.0: {}
 
   symbol-tree@3.2.4: {}
@@ -13548,16 +13484,6 @@ snapshots:
       '@jest/types': 30.3.0
       babel-jest: 30.3.0(@babel/core@7.29.0)
       jest-util: 30.3.0
-
-  ts-loader@9.5.7(typescript@5.9.2)(webpack@5.105.4(@swc/core@1.15.33(@swc/helpers@0.5.15))):
-    dependencies:
-      chalk: 4.1.2
-      enhanced-resolve: 5.20.1
-      micromatch: 4.0.8
-      semver: 7.7.3
-      source-map: 0.7.6
-      typescript: 5.9.2
-      webpack: 5.105.4(@swc/core@1.15.33(@swc/helpers@0.5.15))
 
   ts-node@10.9.2(@swc/core@1.15.33(@swc/helpers@0.5.15))(@types/node@22.15.3)(typescript@5.9.2):
     dependencies:
