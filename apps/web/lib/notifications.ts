@@ -7,7 +7,7 @@ export interface Notification {
   createdAt: string;
 }
 
-export interface PaginationMeta {
+interface PaginationMeta {
   currentPage: number;
   totalPages: number;
   totalRecords: number;
@@ -22,7 +22,7 @@ export interface NotificationsResponse {
 
 export type NotificationFilter = "all" | "unread";
 
-export const PAGE_SIZE = 20;
+const PAGE_SIZE = 20;
 
 export function notificationsUrl(page: number, filter: NotificationFilter) {
   const unread = filter === "unread" ? "&isRead=false" : "";
@@ -30,7 +30,7 @@ export function notificationsUrl(page: number, filter: NotificationFilter) {
 }
 
 // A relative-time message key, or null when the date should be shown as-is.
-export type TimeAgo =
+type TimeAgo =
   | { key: "timeJustNow" | "timeYesterday"; count?: undefined }
   | { key: "timeHoursAgo" | "timeDaysAgo"; count: number }
   | null;

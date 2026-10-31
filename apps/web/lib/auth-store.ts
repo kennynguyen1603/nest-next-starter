@@ -1,8 +1,6 @@
 import { create } from "zustand";
 import type { AuthUser } from "@repo/types";
 
-export type { AuthUser };
-
 interface AuthState {
   accessToken: string | null;
   tokenExpires: number | null;

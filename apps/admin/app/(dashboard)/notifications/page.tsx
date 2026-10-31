@@ -78,8 +78,7 @@ function FeatureDisabled() {
       <h1 className="text-h2">Notifications</h1>
       <div className="flex gap-4 border border-amber-200 bg-amber-50 p-6">
         <AlertCircle
-          size={20}
-          className="mt-0.5 shrink-0 text-amber-600"
+          className="size-5 mt-0.5 shrink-0 text-amber-600"
           aria-hidden="true"
         />
         <div className="space-y-2">
@@ -229,7 +228,7 @@ function SingleTab({ onSent }: { onSent: (entry: SentEntry) => void }) {
       {submitError && <Alert>{submitError}</Alert>}
 
       <Button type="submit" loading={isSubmitting}>
-        {!isSubmitting && <Send size={14} aria-hidden="true" />}
+        {!isSubmitting && <Send aria-hidden="true" className="size-3.5" />}
         {isSubmitting ? "Sending…" : "Send notification"}
       </Button>
     </form>
@@ -297,8 +296,7 @@ function BroadcastTab({ onSent }: { onSent: (entry: SentEntry) => void }) {
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
       <div className="flex items-start gap-2 border border-border bg-surface px-3 py-2.5">
         <Users
-          size={15}
-          className="mt-0.5 shrink-0 text-muted"
+          className="size-3.75 mt-0.5 shrink-0 text-muted"
           aria-hidden="true"
         />
         <p className="text-caption text-muted">
@@ -314,8 +312,7 @@ function BroadcastTab({ onSent }: { onSent: (entry: SentEntry) => void }) {
       {confirming && !isSubmitting && (
         <div className="flex items-start gap-2 border border-amber-200 bg-amber-50 px-3 py-2.5">
           <AlertCircle
-            size={15}
-            className="mt-0.5 shrink-0 text-amber-600"
+            className="size-3.75 mt-0.5 shrink-0 text-amber-600"
             aria-hidden="true"
           />
           <div className="flex-1 text-caption text-amber-800">
@@ -340,7 +337,7 @@ function BroadcastTab({ onSent }: { onSent: (entry: SentEntry) => void }) {
         variant={confirming ? "danger" : "primary"}
         loading={isSubmitting}
       >
-        {!isSubmitting && <Megaphone size={14} aria-hidden="true" />}
+        {!isSubmitting && <Megaphone aria-hidden="true" className="size-3.5" />}
         {isSubmitting
           ? "Sending…"
           : confirming
@@ -364,8 +361,7 @@ function SentHistory({ entries }: { entries: SentEntry[] }) {
         {entries.map((n) => (
           <li key={n.id} className="flex items-start gap-3 px-5 py-4">
             <CheckCircle
-              size={16}
-              className="mt-0.5 shrink-0 text-green-600"
+              className="size-4 mt-0.5 shrink-0 text-green-600"
               aria-hidden="true"
             />
             <div className="min-w-0 flex-1">
@@ -375,7 +371,7 @@ function SentHistory({ entries }: { entries: SentEntry[] }) {
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-1 text-caption text-muted tabular-nums">
-              <Clock size={12} aria-hidden="true" />
+              <Clock aria-hidden="true" className="size-3" />
               {new Date(n.sentAt).toLocaleTimeString()}
             </div>
           </li>
@@ -411,13 +407,13 @@ function NotificationsMain() {
         <TabButton
           active={tab === "single"}
           onClick={() => setTab("single")}
-          icon={<Send size={14} aria-hidden="true" />}
+          icon={<Send aria-hidden="true" className="size-3.5" />}
           label="Single user"
         />
         <TabButton
           active={tab === "broadcast"}
           onClick={() => setTab("broadcast")}
-          icon={<Megaphone size={14} aria-hidden="true" />}
+          icon={<Megaphone aria-hidden="true" className="size-3.5" />}
           label="Broadcast to all"
         />
       </div>

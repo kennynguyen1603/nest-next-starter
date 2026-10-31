@@ -32,7 +32,7 @@ Runs by default at **http://localhost:3002**.
 ### 📊 Dashboard
 
 - **Stats cards** — Total users, new users today, active users, inactive users (all from the database — no hardcoded values)
-- **Recent activity** — Last 10 user actions, relative timestamps via `date-fns`
+- **Recent activity** — Last 10 user actions, relative timestamps via `Intl.RelativeTimeFormat`
 - Data fetched client-side from `GET /api/v1/admin/stats` and `GET /api/v1/admin/recent-activity`
 
 ### 👥 Users Management
@@ -276,5 +276,4 @@ All endpoints except login/refresh require a valid `Authorization: Bearer <token
 | `zod`                 | Schema validation                                         |
 | `@hookform/resolvers` | Connects zod with react-hook-form                         |
 | `lucide-react`        | Icon library                                              |
-| `date-fns`            | Relative timestamp formatting                             |
 | `@repo/types`         | Shared TypeScript types (`AdminUser`, `AdminStats`, etc.) |

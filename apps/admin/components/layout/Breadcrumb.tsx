@@ -34,8 +34,7 @@ export default function Breadcrumb() {
         return (
           <span key={href} className="flex items-center gap-1">
             <ChevronRight
-              size={14}
-              className="text-border-strong"
+              className="size-3.5 text-border-strong"
               aria-hidden="true"
             />
             {isLast ? (

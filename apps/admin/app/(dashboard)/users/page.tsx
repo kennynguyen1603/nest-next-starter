@@ -78,16 +78,15 @@ export default function UsersPage() {
           </p>
         </div>
         <Button onClick={() => router.push("/users/new")}>
-          <UserPlus size={16} aria-hidden="true" />
+          <UserPlus aria-hidden="true" className="size-4" />
           New User
         </Button>
       </div>
 
       <div className="relative max-w-xs">
         <Search
-          size={16}
           aria-hidden="true"
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+          className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted"
         />
         <Input
           value={q}

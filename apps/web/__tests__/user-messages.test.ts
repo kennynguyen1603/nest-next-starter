@@ -15,8 +15,6 @@ const REQUIRED_USER_KEYS = [
   "email",
   "oldPassword",
   "newPassword",
-  "updateSuccess",
-  "deleteSuccess",
   "errorDefault",
 ] as const;
 

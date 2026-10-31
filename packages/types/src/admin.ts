@@ -20,13 +20,6 @@ export interface UserGrowthPoint {
   count: number;
 }
 
-export interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  page: number;
-  totalPages: number;
-}
-
 export interface AdminUser {
   id: string;
   email: string | null;

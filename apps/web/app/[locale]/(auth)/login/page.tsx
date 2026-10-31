@@ -31,11 +31,10 @@ const OAUTH_PROVIDERS: {
     label: "Google",
     icon: (
       <svg
-        width="16"
-        height="16"
         viewBox="0 0 18 18"
         fill="none"
         aria-hidden="true"
+        className="size-4"
       >
         <path
           d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615Z"
@@ -61,11 +60,10 @@ const OAUTH_PROVIDERS: {
     label: "Facebook",
     icon: (
       <svg
-        width="16"
-        height="16"
         viewBox="0 0 18 18"
         fill="none"
         aria-hidden="true"
+        className="size-4"
       >
         <path
           d="M18 9a9 9 0 1 0-10.406 8.892V11.61H5.31V9h2.284V7.017c0-2.255 1.343-3.502 3.4-3.502.985 0 2.015.175 2.015.175v2.215h-1.135c-1.118 0-1.467.694-1.467 1.406V9h2.496l-.399 2.61h-2.097v6.282A9.004 9.004 0 0 0 18 9Z"
@@ -79,11 +77,10 @@ const OAUTH_PROVIDERS: {
     label: "GitHub",
     icon: (
       <svg
-        width="16"
-        height="16"
         viewBox="0 0 18 18"
         fill="currentColor"
         aria-hidden="true"
+        className="size-4"
       >
         <path
           fillRule="evenodd"
@@ -98,11 +95,10 @@ const OAUTH_PROVIDERS: {
     label: "X (Twitter)",
     icon: (
       <svg
-        width="14"
-        height="14"
         viewBox="0 0 16 16"
         fill="currentColor"
         aria-hidden="true"
+        className="size-3.5"
       >
         <path d="M9.294 6.928 14.357 1h-1.2L8.762 6.147 5.25 1H1l5.31 7.784L1 15.5h1.2l4.642-5.436 3.708 5.436H15L9.294 6.928ZM7.48 9.34l-.538-.775L2.64 1.924h1.843l3.457 4.981.538.775 4.491 6.47h-1.843L7.48 9.34Z" />
       </svg>
@@ -222,6 +218,13 @@ function LoginPageContent() {
             {...register("password")}
           />
         </FormField>
+
+        <Link
+          href="/forgot-password"
+          className="-mt-2 self-end text-small text-muted underline underline-offset-4 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground"
+        >
+          {t("forgotPassword")}
+        </Link>
 
         {serverError && <Alert>{serverError}</Alert>}
 

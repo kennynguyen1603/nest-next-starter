@@ -34,7 +34,7 @@ function SummaryCard({
     <div className="bg-background p-5">
       <div className="flex items-center justify-between mb-4">
         <span className="text-label uppercase text-muted">{label}</span>
-        <Icon size={16} aria-hidden="true" className="text-muted" />
+        <Icon aria-hidden="true" className="size-4 text-muted" />
       </div>
       <p className="text-h1 tabular-nums">{value}</p>
     </div>
@@ -44,14 +44,13 @@ function SummaryCard({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ReportsPage() {
-  const { accessToken } = useAuthStore();
   const [summary, setSummary] = useState<UserSummary | null>(null);
   const [growth, setGrowth] = useState<UserGrowthPoint[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
-      if (!accessToken) await tryRefresh();
+      if (!useAuthStore.getState().accessToken) await tryRefresh();
       try {
         const [s, g] = await Promise.all([
           api.get<UserSummary>("/api/v1/admin/reports/user-summary"),
@@ -66,7 +65,7 @@ export default function ReportsPage() {
       }
     }
     void load();
-  }, [accessToken]);
+  }, []);
 
   if (loading) {
     return (

@@ -16,11 +16,10 @@ export function AuthSuccessState({
       <div className="mb-8">
         <div className="mb-6 flex size-10 items-center justify-center bg-foreground">
           <svg
-            width="20"
-            height="20"
             viewBox="0 0 20 20"
             fill="none"
             aria-hidden="true"
+            className="size-5"
           >
             <path
               d="M4 10l4.5 4.5L16 6"

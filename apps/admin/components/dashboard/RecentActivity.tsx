@@ -1,5 +1,24 @@
-import { formatDistanceToNow } from "date-fns";
 import type { AdminActivity } from "@repo/types";
+
+const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
+  ["year", 31_536_000],
+  ["month", 2_592_000],
+  ["week", 604_800],
+  ["day", 86_400],
+  ["hour", 3_600],
+  ["minute", 60],
+];
+
+function timeAgo(date: string): string {
+  const seconds = (new Date(date).getTime() - Date.now()) / 1000;
+  for (const [unit, size] of UNITS) {
+    if (Math.abs(seconds) >= size) {
+      return rtf.format(Math.round(seconds / size), unit);
+    }
+  }
+  return rtf.format(Math.round(seconds), "second");
+}
 
 export default function RecentActivity({ items }: { items: AdminActivity[] }) {
   if (items.length === 0) {
@@ -26,11 +45,7 @@ export default function RecentActivity({ items }: { items: AdminActivity[] }) {
               <span className="text-muted">{item.action}</span>{" "}
               <span className="font-medium">{item.target}</span>
             </p>
-            <p className="text-caption text-muted">
-              {formatDistanceToNow(new Date(item.createdAt), {
-                addSuffix: true,
-              })}
-            </p>
+            <p className="text-caption text-muted">{timeAgo(item.createdAt)}</p>
           </div>
         </li>
       ))}

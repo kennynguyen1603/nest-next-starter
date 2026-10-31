@@ -316,7 +316,7 @@ function UserTable({ users, onRefresh }: Props) {
                         title="View"
                         aria-label="View"
                       >
-                        <Eye size={16} />
+                        <Eye className="size-4" />
                       </button>
                       <button
                         type="button"
@@ -325,7 +325,7 @@ function UserTable({ users, onRefresh }: Props) {
                         title="Edit"
                         aria-label="Edit"
                       >
-                        <Pencil size={16} />
+                        <Pencil className="size-4" />
                       </button>
                       <button
                         type="button"
@@ -334,7 +334,7 @@ function UserTable({ users, onRefresh }: Props) {
                         title="Delete"
                         aria-label="Delete"
                       >
-                        <Trash2 size={16} />
+                        <Trash2 className="size-4" />
                       </button>
                     </div>
                   </td>

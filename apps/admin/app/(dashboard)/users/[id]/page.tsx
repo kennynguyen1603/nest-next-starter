@@ -40,10 +40,10 @@ export default function UserDetailPage() {
           onClick={() => router.back()}
           className="flex items-center gap-2 text-small text-muted hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground"
         >
-          <ArrowLeft size={16} aria-hidden="true" /> Back to Users
+          <ArrowLeft aria-hidden="true" className="size-4" /> Back to Users
         </button>
         <Button onClick={() => router.push(`/users/${id}/edit`)}>
-          <Pencil size={16} aria-hidden="true" /> Edit
+          <Pencil aria-hidden="true" className="size-4" /> Edit
         </Button>
       </div>
 

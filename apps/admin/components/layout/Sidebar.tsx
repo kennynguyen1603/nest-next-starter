@@ -36,7 +36,8 @@ const NAV = [
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, clearAuth } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
+  const clearAuth = useAuthStore((s) => s.clearAuth);
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
@@ -64,7 +65,7 @@ export default function Sidebar() {
 
   return (
     <aside
-      className={`${collapsed ? "w-16" : "w-60"} shrink-0 bg-sidebar text-sidebar-foreground flex flex-col transition-[width] duration-200 ease-in-out overflow-hidden`}
+      className={`w-16 ${collapsed ? "md:w-16" : "md:w-60"} shrink-0 bg-sidebar text-sidebar-foreground flex flex-col transition-[width] duration-200 ease-in-out overflow-hidden`}
     >
       {/* Logo */}
       <div className="flex items-center gap-3 px-4 h-16 border-b border-sidebar-border shrink-0">
@@ -72,7 +73,7 @@ export default function Sidebar() {
           A
         </div>
         {!collapsed && (
-          <span className="text-small font-semibold text-white truncate">
+          <span className="hidden md:inline text-small font-semibold text-white truncate">
             Admin Panel
           </span>
         )}
@@ -86,16 +87,21 @@ export default function Sidebar() {
             <Link
               key={href}
               href={href}
-              aria-label={collapsed ? label : undefined}
-              title={collapsed ? label : undefined}
+              title={label}
               className={`flex items-center gap-3 px-3 py-2.5 text-small font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${
                 active
                   ? "bg-white text-sidebar"
                   : "text-sidebar-muted hover:bg-white/5 hover:text-white"
               }`}
             >
-              <Icon size={18} className="shrink-0" />
-              {!collapsed && <span className="truncate">{label}</span>}
+              <Icon className="size-4.5 shrink-0" />
+              <span
+                className={
+                  collapsed ? "sr-only" : "sr-only md:not-sr-only truncate"
+                }
+              >
+                {label}
+              </span>
             </Link>
           );
         })}
@@ -104,26 +110,31 @@ export default function Sidebar() {
       {/* Footer */}
       <div className="border-t border-sidebar-border p-2 space-y-1">
         {!collapsed && user && (
-          <p className="px-3 py-1.5 text-caption text-sidebar-muted truncate">
+          <p className="hidden md:block px-3 py-1.5 text-caption text-sidebar-muted truncate">
             {user.firstName || user.email}
           </p>
         )}
         <button
           onClick={logout}
-          aria-label="Logout"
           title="Logout"
           className="flex items-center gap-3 w-full px-3 py-2.5 text-small text-sidebar-muted hover:bg-white/5 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
         >
-          <LogOut size={18} className="shrink-0" />
-          {!collapsed && <span>Logout</span>}
+          <LogOut className="size-4.5 shrink-0" />
+          <span className={collapsed ? "sr-only" : "sr-only md:not-sr-only"}>
+            Logout
+          </span>
         </button>
         <button
           onClick={toggle}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="flex items-center justify-center w-full py-2 text-sidebar-muted hover:bg-white/5 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+          className="hidden md:flex items-center justify-center w-full py-2 text-sidebar-muted hover:bg-white/5 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
         >
-          {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          {collapsed ? (
+            <ChevronRight className="size-4" />
+          ) : (
+            <ChevronLeft className="size-4" />
+          )}
         </button>
       </div>
     </aside>

@@ -121,7 +121,7 @@ export default function EditUserPage() {
           onClick={() => router.back()}
           className="flex items-center gap-2 text-small text-muted hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground"
         >
-          <ArrowLeft size={16} aria-hidden="true" /> Back
+          <ArrowLeft aria-hidden="true" className="size-4" /> Back
         </button>
       </div>
 

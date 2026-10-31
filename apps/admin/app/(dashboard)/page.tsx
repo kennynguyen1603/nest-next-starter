@@ -9,16 +9,13 @@ import RecentActivity from "@/components/dashboard/RecentActivity";
 import type { AdminStats, AdminActivity } from "@repo/types";
 
 export default function DashboardPage() {
-  const { accessToken } = useAuthStore();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [activity, setActivity] = useState<AdminActivity[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
-      if (!accessToken) {
-        await tryRefresh();
-      }
+      if (!useAuthStore.getState().accessToken) await tryRefresh();
       try {
         const [s, a] = await Promise.all([
           api.get<AdminStats>("/api/v1/admin/stats"),
@@ -33,7 +30,7 @@ export default function DashboardPage() {
       }
     }
     void load();
-  }, [accessToken]);
+  }, []);
 
   if (loading) {
     return (
